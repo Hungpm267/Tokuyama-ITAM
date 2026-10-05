@@ -2,168 +2,210 @@
 {% load i18n static %}
 
 {% block content %}
-<div style="padding: 10px 0;">
-  <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--hairline-color, #e5e7eb); padding-bottom: 15px; margin-bottom: 20px;">
-    <div>
-      <h1 style="margin: 0; font-size: 22px;">👤 {{ person.full_name }} ({{ person.staff_code }})</h1>
-      <p style="margin: 5px 0 0 0; color: gray;">
-        {% trans 'Phòng ban' %}: <strong>{{ person.department|default:"-" }}</strong> | 
-        {% trans 'Trạng thái' %}: <strong>{{ person.get_status_display }}</strong>
-      </p>
-    </div>
-    <div>
-      <a href="{% url 'admin:organization_person_change' person.pk %}" class="button" style="padding: 8px 16px;">{% trans 'Sửa thông tin nhân viên' %}</a>
+<div class="swiss-dashboard">
+  <!-- Personnel Header Dossier -->
+  <div class="swiss-panel" style="margin-bottom: 24px;">
+    <div style="padding: 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: gap: 16px;">
+      <div>
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 6px;">
+          <span class="brand-badge font-mono">{{ person.staff_code }}</span>
+          <h1 style="margin: 0; font-size: 22px; font-weight: 700; color: var(--toku-text); letter-spacing: -0.02em;">
+            {{ person.full_name }}
+          </h1>
+          {% if person.status == 'active' %}
+            <span class="swiss-chip chip-in-stock">{{ person.get_status_display }}</span>
+          {% else %}
+            <span class="swiss-chip chip-lost">{{ person.get_status_display }}</span>
+          {% endif %}
+        </div>
+        <div style="font-size: 13px; color: var(--toku-text-secondary);">
+          {% trans 'Department' %}: <strong style="color: var(--toku-text);">{{ person.department|default:"Unassigned" }}</strong>
+        </div>
+      </div>
+      <div>
+        <a href="{% url 'admin:organization_person_change' person.pk %}" class="button button-secondary">
+          {% trans 'Edit Record' %}
+        </a>
+      </div>
     </div>
   </div>
 
-  <!-- 1. Thiết bị đang giữ (Current Assets) -->
-  <div style="margin-bottom: 30px;">
-    <h3 style="color: #2563eb; display: flex; align-items: center; gap: 8px;">
-      💻 {% trans 'Thiết bị IT hiện đang giữ' %} ({{ current_assignments|length }})
-    </h3>
-    {% if current_assignments %}
-      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+  <!-- Section 1: Active Hardware Deployed -->
+  <div class="swiss-panel">
+    <div class="swiss-panel-header">
+      <h3 class="swiss-panel-title">{% trans 'Active Hardware Deployed' %}</h3>
+      <span class="swiss-chip chip-loaned font-mono">{{ current_assignments|length }} {% trans 'units' %}</span>
+    </div>
+    <div>
+      {% if current_assignments %}
+      <table class="swiss-table">
         <thead>
-          <tr style="text-align: left; background: var(--darkened-bg, #f3f4f6);">
-            <th style="padding: 8px;">{% trans 'Mã tài sản' %}</th>
-            <th style="padding: 8px;">{% trans 'Loại' %}</th>
-            <th style="padding: 8px;">{% trans 'Model' %}</th>
-            <th style="padding: 8px;">Serial</th>
-            <th style="padding: 8px;">MAC</th>
-            <th style="padding: 8px;">{% trans 'Ngày mượn' %}</th>
-            <th style="padding: 8px;">{% trans 'Ghi chú' %}</th>
-            <th style="padding: 8px;">{% trans 'Thao tác' %}</th>
+          <tr>
+            <th>{% trans 'Asset Code' %}</th>
+            <th>{% trans 'Category' %}</th>
+            <th>{% trans 'Model' %}</th>
+            <th>Serial Number</th>
+            <th>MAC Address</th>
+            <th>{% trans 'Assignment Date' %}</th>
+            <th>{% trans 'Remarks' %}</th>
+            <th style="text-align: right;">{% trans 'Action' %}</th>
           </tr>
         </thead>
         <tbody>
           {% for asgn in current_assignments %}
-          <tr style="border-bottom: 1px solid var(--hairline-color, #e5e7eb);">
-            <td style="padding: 8px; font-weight: bold;">{{ asgn.asset.asset_code }}</td>
-            <td style="padding: 8px;">{{ asgn.asset.category.name }}</td>
-            <td style="padding: 8px;">{{ asgn.asset.model|default:"-" }}</td>
-            <td style="padding: 8px;">{{ asgn.asset.serial|default:"-" }}</td>
-            <td style="padding: 8px;">{{ asgn.asset.mac_address|default:"-" }}</td>
-            <td style="padding: 8px;">{{ asgn.borrowed_at|date:"Y-m-d" }}</td>
-            <td style="padding: 8px;">{{ asgn.note|default:"-" }}</td>
-            <td style="padding: 8px;">
-              <a href="{% url 'admin:assets_assignment_change' asgn.pk %}">{% trans 'Trả máy / Cập nhật' %}</a>
+          <tr>
+            <td class="font-mono" style="font-weight: 600; color: var(--toku-accent);">{{ asgn.asset.asset_code }}</td>
+            <td>{{ asgn.asset.category.name }}</td>
+            <td>{{ asgn.asset.model|default:"-" }}</td>
+            <td class="font-mono">{{ asgn.asset.serial|default:"-" }}</td>
+            <td class="font-mono">{{ asgn.asset.mac_address|default:"-" }}</td>
+            <td class="font-mono">{{ asgn.borrowed_at|date:"Y-m-d" }}</td>
+            <td style="color: var(--toku-text-muted);">{{ asgn.note|default:"-" }}</td>
+            <td style="text-align: right;">
+              <a href="{% url 'admin:assets_assignment_change' asgn.pk %}" class="button button-secondary" style="padding: 4px 10px !important; font-size: 11px !important;">
+                {% trans 'Check-in / Return' %}
+              </a>
             </td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
-    {% else %}
-      <p style="color: gray; font-size: 14px;">{% trans 'Nhân viên này hiện không giữ thiết bị nào.' %}</p>
-    {% endif %}
+      {% else %}
+      <div style="padding: 24px; text-align: center; color: var(--toku-text-muted);">
+        {% trans 'No hardware units are currently assigned to this personnel.' %}
+      </div>
+      {% endif %}
+    </div>
   </div>
 
-  <!-- 2. Bản quyền phần mềm (Licenses) -->
-  <div style="margin-bottom: 30px;">
-    <h3 style="color: #d97706; display: flex; align-items: center; gap: 8px;">
-      📜 {% trans 'Bản quyền License đang được gán' %} ({{ licenses_assigned|length }})
-    </h3>
-    {% if licenses_assigned %}
-      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+  <!-- Section 2: Software Licenses Assigned -->
+  <div class="swiss-panel">
+    <div class="swiss-panel-header">
+      <h3 class="swiss-panel-title">{% trans 'Software Licenses Allocated' %}</h3>
+      <span class="swiss-chip chip-neutral font-mono">{{ licenses_assigned|length }}</span>
+    </div>
+    <div>
+      {% if licenses_assigned %}
+      <table class="swiss-table">
         <thead>
-          <tr style="text-align: left; background: var(--darkened-bg, #f3f4f6);">
-            <th style="padding: 8px;">{% trans 'Phần mềm' %}</th>
-            <th style="padding: 8px;">{% trans 'Gán cho' %}</th>
-            <th style="padding: 8px;">{% trans 'Ngày gán' %}</th>
-            <th style="padding: 8px;">{% trans 'Hạn license' %}</th>
+          <tr>
+            <th>{% trans 'Software Product' %}</th>
+            <th>{% trans 'Allocation Scope' %}</th>
+            <th>{% trans 'Allocated Date' %}</th>
+            <th>{% trans 'License Expiry' %}</th>
           </tr>
         </thead>
         <tbody>
           {% for lic in licenses_assigned %}
-          <tr style="border-bottom: 1px solid var(--hairline-color, #e5e7eb);">
-            <td style="padding: 8px; font-weight: bold;">{{ lic.license.product.name }}</td>
-            <td style="padding: 8px;">
+          <tr>
+            <td style="font-weight: 600;">{{ lic.license.product.name }}</td>
+            <td>
               {% if lic.asset %}
-                {% trans 'Máy' %}: {{ lic.asset.asset_code }} ({{ lic.asset.model|default:"" }})
+                <span class="font-mono" style="color: var(--toku-accent);">{{ lic.asset.asset_code }}</span> ({{ lic.asset.model|default:"" }})
               {% else %}
-                {% trans 'Gán trực tiếp cho người' %}
+                <span style="color: var(--toku-text-secondary);">{% trans 'Direct Personnel Grant' %}</span>
               {% endif %}
             </td>
-            <td style="padding: 8px;">{{ lic.assigned_at|date:"Y-m-d" }}</td>
-            <td style="padding: 8px;">{{ lic.license.expiry_date|date:"Y-m-d"|default:_("Vĩnh viễn") }}</td>
+            <td class="font-mono">{{ lic.assigned_at|date:"Y-m-d" }}</td>
+            <td class="font-mono">
+              {% if lic.license.expiry_date %}
+                {{ lic.license.expiry_date|date:"Y-m-d" }}
+              {% else %}
+                <span class="swiss-chip chip-in-stock">{% trans 'Perpetual' %}</span>
+              {% endif %}
+            </td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
-    {% else %}
-      <p style="color: gray; font-size: 14px;">{% trans 'Không có license phần mềm nào được gán.' %}</p>
-    {% endif %}
+      {% else %}
+      <div style="padding: 24px; text-align: center; color: var(--toku-text-muted);">
+        {% trans 'No software license seats are currently allocated to this profile.' %}
+      </div>
+      {% endif %}
+    </div>
   </div>
 
-  <!-- 3. Thẻ ra vào (Access Cards) -->
-  <div style="margin-bottom: 30px;">
-    <h3 style="color: #0284c7; display: flex; align-items: center; gap: 8px;">
-      🔑 {% trans 'Thẻ ra vào đang giữ' %} ({{ current_card_loans|length }})
-    </h3>
-    {% if current_card_loans %}
-      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+  <!-- Section 3: Physical Access Cards -->
+  <div class="swiss-panel">
+    <div class="swiss-panel-header">
+      <h3 class="swiss-panel-title">{% trans 'Physical Access Cards Held' %}</h3>
+      <span class="swiss-chip chip-neutral font-mono">{{ current_card_loans|length }}</span>
+    </div>
+    <div>
+      {% if current_card_loans %}
+      <table class="swiss-table">
         <thead>
-          <tr style="text-align: left; background: var(--darkened-bg, #f3f4f6);">
-            <th style="padding: 8px;">{% trans 'Số thẻ' %}</th>
-            <th style="padding: 8px;">{% trans 'Phòng được phép vào' %}</th>
-            <th style="padding: 8px;">{% trans 'Ngày mượn' %}</th>
-            <th style="padding: 8px;">{% trans 'Mục đích' %}</th>
+          <tr>
+            <th>{% trans 'Card Number' %}</th>
+            <th>{% trans 'Authorized Access Rooms' %}</th>
+            <th>{% trans 'Check-out Date' %}</th>
+            <th>{% trans 'Stated Purpose' %}</th>
           </tr>
         </thead>
         <tbody>
           {% for loan in current_card_loans %}
-          <tr style="border-bottom: 1px solid var(--hairline-color, #e5e7eb);">
-            <td style="padding: 8px; font-weight: bold;">{{ loan.card.card_no }}</td>
-            <td style="padding: 8px;">
+          <tr>
+            <td class="font-mono" style="font-weight: 600;">{{ loan.card.card_no }}</td>
+            <td>
               {% for room in loan.card.rooms.all %}
-                <span style="background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-right: 4px;">{{ room.name }}</span>
+                <span class="swiss-chip chip-neutral" style="margin-right: 4px;">{{ room.name }}</span>
               {% empty %}
-                -
+                <span style="color: var(--toku-text-muted);">-</span>
               {% endfor %}
             </td>
-            <td style="padding: 8px;">{{ loan.borrowed_at|date:"Y-m-d" }}</td>
-            <td style="padding: 8px;">{{ loan.purpose|default:"-" }}</td>
+            <td class="font-mono">{{ loan.borrowed_at|date:"Y-m-d" }}</td>
+            <td>{{ loan.purpose|default:"-" }}</td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
-    {% else %}
-      <p style="color: gray; font-size: 14px;">{% trans 'Nhân viên này hiện không mượn thẻ nào.' %}</p>
-    {% endif %}
+      {% else %}
+      <div style="padding: 24px; text-align: center; color: var(--toku-text-muted);">
+        {% trans 'No physical access cards currently checked out.' %}
+      </div>
+      {% endif %}
+    </div>
   </div>
 
-  <!-- 4. Lịch sử đã từng mượn (History) -->
-  <div>
-    <h3 style="color: gray; border-top: 1px solid var(--hairline-color, #e5e7eb); padding-top: 15px;">
-      ⏱ {% trans 'Lịch sử thiết bị đã trả trong quá khứ' %} ({{ past_assignments|length }})
-    </h3>
-    {% if past_assignments %}
-      <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: gray;">
+  <!-- Section 4: Historic Lifecycle Log -->
+  <div class="swiss-panel">
+    <div class="swiss-panel-header">
+      <h3 class="swiss-panel-title" style="color: var(--toku-text-muted);">{% trans 'Historic Hardware Lifecycle' %}</h3>
+      <span class="swiss-chip chip-neutral font-mono">{{ past_assignments|length }}</span>
+    </div>
+    <div>
+      {% if past_assignments %}
+      <table class="swiss-table">
         <thead>
-          <tr style="text-align: left; background: var(--darkened-bg, #f9fafb);">
-            <th style="padding: 6px;">{% trans 'Mã tài sản' %}</th>
-            <th style="padding: 6px;">{% trans 'Loại' %}</th>
-            <th style="padding: 6px;">Serial</th>
-            <th style="padding: 6px;">{% trans 'Ngày mượn' %}</th>
-            <th style="padding: 6px;">{% trans 'Ngày trả' %}</th>
-            <th style="padding: 6px;">{% trans 'Ghi chú' %}</th>
+          <tr>
+            <th>{% trans 'Asset Code' %}</th>
+            <th>{% trans 'Category' %}</th>
+            <th>Serial Number</th>
+            <th>{% trans 'Check-out' %}</th>
+            <th>{% trans 'Return Date' %}</th>
+            <th>{% trans 'Remarks' %}</th>
           </tr>
         </thead>
         <tbody>
           {% for p in past_assignments %}
-          <tr style="border-bottom: 1px solid var(--hairline-color, #f3f4f6);">
-            <td style="padding: 6px; font-weight: bold;">{{ p.asset.asset_code }}</td>
-            <td style="padding: 6px;">{{ p.asset.category.name }}</td>
-            <td style="padding: 6px;">{{ p.asset.serial|default:"-" }}</td>
-            <td style="padding: 6px;">{{ p.borrowed_at|date:"Y-m-d" }}</td>
-            <td style="padding: 6px;">{{ p.returned_at|date:"Y-m-d" }}</td>
-            <td style="padding: 6px;">{{ p.note|default:"-" }}</td>
+          <tr style="color: var(--toku-text-secondary);">
+            <td class="font-mono">{{ p.asset.asset_code }}</td>
+            <td>{{ p.asset.category.name }}</td>
+            <td class="font-mono">{{ p.asset.serial|default:"-" }}</td>
+            <td class="font-mono">{{ p.borrowed_at|date:"Y-m-d" }}</td>
+            <td class="font-mono">{{ p.returned_at|date:"Y-m-d" }}</td>
+            <td>{{ p.note|default:"-" }}</td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
-    {% else %}
-      <p style="color: gray; font-size: 13px;">{% trans 'Chưa có lịch sử mượn trả trước đây.' %}</p>
-    {% endif %}
+      {% else %}
+      <div style="padding: 24px; text-align: center; color: var(--toku-text-muted);">
+        {% trans 'No prior hardware return records on file.' %}
+      </div>
+      {% endif %}
+    </div>
   </div>
 </div>
 {% endblock %}

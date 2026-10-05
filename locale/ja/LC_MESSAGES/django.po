@@ -102,3 +102,73 @@ msgstr "入退出カード・部屋管理"
 
 msgid "Hợp đồng mua sắm"
 msgstr "購買契約管理"
+
+msgid "Total IT Assets"
+msgstr "総IT機器数"
+
+msgid "In Stock / Ready"
+msgstr "在庫（配備可能）"
+
+msgid "Currently Loaned"
+msgstr "貸出中"
+
+msgid "Lost / Write-Off"
+msgstr "紛失・除籍"
+
+msgid "Active hardware records"
+msgstr "稼働中のハードウェア"
+
+msgid "Available for immediate assignment"
+msgstr "即時貸出可能"
+
+msgid "Deployed to staff"
+msgstr "従業員に配備済み"
+
+msgid "Requires replacement"
+msgstr "要交換・手配"
+
+msgid "License Expiration Watchlist (60 Days)"
+msgstr "ライセンス期限ウォッチリスト (60日以内)"
+
+msgid "Active Card Loans Registry"
+msgstr "貸出中カード台帳"
+
+msgid "Search Results for"
+msgstr "検索結果"
+
+msgid "records identified"
+msgstr "件のレコード"
+
+msgid "IT Assets & Hardware"
+msgstr "IT資産・機器"
+
+msgid "Personnel"
+msgstr "人事・従業員"
+
+msgid "Procurement Contracts"
+msgstr "購買契約"
+
+msgid "Access Cards"
+msgstr "入退出カード"
+
+msgid "Open 360 Dossier"
+msgstr "360度カルテを開く"
+
+msgid "Active Hardware Deployed"
+msgstr "現在貸出中の機器"
+
+msgid "Software Licenses Allocated"
+msgstr "割り当て済みライセンス"
+
+msgid "Physical Access Cards Held"
+msgstr "所持中の入退出カード"
+
+msgid "Historic Hardware Lifecycle"
+msgstr "機器返却履歴"
+
+msgid "Trash Registry & Soft-Delete Recovery"
+msgstr "ゴミ箱台帳・論理削除復元"
+
+msgid "Restore Record"
+msgstr "レコードを復元"
+

@@ -1,0 +1,477 @@
+/* ==========================================================================
+   Tokuyama Vietnam ITAM - Swiss Anchor Design System
+   Visual Direction: Swiss (International Typographic Style)
+   Palette: Pure White / Neutral Canvas, Yves Klein Blue #002FA7, Deep Slate #0F172A
+   Structure: 1px Hairline Rules, Asymmetric Grid, Tabular Numerics
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  /* Surface Tokens */
+  --toku-canvas: #f8fafc;
+  --toku-surface: #ffffff;
+  --toku-surface-subtle: #f1f5f9;
+  --toku-surface-muted: #e2e8f0;
+  
+  /* Hairline Borders */
+  --toku-border: #e2e8f0;
+  --toku-border-strong: #cbd5e1;
+  
+  /* Typography Tokens */
+  --toku-text: #0f172a;
+  --toku-text-secondary: #475569;
+  --toku-text-muted: #64748b;
+  --toku-text-inverse: #ffffff;
+  
+  /* Brand Accent: Yves Klein Blue */
+  --toku-accent: #002fa7;
+  --toku-accent-hover: #00227d;
+  --toku-accent-subtle: #eff6ff;
+  
+  /* Semantics */
+  --toku-success: #059669;
+  --toku-success-bg: #ecfdf5;
+  --toku-success-border: #a7f3d0;
+  
+  --toku-warning: #d97706;
+  --toku-warning-bg: #fffbeb;
+  --toku-warning-border: #fde68a;
+  
+  --toku-danger: #dc2626;
+  --toku-danger-bg: #fef2f2;
+  --toku-danger-border: #fecaca;
+  
+  --toku-info: #0284c7;
+  --toku-info-bg: #f0f9ff;
+  --toku-info-border: #bae6fd;
+  
+  /* Fonts */
+  --toku-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --toku-font-mono: 'JetBrains Mono', SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  
+  /* Radii */
+  --toku-radius-sm: 4px;
+  --toku-radius: 6px;
+  --toku-radius-lg: 8px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --toku-canvas: #090d16;
+    --toku-surface: #111827;
+    --toku-surface-subtle: #1f2937;
+    --toku-surface-muted: #374151;
+    
+    --toku-border: #1f2937;
+    --toku-border-strong: #374151;
+    
+    --toku-text: #f8fafc;
+    --toku-text-secondary: #cbd5e1;
+    --toku-text-muted: #94a3b8;
+    
+    --toku-accent: #3b82f6;
+    --toku-accent-hover: #60a5fa;
+    --toku-accent-subtle: #1e293b;
+    
+    --toku-success-bg: rgba(5, 150, 105, 0.15);
+    --toku-success-border: rgba(5, 150, 105, 0.3);
+    
+    --toku-warning-bg: rgba(217, 119, 6, 0.15);
+    --toku-warning-border: rgba(217, 119, 6, 0.3);
+    
+    --toku-danger-bg: rgba(220, 38, 38, 0.15);
+    --toku-danger-border: rgba(220, 38, 38, 0.3);
+    
+    --toku-info-bg: rgba(2, 132, 199, 0.15);
+    --toku-info-border: rgba(2, 132, 199, 0.3);
+  }
+}
+
+/* Base Reset & Typography */
+body {
+  font-family: var(--toku-font-sans) !important;
+  background-color: var(--toku-canvas) !important;
+  color: var(--toku-text) !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+  -webkit-font-smoothing: antialiased;
+  margin: 0;
+}
+
+/* Numerics across the app */
+.numeral, table td, input[type="number"], .metric-value {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* Header & Navigation Bar */
+#header {
+  background: #0f172a !important;
+  color: #f8fafc !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  padding: 14px 28px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+#header #branding h1 {
+  margin: 0 !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.01em !important;
+}
+
+#header #branding a {
+  color: #ffffff !important;
+  text-decoration: none !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+.brand-badge {
+  display: inline-block;
+  background: var(--toku-accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: var(--toku-radius-sm);
+}
+
+#user-tools {
+  font-size: 12px !important;
+  color: #94a3b8 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 16px !important;
+}
+
+#user-tools a {
+  color: #f1f5f9 !important;
+  border-bottom: 1px dotted transparent !important;
+  text-decoration: none !important;
+  transition: color 0.15s ease;
+}
+
+#user-tools a:hover {
+  color: #ffffff !important;
+  border-bottom-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* Language selector in header */
+.lang-selector {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #f8fafc;
+  padding: 4px 10px;
+  border-radius: var(--toku-radius-sm);
+  font-size: 11px;
+  font-weight: 500;
+  outline: none;
+  cursor: pointer;
+}
+
+.lang-selector:focus {
+  border-color: var(--toku-accent);
+}
+
+/* Content Container */
+#content {
+  padding: 24px 28px !important;
+}
+
+/* Breadcrumbs */
+div.breadcrumbs {
+  background: transparent !important;
+  border-bottom: 1px solid var(--toku-border) !important;
+  padding: 10px 28px !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  color: var(--toku-text-muted) !important;
+}
+
+div.breadcrumbs a {
+  color: var(--toku-text-secondary) !important;
+  text-decoration: none !important;
+}
+
+div.breadcrumbs a:hover {
+  color: var(--toku-accent) !important;
+}
+
+/* Dashboard & Cards */
+.swiss-panel {
+  background: var(--toku-surface);
+  border: 1px solid var(--toku-border);
+  border-radius: var(--toku-radius);
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+
+.swiss-panel-header {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--toku-border);
+  background: var(--toku-surface);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.swiss-panel-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--toku-text-secondary);
+}
+
+.swiss-panel-body {
+  padding: 20px;
+}
+
+/* Metric Cards Grid */
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 900px) {
+  .metric-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.metric-card {
+  background: var(--toku-surface);
+  border: 1px solid var(--toku-border);
+  border-radius: var(--toku-radius);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  transition: border-color 0.15s ease;
+}
+
+.metric-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--toku-border-strong);
+}
+
+.metric-card.accent-total::before { background: var(--toku-accent); }
+.metric-card.accent-instock::before { background: var(--toku-success); }
+.metric-card.accent-loaned::before { background: var(--toku-info); }
+.metric-card.accent-lost::before { background: var(--toku-danger); }
+
+.metric-card:hover {
+  border-color: var(--toku-border-strong);
+}
+
+.metric-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--toku-text-muted);
+  margin-bottom: 8px;
+}
+
+.metric-value {
+  font-size: 38px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--toku-text);
+}
+
+.metric-sub {
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--toku-text-muted);
+}
+
+/* Quick Search Box */
+.swiss-search-bar {
+  display: flex;
+  align-items: center;
+  background: var(--toku-surface);
+  border: 1px solid var(--toku-border);
+  border-radius: var(--toku-radius);
+  padding: 6px 12px;
+  margin-bottom: 24px;
+  gap: 10px;
+}
+
+.swiss-search-bar:focus-within {
+  border-color: var(--toku-accent);
+  box-shadow: 0 0 0 3px rgba(0, 47, 167, 0.08);
+}
+
+.swiss-search-input {
+  flex: 1;
+  border: none !important;
+  background: transparent !important;
+  padding: 8px 6px !important;
+  font-size: 13px !important;
+  color: var(--toku-text) !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.swiss-search-btn {
+  background: var(--toku-accent) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: var(--toku-radius-sm) !important;
+  padding: 8px 18px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.02em !important;
+  cursor: pointer !important;
+  transition: background 0.15s ease;
+}
+
+.swiss-search-btn:hover {
+  background: var(--toku-accent-hover) !important;
+}
+
+/* Asymmetric 2-Column Split */
+.swiss-split-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 960px) {
+  .swiss-split-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Tables (Swiss precision high-density) */
+.swiss-table, #result_list, table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  background: var(--toku-surface);
+}
+
+.swiss-table th, #result_list th, table thead th {
+  background: var(--toku-surface-subtle) !important;
+  color: var(--toku-text-secondary) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  padding: 10px 14px !important;
+  border-bottom: 1px solid var(--toku-border) !important;
+  border-top: none !important;
+  text-align: left;
+}
+
+.swiss-table td, #result_list td, table tbody td {
+  padding: 10px 14px !important;
+  border-bottom: 1px solid var(--toku-border) !important;
+  color: var(--toku-text) !important;
+  vertical-align: middle;
+}
+
+.swiss-table tr:hover td, #result_list tbody tr:hover td {
+  background: var(--toku-surface-subtle) !important;
+}
+
+/* Badges & Status Chips */
+.swiss-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: var(--toku-radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.chip-in-stock {
+  background: var(--toku-success-bg);
+  color: var(--toku-success);
+  border: 1px solid var(--toku-success-border);
+}
+
+.chip-loaned {
+  background: var(--toku-info-bg);
+  color: var(--toku-info);
+  border: 1px solid var(--toku-info-border);
+}
+
+.chip-lost {
+  background: var(--toku-danger-bg);
+  color: var(--toku-danger);
+  border: 1px solid var(--toku-danger-border);
+}
+
+.chip-warning {
+  background: var(--toku-warning-bg);
+  color: var(--toku-warning);
+  border: 1px solid var(--toku-warning-border);
+}
+
+.chip-neutral {
+  background: var(--toku-surface-subtle);
+  color: var(--toku-text-secondary);
+  border: 1px solid var(--toku-border);
+}
+
+/* Buttons */
+.button, input[type="submit"], .submit-row input {
+  background: var(--toku-accent) !important;
+  color: #ffffff !important;
+  border: 1px solid var(--toku-accent) !important;
+  border-radius: var(--toku-radius-sm) !important;
+  padding: 6px 14px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  text-decoration: none !important;
+  transition: all 0.15s ease !important;
+}
+
+.button:hover, input[type="submit"]:hover {
+  background: var(--toku-accent-hover) !important;
+}
+
+.button-secondary {
+  background: var(--toku-surface) !important;
+  color: var(--toku-text) !important;
+  border: 1px solid var(--toku-border-strong) !important;
+}
+
+.button-secondary:hover {
+  background: var(--toku-surface-subtle) !important;
+  border-color: var(--toku-text-muted) !important;
+}
+
+.button-danger {
+  background: var(--toku-danger) !important;
+  border-color: var(--toku-danger) !important;
+  color: #fff !important;
+}
+
+/* Monospace references */
+.font-mono {
+  font-family: var(--toku-font-mono) !important;
+  font-size: 11px;
+}

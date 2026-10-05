@@ -2,102 +2,120 @@
 {% load i18n static %}
 
 {% block content %}
-<div style="margin-bottom: 25px; padding: 15px; background: var(--darkened-bg, #f8f9fa); border-radius: 8px; border: 1px solid var(--hairline-color, #e5e7eb);">
-  <!-- Thanh tìm kiếm nhanh toàn cục (FR-03) -->
-  <form action="{% url 'admin:global_search' %}" method="get" style="display: flex; gap: 10px; margin-bottom: 20px;">
-    <input type="text" name="q" placeholder="{% trans 'Tìm kiếm theo mã tài sản, serial, HWID, MAC, tên nhân viên, mã hợp đồng...' %}" style="flex: 1; padding: 10px 14px; border-radius: 6px; border: 1px solid var(--border-color, #ccc); font-size: 14px;">
-    <button type="submit" class="button" style="padding: 10px 20px; font-weight: bold; background: var(--primary, #2563eb); color: white; border: none; border-radius: 6px; cursor: pointer;">🔍 {% trans 'Tìm kiếm' %}</button>
+<div class="swiss-dashboard">
+  <!-- Search Bar (FR-03) -->
+  <form action="{% url 'admin:global_search' %}" method="get" class="swiss-search-bar">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--toku-text-muted); margin-left: 6px;">
+      <circle cx="11" cy="11" r="8"></circle>
+      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+    </svg>
+    <input type="text" name="q" placeholder="{% trans 'Search by asset code, serial, HWID, MAC, employee name, contract...' %}" class="swiss-search-input">
+    <button type="submit" class="swiss-search-btn">{% trans 'Search' %}</button>
     {% if user.is_superuser or 'IT Admin' in user.groups.all.values_list.name %}
-    <a href="{% url 'admin:trash' %}" class="button" style="padding: 10px 15px; background: #6b7280; color: white; border-radius: 6px; text-decoration: none; display: flex; align-items: center;">🗑 {% trans 'Thùng rác' %}</a>
+    <a href="{% url 'admin:trash' %}" class="button button-secondary" style="margin-left: 4px; padding: 7px 14px !important;">
+      {% trans 'Trash Registry' %}
+    </a>
     {% endif %}
   </form>
 
-  <h2 style="margin-top: 0; font-size: 18px; color: var(--body-fg, #111827);">📊 {% trans 'Tổng quan Tài sản IT (Dashboard FR-13)' %}</h2>
-  
-  <!-- Thống kê thiết bị -->
-  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
-    <div style="background: var(--body-bg, #fff); padding: 15px; border-radius: 6px; border-left: 5px solid #2563eb; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-      <div style="font-size: 13px; color: gray;">{% trans 'Tổng số thiết bị' %}</div>
-      <div style="font-size: 26px; font-weight: bold; color: #2563eb;">{{ asset_stats.total }}</div>
+  <!-- Metric Cards Grid (FR-13) -->
+  <div class="metric-grid">
+    <div class="metric-card accent-total">
+      <div class="metric-label">{% trans 'Total IT Assets' %}</div>
+      <div class="metric-value">{{ asset_stats.total }}</div>
+      <div class="metric-sub">{% trans 'Active hardware records' %}</div>
     </div>
-    <div style="background: var(--body-bg, #fff); padding: 15px; border-radius: 6px; border-left: 5px solid #16a34a; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-      <div style="font-size: 13px; color: gray;">{% trans 'Trong kho (Sẵn sàng)' %}</div>
-      <div style="font-size: 26px; font-weight: bold; color: #16a34a;">{{ asset_stats.in_stock }}</div>
+    <div class="metric-card accent-instock">
+      <div class="metric-label">{% trans 'In Stock / Ready' %}</div>
+      <div class="metric-value">{{ asset_stats.in_stock }}</div>
+      <div class="metric-sub">{% trans 'Available for immediate assignment' %}</div>
     </div>
-    <div style="background: var(--body-bg, #fff); padding: 15px; border-radius: 6px; border-left: 5px solid #0284c7; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-      <div style="font-size: 13px; color: gray;">{% trans 'Đang cho mượn' %}</div>
-      <div style="font-size: 26px; font-weight: bold; color: #0284c7;">{{ asset_stats.loaned }}</div>
+    <div class="metric-card accent-loaned">
+      <div class="metric-label">{% trans 'Currently Loaned' %}</div>
+      <div class="metric-value">{{ asset_stats.loaned }}</div>
+      <div class="metric-sub">{% trans 'Deployed to staff' %}</div>
     </div>
-    <div style="background: var(--body-bg, #fff); padding: 15px; border-radius: 6px; border-left: 5px solid #dc2626; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-      <div style="font-size: 13px; color: gray;">{% trans 'Thiết bị mất' %}</div>
-      <div style="font-size: 26px; font-weight: bold; color: #dc2626;">{{ asset_stats.lost }}</div>
+    <div class="metric-card accent-lost">
+      <div class="metric-label">{% trans 'Lost / Write-Off' %}</div>
+      <div class="metric-value">{{ asset_stats.lost }}</div>
+      <div class="metric-sub">{% trans 'Requires replacement' %}</div>
     </div>
   </div>
 
-  <!-- Cảnh báo License & Thẻ mượn -->
-  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px;">
-    <!-- Cảnh báo License 60 ngày -->
-    <div style="background: var(--body-bg, #fff); padding: 15px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-      <h3 style="margin-top: 0; font-size: 15px; color: #b45309; display: flex; align-items: center; gap: 8px;">
-        ⚠️ {% trans 'License sắp hết hạn (trong 60 ngày)' %}
-      </h3>
-      {% if expiring_licenses %}
-        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+  <!-- Two-Column Asymmetric Operations Registry -->
+  <div class="swiss-split-grid">
+    <!-- Panel 1: License Expiration Watchlist -->
+    <div class="swiss-panel">
+      <div class="swiss-panel-header">
+        <h3 class="swiss-panel-title">{% trans 'License Expiration Watchlist (60 Days)' %}</h3>
+        <span class="swiss-chip chip-warning">{{ expiring_licenses|length }} {% trans 'alerts' %}</span>
+      </div>
+      <div>
+        {% if expiring_licenses %}
+        <table class="swiss-table">
           <thead>
-            <tr style="border-bottom: 2px solid var(--hairline-color, #e5e7eb); text-align: left;">
-              <th style="padding: 6px;">{% trans 'Phần mềm' %}</th>
-              <th style="padding: 6px;">{% trans 'Hạn dùng' %}</th>
-              <th style="padding: 6px;">{% trans 'Còn lại' %}</th>
+            <tr>
+              <th>{% trans 'Software' %}</th>
+              <th>{% trans 'Expiry Date' %}</th>
+              <th style="text-align: right;">{% trans 'Days Left' %}</th>
             </tr>
           </thead>
           <tbody>
             {% for item in expiring_licenses %}
-            <tr style="border-bottom: 1px solid var(--hairline-color, #f3f4f6);">
-              <td style="padding: 6px; font-weight: bold;">{{ item.license.product.name }}</td>
-              <td style="padding: 6px;">{{ item.license.expiry_date|date:"Y-m-d" }}</td>
-              <td style="padding: 6px;">
+            <tr>
+              <td style="font-weight: 600;">{{ item.license.product.name }}</td>
+              <td class="font-mono">{{ item.license.expiry_date|date:"Y-m-d" }}</td>
+              <td style="text-align: right;">
                 {% if item.is_expired %}
-                  <span style="color: red; font-weight: bold;">{% trans 'Đã hết hạn!' %}</span>
+                  <span class="swiss-chip chip-lost">{% trans 'Expired' %}</span>
                 {% else %}
-                  <span style="color: #d97706; font-weight: bold;">{{ item.days_left }} {% trans 'ngày' %}</span>
+                  <span class="swiss-chip chip-warning">{{ item.days_left }}d</span>
                 {% endif %}
               </td>
             </tr>
             {% endfor %}
           </tbody>
         </table>
-      {% else %}
-        <p style="color: green; font-size: 13px; margin: 5px 0;">✔ {% trans 'Không có license nào sắp hết hạn trong 60 ngày tới.' %}</p>
-      {% endif %}
+        {% else %}
+        <div style="padding: 24px; text-align: center; color: var(--toku-text-muted);">
+          <span class="swiss-chip chip-in-stock">{% trans 'All licenses are valid beyond 60 days.' %}</span>
+        </div>
+        {% endif %}
+      </div>
     </div>
 
-    <!-- Thẻ ra vào đang mượn -->
-    <div style="background: var(--body-bg, #fff); padding: 15px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-      <h3 style="margin-top: 0; font-size: 15px; color: #0369a1; display: flex; align-items: center; gap: 8px;">
-        🔑 {% trans 'Thẻ ra vào đang cho mượn' %}
-      </h3>
-      {% if unreturned_cards %}
-        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+    <!-- Panel 2: Active Access Card Loans -->
+    <div class="swiss-panel">
+      <div class="swiss-panel-header">
+        <h3 class="swiss-panel-title">{% trans 'Active Card Loans Registry' %}</h3>
+        <span class="swiss-chip chip-loaned">{{ unreturned_cards|length }} {% trans 'on loan' %}</span>
+      </div>
+      <div>
+        {% if unreturned_cards %}
+        <table class="swiss-table">
           <thead>
-            <tr style="border-bottom: 2px solid var(--hairline-color, #e5e7eb); text-align: left;">
-              <th style="padding: 6px;">{% trans 'Số thẻ' %}</th>
-              <th style="padding: 6px;">{% trans 'Người mượn' %}</th>
-              <th style="padding: 6px;">{% trans 'Ngày mượn' %}</th>
+            <tr>
+              <th>{% trans 'Card No' %}</th>
+              <th>{% trans 'Borrower' %}</th>
+              <th>{% trans 'Borrowed Date' %}</th>
             </tr>
           </thead>
           <tbody>
             {% for loan in unreturned_cards %}
-            <tr style="border-bottom: 1px solid var(--hairline-color, #f3f4f6);">
-              <td style="padding: 6px; font-weight: bold;">{{ loan.card.card_no }}</td>
-              <td style="padding: 6px;">{{ loan.borrower_name }}</td>
-              <td style="padding: 6px;">{{ loan.borrowed_at|date:"Y-m-d" }}</td>
+            <tr>
+              <td class="font-mono" style="font-weight: 600;">{{ loan.card.card_no }}</td>
+              <td>{{ loan.borrower_name }}</td>
+              <td class="font-mono">{{ loan.borrowed_at|date:"Y-m-d" }}</td>
             </tr>
             {% endfor %}
           </tbody>
         </table>
-      {% else %}
-        <p style="color: green; font-size: 13px; margin: 5px 0;">✔ {% trans 'Tất cả thẻ đều đã được hoàn trả vào kho.' %}</p>
-      {% endif %}
+        {% else %}
+        <div style="padding: 24px; text-align: center; color: var(--toku-text-muted);">
+          <span class="swiss-chip chip-in-stock">{% trans 'All cards returned and secured in depository.' %}</span>
+        </div>
+        {% endif %}
+      </div>
     </div>
   </div>
 </div>

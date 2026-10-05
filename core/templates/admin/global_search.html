@@ -2,75 +2,73 @@
 {% load i18n static %}
 
 {% block content %}
-<div style="padding: 10px 0;">
-  <form method="get" style="display: flex; gap: 10px; margin-bottom: 25px;">
-    <input type="text" name="q" value="{{ query }}" placeholder="{% trans 'Nhập mã PC, serial, HWID, MAC, tên nhân viên, hợp đồng...' %}" style="flex: 1; padding: 10px 14px; font-size: 15px; border-radius: 6px; border: 1px solid var(--border-color, #ccc);">
-    <button type="submit" class="button" style="padding: 10px 24px; font-size: 15px; font-weight: bold; background: var(--primary, #2563eb); color: white; border: none; border-radius: 6px; cursor: pointer;">🔍 {% trans 'Tìm kiếm' %}</button>
+<div class="swiss-dashboard">
+  <!-- Search Input Bar -->
+  <form method="get" class="swiss-search-bar" style="margin-bottom: 24px;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--toku-text-muted); margin-left: 6px;">
+      <circle cx="11" cy="11" r="8"></circle>
+      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+    </svg>
+    <input type="text" name="q" value="{{ query }}" placeholder="{% trans 'Search by asset code, serial, HWID, MAC, employee name, contract...' %}" class="swiss-search-input">
+    <button type="submit" class="swiss-search-btn">{% trans 'Search' %}</button>
   </form>
 
   {% if query %}
-    <h2>{% trans 'Kết quả tìm kiếm cho' %}: <em>"{{ query }}"</em> ({{ total_count }} {% trans 'kết quả' %})</h2>
+    <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 20px; border-bottom: 1px solid var(--toku-border); padding-bottom: 12px;">
+      <div style="font-size: 15px; font-weight: 700; color: var(--toku-text);">
+        {% trans 'Search Results for' %}: <span style="color: var(--toku-accent);">"{{ query }}"</span>
+      </div>
+      <div style="font-size: 12px; color: var(--toku-text-muted);">
+        <span class="font-mono" style="font-weight: 600;">{{ total_count }}</span> {% trans 'records identified' %}
+      </div>
+    </div>
 
     {% if total_count == 0 %}
-      <p style="color: gray; font-size: 15px;">{% trans 'Không tìm thấy bản ghi nào khớp với từ khóa trên.' %}</p>
+      <div class="swiss-panel" style="padding: 40px; text-align: center; color: var(--toku-text-muted);">
+        {% trans 'No records matched the provided search criteria.' %}
+      </div>
     {% endif %}
 
-    <!-- 1. Tài sản IT -->
+    <!-- 1. IT Assets & Hardware -->
     {% if assets %}
-    <div style="margin-bottom: 25px;">
-      <h3 style="color: #2563eb; border-bottom: 2px solid #2563eb; padding-bottom: 5px;">💻 {% trans 'Thiết bị & Tài sản IT' %} ({{ assets|length }})</h3>
-      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <div class="swiss-panel">
+      <div class="swiss-panel-header">
+        <h3 class="swiss-panel-title">{% trans 'IT Assets & Hardware' %}</h3>
+        <span class="swiss-chip chip-neutral font-mono">{{ assets|length }}</span>
+      </div>
+      <table class="swiss-table">
         <thead>
-          <tr style="text-align: left; background: var(--darkened-bg, #f3f4f6);">
-            <th style="padding: 8px;">{% trans 'Mã tài sản' %}</th>
-            <th style="padding: 8px;">{% trans 'Loại' %}</th>
-            <th style="padding: 8px;">{% trans 'Model' %}</th>
-            <th style="padding: 8px;">Serial</th>
-            <th style="padding: 8px;">MAC</th>
-            <th style="padding: 8px;">{% trans 'Trạng thái' %}</th>
-            <th style="padding: 8px;">{% trans 'Thao tác' %}</th>
+          <tr>
+            <th>{% trans 'Asset Code' %}</th>
+            <th>{% trans 'Category' %}</th>
+            <th>{% trans 'Model' %}</th>
+            <th>Serial Number</th>
+            <th>MAC Address</th>
+            <th>{% trans 'Status' %}</th>
+            <th style="text-align: right;">{% trans 'Action' %}</th>
           </tr>
         </thead>
         <tbody>
           {% for a in assets %}
-          <tr style="border-bottom: 1px solid var(--hairline-color, #e5e7eb);">
-            <td style="padding: 8px; font-weight: bold;">{{ a.asset_code }}</td>
-            <td style="padding: 8px;">{{ a.category.name }}</td>
-            <td style="padding: 8px;">{{ a.model|default:"-" }}</td>
-            <td style="padding: 8px;">{{ a.serial|default:"-" }}</td>
-            <td style="padding: 8px;">{{ a.mac_address|default:"-" }}</td>
-            <td style="padding: 8px;">{{ a.get_status_display }}</td>
-            <td style="padding: 8px;"><a href="{% url 'admin:assets_asset_change' a.pk %}">{% trans 'Xem chi tiết' %} →</a></td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% endif %}
-
-    <!-- 2. Nhân viên -->
-    {% if persons %}
-    <div style="margin-bottom: 25px;">
-      <h3 style="color: #16a34a; border-bottom: 2px solid #16a34a; padding-bottom: 5px;">👤 {% trans 'Nhân sự' %} ({{ persons|length }})</h3>
-      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
-        <thead>
-          <tr style="text-align: left; background: var(--darkened-bg, #f3f4f6);">
-            <th style="padding: 8px;">{% trans 'Mã NV' %}</th>
-            <th style="padding: 8px;">{% trans 'Họ tên' %}</th>
-            <th style="padding: 8px;">{% trans 'Phòng ban' %}</th>
-            <th style="padding: 8px;">{% trans 'Trạng thái' %}</th>
-            <th style="padding: 8px;">{% trans 'Hồ sơ tài sản' %}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for p in persons %}
-          <tr style="border-bottom: 1px solid var(--hairline-color, #e5e7eb);">
-            <td style="padding: 8px; font-weight: bold;">{{ p.staff_code }}</td>
-            <td style="padding: 8px;">{{ p.full_name }}</td>
-            <td style="padding: 8px;">{{ p.department|default:"-" }}</td>
-            <td style="padding: 8px;">{{ p.get_status_display }}</td>
-            <td style="padding: 8px;">
-              <a href="{% url 'admin:person_profile' p.pk %}" class="button" style="padding: 4px 8px; font-size: 12px;">{% trans 'Xem hồ sơ 360' %}</a>
+          <tr>
+            <td class="font-mono" style="font-weight: 600; color: var(--toku-accent);">{{ a.asset_code }}</td>
+            <td>{{ a.category.name }}</td>
+            <td>{{ a.model|default:"-" }}</td>
+            <td class="font-mono">{{ a.serial|default:"-" }}</td>
+            <td class="font-mono">{{ a.mac_address|default:"-" }}</td>
+            <td>
+              {% if a.status == 'in_stock' %}
+                <span class="swiss-chip chip-in-stock">{{ a.get_status_display }}</span>
+              {% elif a.status == 'loaned' %}
+                <span class="swiss-chip chip-loaned">{{ a.get_status_display }}</span>
+              {% else %}
+                <span class="swiss-chip chip-lost">{{ a.get_status_display }}</span>
+              {% endif %}
+            </td>
+            <td style="text-align: right;">
+              <a href="{% url 'admin:assets_asset_change' a.pk %}" class="button button-secondary" style="padding: 4px 10px !important; font-size: 11px !important;">
+                {% trans 'View' %}
+              </a>
             </td>
           </tr>
           {% endfor %}
@@ -79,24 +77,41 @@
     </div>
     {% endif %}
 
-    <!-- 3. Hợp đồng -->
-    {% if contracts %}
-    <div style="margin-bottom: 25px;">
-      <h3 style="color: #9333ea; border-bottom: 2px solid #9333ea; padding-bottom: 5px;">📄 {% trans 'Hợp đồng mua sắm' %} ({{ contracts|length }})</h3>
-      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <!-- 2. Personnel -->
+    {% if persons %}
+    <div class="swiss-panel">
+      <div class="swiss-panel-header">
+        <h3 class="swiss-panel-title">{% trans 'Personnel' %}</h3>
+        <span class="swiss-chip chip-neutral font-mono">{{ persons|length }}</span>
+      </div>
+      <table class="swiss-table">
         <thead>
-          <tr style="text-align: left; background: var(--darkened-bg, #f3f4f6);">
-            <th style="padding: 8px;">{% trans 'Mã hợp đồng' %}</th>
-            <th style="padding: 8px;">{% trans 'Tình trạng giao' %}</th>
-            <th style="padding: 8px;">{% trans 'Thao tác' %}</th>
+          <tr>
+            <th>{% trans 'Staff Code' %}</th>
+            <th>{% trans 'Full Name' %}</th>
+            <th>{% trans 'Department' %}</th>
+            <th>{% trans 'Employment Status' %}</th>
+            <th style="text-align: right;">{% trans 'Dossier' %}</th>
           </tr>
         </thead>
         <tbody>
-          {% for c in contracts %}
-          <tr style="border-bottom: 1px solid var(--hairline-color, #e5e7eb);">
-            <td style="padding: 8px; font-weight: bold;">{{ c.code }}</td>
-            <td style="padding: 8px;">{{ c.get_delivery_status_display }}</td>
-            <td style="padding: 8px;"><a href="{% url 'admin:contracts_contract_change' c.pk %}">{% trans 'Xem chi tiết' %} →</a></td>
+          {% for p in persons %}
+          <tr>
+            <td class="font-mono" style="font-weight: 600;">{{ p.staff_code }}</td>
+            <td style="font-weight: 600;">{{ p.full_name }}</td>
+            <td>{{ p.department|default:"-" }}</td>
+            <td>
+              {% if p.status == 'active' %}
+                <span class="swiss-chip chip-in-stock">{{ p.get_status_display }}</span>
+              {% else %}
+                <span class="swiss-chip chip-lost">{{ p.get_status_display }}</span>
+              {% endif %}
+            </td>
+            <td style="text-align: right;">
+              <a href="{% url 'admin:person_profile' p.pk %}" class="button" style="padding: 4px 10px !important; font-size: 11px !important;">
+                {% trans 'Open 360 Dossier' %}
+              </a>
+            </td>
           </tr>
           {% endfor %}
         </tbody>
@@ -104,22 +119,75 @@
     </div>
     {% endif %}
 
-    <!-- 4. Thẻ ra vào -->
-    {% if cards %}
-    <div style="margin-bottom: 25px;">
-      <h3 style="color: #0284c7; border-bottom: 2px solid #0284c7; padding-bottom: 5px;">🔑 {% trans 'Thẻ ra vào' %} ({{ cards|length }})</h3>
-      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <!-- 3. Contracts -->
+    {% if contracts %}
+    <div class="swiss-panel">
+      <div class="swiss-panel-header">
+        <h3 class="swiss-panel-title">{% trans 'Procurement Contracts' %}</h3>
+        <span class="swiss-chip chip-neutral font-mono">{{ contracts|length }}</span>
+      </div>
+      <table class="swiss-table">
         <thead>
-          <tr style="text-align: left; background: var(--darkened-bg, #f3f4f6);">
-            <th style="padding: 8px;">{% trans 'Số thẻ' %}</th>
-            <th style="padding: 8px;">{% trans 'Thao tác' %}</th>
+          <tr>
+            <th>{% trans 'Contract Code' %}</th>
+            <th>{% trans 'Delivery Status' %}</th>
+            <th style="text-align: right;">{% trans 'Action' %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in contracts %}
+          <tr>
+            <td class="font-mono" style="font-weight: 600;">{{ c.code }}</td>
+            <td>
+              {% if c.delivery_status == 'delivered' %}
+                <span class="swiss-chip chip-in-stock">{{ c.get_delivery_status_display }}</span>
+              {% else %}
+                <span class="swiss-chip chip-warning">{{ c.get_delivery_status_display }}</span>
+              {% endif %}
+            </td>
+            <td style="text-align: right;">
+              <a href="{% url 'admin:contracts_contract_change' c.pk %}" class="button button-secondary" style="padding: 4px 10px !important; font-size: 11px !important;">
+                {% trans 'View' %}
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    <!-- 4. Access Cards -->
+    {% if cards %}
+    <div class="swiss-panel">
+      <div class="swiss-panel-header">
+        <h3 class="swiss-panel-title">{% trans 'Access Cards' %}</h3>
+        <span class="swiss-chip chip-neutral font-mono">{{ cards|length }}</span>
+      </div>
+      <table class="swiss-table">
+        <thead>
+          <tr>
+            <th>{% trans 'Card Number' %}</th>
+            <th>{% trans 'Status' %}</th>
+            <th style="text-align: right;">{% trans 'Action' %}</th>
           </tr>
         </thead>
         <tbody>
           {% for card in cards %}
-          <tr style="border-bottom: 1px solid var(--hairline-color, #e5e7eb);">
-            <td style="padding: 8px; font-weight: bold;">{{ card.card_no }}</td>
-            <td style="padding: 8px;"><a href="{% url 'admin:cards_accesscard_change' card.pk %}">{% trans 'Xem chi tiết' %} →</a></td>
+          <tr>
+            <td class="font-mono" style="font-weight: 600;">{{ card.card_no }}</td>
+            <td>
+              {% if card.loans.filter.returned_at.is_null %}
+                <span class="swiss-chip chip-loaned">{% trans 'On Loan' %}</span>
+              {% else %}
+                <span class="swiss-chip chip-in-stock">{% trans 'Available' %}</span>
+              {% endif %}
+            </td>
+            <td style="text-align: right;">
+              <a href="{% url 'admin:cards_accesscard_change' card.pk %}" class="button button-secondary" style="padding: 4px 10px !important; font-size: 11px !important;">
+                {% trans 'View' %}
+              </a>
+            </td>
           </tr>
           {% endfor %}
         </tbody>
