@@ -1,0 +1,51 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block content %}
+<div style="padding: 10px 0;">
+  <h2>🗑 {% trans 'Thùng rác & Khôi phục bản ghi đã xóa mềm' %}</h2>
+  <p style="color: gray;">
+    {% trans 'Các bản ghi dưới đây đã bị xóa mềm và bị ẩn khỏi toàn bộ màn hình nghiệp vụ. Chỉ IT Admin mới có quyền xem và khôi phục lại dữ liệu.' %}
+  </p>
+
+  {% if items %}
+    <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 20px;">
+      <thead>
+        <tr style="text-align: left; background: var(--darkened-bg, #f3f4f6);">
+          <th style="padding: 10px;">{% trans 'Loại đối tượng' %}</th>
+          <th style="padding: 10px;">{% trans 'Mô tả bản ghi' %}</th>
+          <th style="padding: 10px;">{% trans 'Thời điểm xóa' %}</th>
+          <th style="padding: 10px;">{% trans 'Người xóa' %}</th>
+          <th style="padding: 10px;">{% trans 'Lý do xóa' %}</th>
+          <th style="padding: 10px;">{% trans 'Thao tác' %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+        <tr style="border-bottom: 1px solid var(--hairline-color, #e5e7eb);">
+          <td style="padding: 10px; font-weight: bold; color: #b45309;">{{ item.type }}</td>
+          <td style="padding: 10px;">{{ item.name }}</td>
+          <td style="padding: 10px;">{{ item.obj.deleted_at|date:"Y-m-d H:i"|default:"-" }}</td>
+          <td style="padding: 10px;">{{ item.obj.deleted_by.username|default:"-" }}</td>
+          <td style="padding: 10px; color: #dc2626; font-style: italic;">{{ item.obj.delete_reason|default:_("Không ghi lý do") }}</td>
+          <td style="padding: 10px;">
+            <form method="post" style="margin: 0;">
+              {% csrf_token %}
+              <input type="hidden" name="model_name" value="{{ item.model_name }}">
+              <input type="hidden" name="item_id" value="{{ item.obj.pk }}">
+              <button type="submit" name="restore_item" class="button" style="background: #16a34a; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;">
+                🔄 {% trans 'Khôi phục' %}
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div style="background: #ecfdf5; border: 1px solid #10b981; color: #065f46; padding: 15px; border-radius: 6px; margin-top: 20px;">
+      ✔ {% trans 'Thùng rác hiện đang trống. Không có bản ghi nào bị xóa mềm.' %}
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

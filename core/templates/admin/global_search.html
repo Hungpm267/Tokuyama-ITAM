@@ -1,0 +1,132 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block content %}
+<div style="padding: 10px 0;">
+  <form method="get" style="display: flex; gap: 10px; margin-bottom: 25px;">
+    <input type="text" name="q" value="{{ query }}" placeholder="{% trans 'Nhập mã PC, serial, HWID, MAC, tên nhân viên, hợp đồng...' %}" style="flex: 1; padding: 10px 14px; font-size: 15px; border-radius: 6px; border: 1px solid var(--border-color, #ccc);">
+    <button type="submit" class="button" style="padding: 10px 24px; font-size: 15px; font-weight: bold; background: var(--primary, #2563eb); color: white; border: none; border-radius: 6px; cursor: pointer;">🔍 {% trans 'Tìm kiếm' %}</button>
+  </form>
+
+  {% if query %}
+    <h2>{% trans 'Kết quả tìm kiếm cho' %}: <em>"{{ query }}"</em> ({{ total_count }} {% trans 'kết quả' %})</h2>
+
+    {% if total_count == 0 %}
+      <p style="color: gray; font-size: 15px;">{% trans 'Không tìm thấy bản ghi nào khớp với từ khóa trên.' %}</p>
+    {% endif %}
+
+    <!-- 1. Tài sản IT -->
+    {% if assets %}
+    <div style="margin-bottom: 25px;">
+      <h3 style="color: #2563eb; border-bottom: 2px solid #2563eb; padding-bottom: 5px;">💻 {% trans 'Thiết bị & Tài sản IT' %} ({{ assets|length }})</h3>
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+        <thead>
+          <tr style="text-align: left; background: var(--darkened-bg, #f3f4f6);">
+            <th style="padding: 8px;">{% trans 'Mã tài sản' %}</th>
+            <th style="padding: 8px;">{% trans 'Loại' %}</th>
+            <th style="padding: 8px;">{% trans 'Model' %}</th>
+            <th style="padding: 8px;">Serial</th>
+            <th style="padding: 8px;">MAC</th>
+            <th style="padding: 8px;">{% trans 'Trạng thái' %}</th>
+            <th style="padding: 8px;">{% trans 'Thao tác' %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in assets %}
+          <tr style="border-bottom: 1px solid var(--hairline-color, #e5e7eb);">
+            <td style="padding: 8px; font-weight: bold;">{{ a.asset_code }}</td>
+            <td style="padding: 8px;">{{ a.category.name }}</td>
+            <td style="padding: 8px;">{{ a.model|default:"-" }}</td>
+            <td style="padding: 8px;">{{ a.serial|default:"-" }}</td>
+            <td style="padding: 8px;">{{ a.mac_address|default:"-" }}</td>
+            <td style="padding: 8px;">{{ a.get_status_display }}</td>
+            <td style="padding: 8px;"><a href="{% url 'admin:assets_asset_change' a.pk %}">{% trans 'Xem chi tiết' %} →</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    <!-- 2. Nhân viên -->
+    {% if persons %}
+    <div style="margin-bottom: 25px;">
+      <h3 style="color: #16a34a; border-bottom: 2px solid #16a34a; padding-bottom: 5px;">👤 {% trans 'Nhân sự' %} ({{ persons|length }})</h3>
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+        <thead>
+          <tr style="text-align: left; background: var(--darkened-bg, #f3f4f6);">
+            <th style="padding: 8px;">{% trans 'Mã NV' %}</th>
+            <th style="padding: 8px;">{% trans 'Họ tên' %}</th>
+            <th style="padding: 8px;">{% trans 'Phòng ban' %}</th>
+            <th style="padding: 8px;">{% trans 'Trạng thái' %}</th>
+            <th style="padding: 8px;">{% trans 'Hồ sơ tài sản' %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in persons %}
+          <tr style="border-bottom: 1px solid var(--hairline-color, #e5e7eb);">
+            <td style="padding: 8px; font-weight: bold;">{{ p.staff_code }}</td>
+            <td style="padding: 8px;">{{ p.full_name }}</td>
+            <td style="padding: 8px;">{{ p.department|default:"-" }}</td>
+            <td style="padding: 8px;">{{ p.get_status_display }}</td>
+            <td style="padding: 8px;">
+              <a href="{% url 'admin:person_profile' p.pk %}" class="button" style="padding: 4px 8px; font-size: 12px;">{% trans 'Xem hồ sơ 360' %}</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    <!-- 3. Hợp đồng -->
+    {% if contracts %}
+    <div style="margin-bottom: 25px;">
+      <h3 style="color: #9333ea; border-bottom: 2px solid #9333ea; padding-bottom: 5px;">📄 {% trans 'Hợp đồng mua sắm' %} ({{ contracts|length }})</h3>
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+        <thead>
+          <tr style="text-align: left; background: var(--darkened-bg, #f3f4f6);">
+            <th style="padding: 8px;">{% trans 'Mã hợp đồng' %}</th>
+            <th style="padding: 8px;">{% trans 'Tình trạng giao' %}</th>
+            <th style="padding: 8px;">{% trans 'Thao tác' %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in contracts %}
+          <tr style="border-bottom: 1px solid var(--hairline-color, #e5e7eb);">
+            <td style="padding: 8px; font-weight: bold;">{{ c.code }}</td>
+            <td style="padding: 8px;">{{ c.get_delivery_status_display }}</td>
+            <td style="padding: 8px;"><a href="{% url 'admin:contracts_contract_change' c.pk %}">{% trans 'Xem chi tiết' %} →</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    <!-- 4. Thẻ ra vào -->
+    {% if cards %}
+    <div style="margin-bottom: 25px;">
+      <h3 style="color: #0284c7; border-bottom: 2px solid #0284c7; padding-bottom: 5px;">🔑 {% trans 'Thẻ ra vào' %} ({{ cards|length }})</h3>
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+        <thead>
+          <tr style="text-align: left; background: var(--darkened-bg, #f3f4f6);">
+            <th style="padding: 8px;">{% trans 'Số thẻ' %}</th>
+            <th style="padding: 8px;">{% trans 'Thao tác' %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for card in cards %}
+          <tr style="border-bottom: 1px solid var(--hairline-color, #e5e7eb);">
+            <td style="padding: 8px; font-weight: bold;">{{ card.card_no }}</td>
+            <td style="padding: 8px;"><a href="{% url 'admin:cards_accesscard_change' card.pk %}">{% trans 'Xem chi tiết' %} →</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+  {% endif %}
+</div>
+{% endblock %}

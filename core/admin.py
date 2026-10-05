@@ -1,5 +1,12 @@
 from django.contrib import admin
+from django.urls import path
 from auditlog.models import LogEntry
+from core.views import (
+    get_dashboard_context,
+    global_search_view,
+    person_profile_view,
+    trash_management_view,
+)
 
 # Ensure LogEntry in admin is strictly immutable (no add, no change, no delete)
 try:
@@ -35,3 +42,31 @@ class ImmutableLogEntryAdmin(admin.ModelAdmin):
     def changes_display(self, obj):
         return str(obj.changes)[:80] + '...' if len(str(obj.changes)) > 80 else str(obj.changes)
     changes_display.short_description = 'Thay đổi dữ liệu'
+
+
+# --- Hook custom URLs & Dashboard into Django Admin Site ---
+original_get_urls = admin.site.get_urls
+
+def custom_admin_urls():
+    custom_urls = [
+        path('search/', admin.site.admin_view(global_search_view), name='global_search'),
+        path('person/<int:person_id>/profile/', admin.site.admin_view(person_profile_view), name='person_profile'),
+        path('trash/', admin.site.admin_view(trash_management_view), name='trash'),
+    ]
+    return custom_urls + original_get_urls()
+
+admin.site.get_urls = custom_admin_urls
+
+original_index = admin.site.index
+
+def custom_admin_index(request, extra_context=None):
+    if extra_context is None:
+        extra_context = {}
+    extra_context.update(get_dashboard_context())
+    return original_index(request, extra_context=extra_context)
+
+admin.site.index = custom_admin_index
+
+admin.site.site_header = "Tokuyama Vietnam ITAM"
+admin.site.site_title = "Tokuyama ITAM Admin"
+admin.site.index_title = "Hệ thống Quản lý Tài sản IT - Tokuyama Vietnam"

@@ -1,0 +1,169 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block content %}
+<div style="padding: 10px 0;">
+  <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--hairline-color, #e5e7eb); padding-bottom: 15px; margin-bottom: 20px;">
+    <div>
+      <h1 style="margin: 0; font-size: 22px;">👤 {{ person.full_name }} ({{ person.staff_code }})</h1>
+      <p style="margin: 5px 0 0 0; color: gray;">
+        {% trans 'Phòng ban' %}: <strong>{{ person.department|default:"-" }}</strong> | 
+        {% trans 'Trạng thái' %}: <strong>{{ person.get_status_display }}</strong>
+      </p>
+    </div>
+    <div>
+      <a href="{% url 'admin:organization_person_change' person.pk %}" class="button" style="padding: 8px 16px;">{% trans 'Sửa thông tin nhân viên' %}</a>
+    </div>
+  </div>
+
+  <!-- 1. Thiết bị đang giữ (Current Assets) -->
+  <div style="margin-bottom: 30px;">
+    <h3 style="color: #2563eb; display: flex; align-items: center; gap: 8px;">
+      💻 {% trans 'Thiết bị IT hiện đang giữ' %} ({{ current_assignments|length }})
+    </h3>
+    {% if current_assignments %}
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+        <thead>
+          <tr style="text-align: left; background: var(--darkened-bg, #f3f4f6);">
+            <th style="padding: 8px;">{% trans 'Mã tài sản' %}</th>
+            <th style="padding: 8px;">{% trans 'Loại' %}</th>
+            <th style="padding: 8px;">{% trans 'Model' %}</th>
+            <th style="padding: 8px;">Serial</th>
+            <th style="padding: 8px;">MAC</th>
+            <th style="padding: 8px;">{% trans 'Ngày mượn' %}</th>
+            <th style="padding: 8px;">{% trans 'Ghi chú' %}</th>
+            <th style="padding: 8px;">{% trans 'Thao tác' %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for asgn in current_assignments %}
+          <tr style="border-bottom: 1px solid var(--hairline-color, #e5e7eb);">
+            <td style="padding: 8px; font-weight: bold;">{{ asgn.asset.asset_code }}</td>
+            <td style="padding: 8px;">{{ asgn.asset.category.name }}</td>
+            <td style="padding: 8px;">{{ asgn.asset.model|default:"-" }}</td>
+            <td style="padding: 8px;">{{ asgn.asset.serial|default:"-" }}</td>
+            <td style="padding: 8px;">{{ asgn.asset.mac_address|default:"-" }}</td>
+            <td style="padding: 8px;">{{ asgn.borrowed_at|date:"Y-m-d" }}</td>
+            <td style="padding: 8px;">{{ asgn.note|default:"-" }}</td>
+            <td style="padding: 8px;">
+              <a href="{% url 'admin:assets_assignment_change' asgn.pk %}">{% trans 'Trả máy / Cập nhật' %}</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p style="color: gray; font-size: 14px;">{% trans 'Nhân viên này hiện không giữ thiết bị nào.' %}</p>
+    {% endif %}
+  </div>
+
+  <!-- 2. Bản quyền phần mềm (Licenses) -->
+  <div style="margin-bottom: 30px;">
+    <h3 style="color: #d97706; display: flex; align-items: center; gap: 8px;">
+      📜 {% trans 'Bản quyền License đang được gán' %} ({{ licenses_assigned|length }})
+    </h3>
+    {% if licenses_assigned %}
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+        <thead>
+          <tr style="text-align: left; background: var(--darkened-bg, #f3f4f6);">
+            <th style="padding: 8px;">{% trans 'Phần mềm' %}</th>
+            <th style="padding: 8px;">{% trans 'Gán cho' %}</th>
+            <th style="padding: 8px;">{% trans 'Ngày gán' %}</th>
+            <th style="padding: 8px;">{% trans 'Hạn license' %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for lic in licenses_assigned %}
+          <tr style="border-bottom: 1px solid var(--hairline-color, #e5e7eb);">
+            <td style="padding: 8px; font-weight: bold;">{{ lic.license.product.name }}</td>
+            <td style="padding: 8px;">
+              {% if lic.asset %}
+                {% trans 'Máy' %}: {{ lic.asset.asset_code }} ({{ lic.asset.model|default:"" }})
+              {% else %}
+                {% trans 'Gán trực tiếp cho người' %}
+              {% endif %}
+            </td>
+            <td style="padding: 8px;">{{ lic.assigned_at|date:"Y-m-d" }}</td>
+            <td style="padding: 8px;">{{ lic.license.expiry_date|date:"Y-m-d"|default:_("Vĩnh viễn") }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p style="color: gray; font-size: 14px;">{% trans 'Không có license phần mềm nào được gán.' %}</p>
+    {% endif %}
+  </div>
+
+  <!-- 3. Thẻ ra vào (Access Cards) -->
+  <div style="margin-bottom: 30px;">
+    <h3 style="color: #0284c7; display: flex; align-items: center; gap: 8px;">
+      🔑 {% trans 'Thẻ ra vào đang giữ' %} ({{ current_card_loans|length }})
+    </h3>
+    {% if current_card_loans %}
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+        <thead>
+          <tr style="text-align: left; background: var(--darkened-bg, #f3f4f6);">
+            <th style="padding: 8px;">{% trans 'Số thẻ' %}</th>
+            <th style="padding: 8px;">{% trans 'Phòng được phép vào' %}</th>
+            <th style="padding: 8px;">{% trans 'Ngày mượn' %}</th>
+            <th style="padding: 8px;">{% trans 'Mục đích' %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for loan in current_card_loans %}
+          <tr style="border-bottom: 1px solid var(--hairline-color, #e5e7eb);">
+            <td style="padding: 8px; font-weight: bold;">{{ loan.card.card_no }}</td>
+            <td style="padding: 8px;">
+              {% for room in loan.card.rooms.all %}
+                <span style="background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-right: 4px;">{{ room.name }}</span>
+              {% empty %}
+                -
+              {% endfor %}
+            </td>
+            <td style="padding: 8px;">{{ loan.borrowed_at|date:"Y-m-d" }}</td>
+            <td style="padding: 8px;">{{ loan.purpose|default:"-" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p style="color: gray; font-size: 14px;">{% trans 'Nhân viên này hiện không mượn thẻ nào.' %}</p>
+    {% endif %}
+  </div>
+
+  <!-- 4. Lịch sử đã từng mượn (History) -->
+  <div>
+    <h3 style="color: gray; border-top: 1px solid var(--hairline-color, #e5e7eb); padding-top: 15px;">
+      ⏱ {% trans 'Lịch sử thiết bị đã trả trong quá khứ' %} ({{ past_assignments|length }})
+    </h3>
+    {% if past_assignments %}
+      <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: gray;">
+        <thead>
+          <tr style="text-align: left; background: var(--darkened-bg, #f9fafb);">
+            <th style="padding: 6px;">{% trans 'Mã tài sản' %}</th>
+            <th style="padding: 6px;">{% trans 'Loại' %}</th>
+            <th style="padding: 6px;">Serial</th>
+            <th style="padding: 6px;">{% trans 'Ngày mượn' %}</th>
+            <th style="padding: 6px;">{% trans 'Ngày trả' %}</th>
+            <th style="padding: 6px;">{% trans 'Ghi chú' %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in past_assignments %}
+          <tr style="border-bottom: 1px solid var(--hairline-color, #f3f4f6);">
+            <td style="padding: 6px; font-weight: bold;">{{ p.asset.asset_code }}</td>
+            <td style="padding: 6px;">{{ p.asset.category.name }}</td>
+            <td style="padding: 6px;">{{ p.asset.serial|default:"-" }}</td>
+            <td style="padding: 6px;">{{ p.borrowed_at|date:"Y-m-d" }}</td>
+            <td style="padding: 6px;">{{ p.returned_at|date:"Y-m-d" }}</td>
+            <td style="padding: 6px;">{{ p.note|default:"-" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p style="color: gray; font-size: 13px;">{% trans 'Chưa có lịch sử mượn trả trước đây.' %}</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
