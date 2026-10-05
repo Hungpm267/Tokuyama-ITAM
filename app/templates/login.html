@@ -3,107 +3,103 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login | Tokuyama Vietnam ITAM</title>
+  <title>Shared Workstation Access Log | Tokuyama Vietnam</title>
   <link rel="stylesheet" href="/static/css/swiss_theme.css">
   <style>
     body {
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       min-height: 100vh;
-      background: var(--toku-canvas);
+      background-color: #f4f6fa;
+      padding: 24px;
     }
-    .login-card {
+    .toku-login-card {
       width: 100%;
-      max-width: 420px;
-      background: var(--toku-surface);
-      border: 1px solid var(--toku-border);
-      border-radius: var(--toku-radius-lg);
-      padding: 36px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+      max-width: 540px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 20px;
+      padding: 40px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
     }
-    .form-group {
-      margin-bottom: 18px;
+    .toku-masthead {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 28px;
     }
-    .form-label {
-      display: block;
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--toku-text-muted);
-      margin-bottom: 6px;
-    }
-    .form-input {
-      width: 100%;
-      box-sizing: border-box;
-      padding: 10px 14px;
-      font-size: 14px;
-      border: 1px solid var(--toku-border);
-      border-radius: var(--toku-radius-sm);
-      background: var(--toku-surface);
-      color: var(--toku-text);
-      outline: none;
-      transition: border-color 0.15s ease, box-shadow 0.15s ease;
-    }
-    .form-input:focus {
-      border-color: var(--toku-accent);
-      box-shadow: 0 0 0 3px rgba(0, 47, 167, 0.12);
-    }
-    .btn-submit {
-      width: 100%;
-      padding: 11px;
+    .toku-dept-text {
       font-size: 13px;
-      font-weight: 600;
-      letter-spacing: 0.02em;
-      background: var(--toku-accent);
-      color: #fff;
-      border: none;
-      border-radius: var(--toku-radius-sm);
-      cursor: pointer;
-      transition: background 0.15s ease;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #526071;
     }
-    .btn-submit:hover {
-      background: var(--toku-accent-hover);
+    .toku-page-title {
+      font-size: 24px;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.02em;
+      margin: 0 0 8px 0;
     }
   </style>
 </head>
 <body>
-  <div class="login-card">
-    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 24px;">
-      <span class="brand-badge">TVC</span>
-      <div>
-        <div style="font-size: 16px; font-weight: 700; color: var(--toku-text); letter-spacing: -0.01em;">Tokuyama Vietnam</div>
-        <div style="font-size: 11px; color: var(--toku-text-muted); text-transform: uppercase; letter-spacing: 0.06em;">IT Asset Management</div>
-      </div>
+  <div class="toku-login-card">
+    <!-- Masthead: Logo on left, Department on right -->
+    <div class="toku-masthead">
+      <svg width="175" height="34" viewBox="0 0 200 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <text x="0" y="27" font-family="'Inter', sans-serif" font-size="22" font-weight="800" fill="#1e293b" letter-spacing="0.02em">TOKUYAMA</text>
+        <line x1="162" y1="13" x2="182" y2="13" stroke="#64748b" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="162" y1="13" x2="172" y2="28" stroke="#64748b" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="182" y1="13" x2="172" y2="28" stroke="#64748b" stroke-width="2.5" stroke-linecap="round"/>
+        <circle cx="162" cy="13" r="6" fill="#FFFFFF" stroke="#005BAC" stroke-width="3"/>
+        <circle cx="182" cy="13" r="6" fill="#FFFFFF" stroke="#1A365D" stroke-width="3"/>
+        <circle cx="172" cy="28" r="6" fill="#FFFFFF" stroke="#FF6B00" stroke-width="3"/>
+      </svg>
+      <div class="toku-dept-text">IT DEPARTMENT • WORKSTATION 01</div>
+    </div>
+
+    <!-- Title & Warning Strip -->
+    <h1 class="toku-page-title">Shared Workstation Access Log</h1>
+    <div class="toku-warning-strip" style="background: #fffbeb; border: 1px solid #fde68a; color: #92400e; margin-bottom: 24px;">
+      ⚠️ Warning: Active session running by HOANG VAN CANH
     </div>
 
     {% if error %}
-    <div style="background: var(--toku-danger-bg); border: 1px solid var(--toku-danger-border); color: var(--toku-danger); padding: 10px 14px; border-radius: var(--toku-radius-sm); font-size: 12px; margin-bottom: 20px;">
+    <div style="background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 12px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; margin-bottom: 20px;">
       {{ error }}
     </div>
     {% endif %}
 
+    <!-- Login Form matching anhtheme.jpg inputs and buttons -->
     <form method="post" action="/login">
-      <div class="form-group">
-        <label class="form-label">Username</label>
-        <input type="text" name="username" required autofocus class="form-input" placeholder="e.g. admin">
+      <div class="toku-form-group">
+        <label class="toku-label">Operator Name <span class="required">*</span></label>
+        <input type="text" name="username" required autofocus class="toku-input" placeholder="e.g., admin or employee ID">
       </div>
 
-      <div class="form-group" style="margin-bottom: 24px;">
-        <label class="form-label">Password</label>
-        <input type="password" name="password" required class="form-input">
+      <div class="toku-form-group" style="margin-bottom: 28px;">
+        <label class="toku-label">Access Credential / Password <span class="required">*</span></label>
+        <input type="password" name="password" required class="toku-input" placeholder="Enter password (e.g. tokuadmin2026)">
       </div>
 
-      <button type="submit" class="btn-submit">Sign in</button>
+      <!-- Action Buttons: ▶ Start Session & ■ End Session -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <button type="submit" class="btn-primary" style="width: 100%;">
+          ▶ Start Session
+        </button>
+        <button type="reset" class="btn-secondary" style="width: 100%;">
+          ■ End Session
+        </button>
+      </div>
     </form>
+  </div>
 
-    <div style="margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--toku-border); font-size: 11px; color: var(--toku-text-muted); line-height: 1.6;">
-      <strong style="color: var(--toku-text);">Default System Roles:</strong><br>
-      • IT Admin: <code class="font-mono">admin / tokuadmin2026</code><br>
-      • GA Manager: <code class="font-mono">ga_manager / toku2026ga</code><br>
-      • Director: <code class="font-mono">director / toku2026exec</code>
-    </div>
+  <div class="toku-footer" style="margin-top: 24px;">
+    Tokuyama Vietnam Co., Ltd. • Internal Operational Utility (GMT+7)
   </div>
 </body>
 </html>

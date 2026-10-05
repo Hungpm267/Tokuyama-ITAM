@@ -5,120 +5,176 @@
 {% endblock %}
 
 {% block content %}
-<div class="swiss-dashboard">
-  <!-- Search Input Bar -->
-  <form action="/search" method="get" class="swiss-search-bar">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--toku-text-muted); margin-left: 6px;">
-      <circle cx="11" cy="11" r="8"></circle>
-      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-    </svg>
-    <input type="text" name="q" placeholder="{% if lang == 'ja' %}機器コード、シリアル、HWID、MAC、従業員名、契約で検索...{% else %}Search by asset code, serial, HWID, MAC, employee name, contract...{% endif %}" class="swiss-search-input">
-    <button type="submit" class="swiss-search-btn">{% if lang == 'ja' %}検索{% else %}Search{% endif %}</button>
-  </form>
+<!-- Top Header Card matching anhtheme.jpg -->
+<div class="toku-card" style="padding: 28px 36px; margin-bottom: 24px;">
+  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 20px;">
+    <div>
+      <h1 class="toku-card-title" style="font-size: 26px;">
+        {% if lang == 'ja' %}IT資産運用管理ダッシュボード{% else %}IT Asset Management Dashboard{% endif %}
+      </h1>
+      <div style="font-size: 13px; color: var(--toku-text-muted); margin-top: 4px;">
+        {% if lang == 'ja' %}Tokuyama Vietnam IT統合管理システム (Single Source of Truth){% else %}Tokuyama Vietnam Centralized ITAM System (Single Source of Truth){% endif %}
+      </div>
+    </div>
 
-  <!-- Metric Grid -->
-  <div class="metric-grid">
-    <div class="metric-card accent-total">
-      <div class="metric-label">{% if lang == 'ja' %}総IT機器数{% else %}Total IT Assets{% endif %}</div>
-      <div class="metric-value">{{ asset_stats.total }}</div>
-      <div class="metric-sub">{% if lang == 'ja' %}稼働中のハードウェア{% else %}Active hardware units{% endif %}</div>
-    </div>
-    <div class="metric-card accent-instock">
-      <div class="metric-label">{% if lang == 'ja' %}在庫（配備可能）{% else %}In Stock / Ready{% endif %}</div>
-      <div class="metric-value">{{ asset_stats.in_stock }}</div>
-      <div class="metric-sub">{% if lang == 'ja' %}即時貸出可能{% else %}Available for deployment{% endif %}</div>
-    </div>
-    <div class="metric-card accent-loaned">
-      <div class="metric-label">{% if lang == 'ja' %}貸出中{% else %}Currently Loaned{% endif %}</div>
-      <div class="metric-value">{{ asset_stats.loaned }}</div>
-      <div class="metric-sub">{% if lang == 'ja' %}従業員に配備済み{% else %}Deployed to staff{% endif %}</div>
-    </div>
-    <div class="metric-card accent-lost">
-      <div class="metric-label">{% if lang == 'ja' %}紛失・除籍{% else %}Lost / Write-off{% endif %}</div>
-      <div class="metric-value">{{ asset_stats.lost }}</div>
-      <div class="metric-sub">{% if lang == 'ja' %}要交換・手配{% else %}Requires replacement{% endif %}</div>
+    <!-- Quick Action Navigation -->
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <a href="/search" class="btn-primary" style="padding: 9px 18px; font-size: 13px;">
+        ▶ {% if lang == 'ja' %}機器を検索{% else %}Global Search{% endif %}
+      </a>
+      <a href="/admin" target="_blank" class="btn-secondary" style="padding: 9px 18px; font-size: 13px;">
+        ■ {% if lang == 'ja' %}管理ポータル{% else %}Admin Portal{% endif %}
+      </a>
     </div>
   </div>
 
-  <!-- Two-Column Asymmetric Operations Registry -->
-  <div class="swiss-split-grid">
-    <!-- Panel 1: License Expiration Watchlist -->
-    <div class="swiss-panel">
-      <div class="swiss-panel-header">
-        <h3 class="swiss-panel-title">
-          {% if lang == 'ja' %}ライセンス期限ウォッチリスト (60日以内){% else %}License Expiration Watchlist (60 Days){% endif %}
-        </h3>
-        <span class="swiss-chip chip-warning">{{ expiring_licenses|length }} {% if lang == 'ja' %}件{% else %}alerts{% endif %}</span>
+  <!-- Warning / Session Alert Strip -->
+  <div class="toku-warning-strip">
+    ⚠️ Warning: Active ITAM session running by <strong>{{ user.full_name }}</strong> ({{ user.role|upper }}) • Workstation 01
+  </div>
+
+  <!-- Fast Search Input inside Dashboard Card -->
+  <form action="/search" method="get">
+    <div style="display: flex; gap: 12px; align-items: center;">
+      <div style="flex: 1;">
+        <input type="text" name="q" placeholder="{% if lang == 'ja' %}機器コード、シリアル番号、HWID、MACアドレス、従業員名で即時検索...{% else %}Search by asset code, serial, HWID, MAC address, employee name, contract code...{% endif %}" class="toku-input" style="height: 46px;">
       </div>
+      <button type="submit" class="btn-primary" style="height: 46px; padding: 0 24px;">
+        ▶ {% if lang == 'ja' %}検索実行{% else %}Search Database{% endif %}
+      </button>
+    </div>
+  </form>
+</div>
+
+<!-- KPI Metric Cards Grid -->
+<div class="toku-stat-grid">
+  <div class="toku-stat-card">
+    <div class="toku-stat-label">{% if lang == 'ja' %}総IT機器数{% else %}Total IT Assets{% endif %}</div>
+    <div class="toku-stat-value" style="color: #0f172a;">{{ asset_stats.total }}</div>
+    <div class="toku-stat-sub">{% if lang == 'ja' %}稼働中のハードウェア{% else %}Hardware units registered{% endif %}</div>
+  </div>
+
+  <div class="toku-stat-card" style="border-top: 4px solid var(--toku-primary);">
+    <div class="toku-stat-label">{% if lang == 'ja' %}在庫（配備可能）{% else %}In Stock / Ready{% endif %}</div>
+    <div class="toku-stat-value" style="color: var(--toku-primary);">{{ asset_stats.in_stock }}</div>
+    <div class="toku-stat-sub">{% if lang == 'ja' %}即時貸出可能{% else %}Available for deployment{% endif %}</div>
+  </div>
+
+  <div class="toku-stat-card" style="border-top: 4px solid #b45309;">
+    <div class="toku-stat-label">{% if lang == 'ja' %}貸出中{% else %}Currently Loaned{% endif %}</div>
+    <div class="toku-stat-value" style="color: #b45309;">{{ asset_stats.loaned }}</div>
+    <div class="toku-stat-sub">{% if lang == 'ja' %}従業員に配備済み{% else %}Assigned to personnel{% endif %}</div>
+  </div>
+
+  <div class="toku-stat-card" style="border-top: 4px solid #dc2626;">
+    <div class="toku-stat-label">{% if lang == 'ja' %}紛失・除籍{% else %}Reported Lost{% endif %}</div>
+    <div class="toku-stat-value" style="color: #dc2626;">{{ asset_stats.lost }}</div>
+    <div class="toku-stat-sub">{% if lang == 'ja' %}要交換・手配{% else %}Requires replacement{% endif %}</div>
+  </div>
+</div>
+
+<!-- Operations Registry: Two Side-by-Side Cards -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(480px, 1fr)); gap: 24px;">
+  <!-- Card 1: Expiring Licenses -->
+  <div class="toku-card" style="padding: 28px;">
+    <div class="toku-card-header">
       <div>
-        {% if expiring_licenses %}
-        <table class="swiss-table">
-          <thead>
-            <tr>
-              <th>{% if lang == 'ja' %}ソフトウェア{% else %}Software{% endif %}</th>
-              <th>{% if lang == 'ja' %}有効期限{% else %}Expiry Date{% endif %}</th>
-              <th style="text-align: right;">{% if lang == 'ja' %}残り日数{% else %}Days Left{% endif %}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for item in expiring_licenses %}
-            <tr>
-              <td style="font-weight: 600;">{{ item.product_name }}</td>
-              <td class="font-mono">{{ item.expiry_date }}</td>
-              <td style="text-align: right;">
-                {% if item.is_expired %}
-                  <span class="swiss-chip chip-lost">{% if lang == 'ja' %}期限切れ{% else %}Expired{% endif %}</span>
-                {% else %}
-                  <span class="swiss-chip chip-warning">{{ item.days_left }}d</span>
-                {% endif %}
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-        {% else %}
-        <div style="padding: 24px; text-align: center; color: var(--toku-text-muted);">
-          <span class="swiss-chip chip-in-stock">{% if lang == 'ja' %}すべてのライセンスは60日以上有効です。{% else %}All licenses are valid beyond 60 days.{% endif %}</span>
+        <h2 class="toku-card-title" style="font-size: 18px;">
+          {% if lang == 'ja' %}ライセンス期限ウォッチリスト (60日以内){% else %}License Expiration Watchlist (60 Days){% endif %}
+        </h2>
+        <div style="font-size: 12px; color: var(--toku-text-muted); margin-top: 2px;">
+          FR-10: Software seats nearing renewal deadline
         </div>
-        {% endif %}
       </div>
+      <span class="toku-badge warning">{{ expiring_licenses|length }} {% if lang == 'ja' %}件{% else %}alerts{% endif %}</span>
     </div>
 
-    <!-- Panel 2: Active Access Card Loans -->
-    <div class="swiss-panel">
-      <div class="swiss-panel-header">
-        <h3 class="swiss-panel-title">
-          {% if lang == 'ja' %}貸出中カード台帳{% else %}Active Card Loans Registry{% endif %}
-        </h3>
-        <span class="swiss-chip chip-loaned">{{ active_card_loans|length }} {% if lang == 'ja' %}枚{% else %}on loan{% endif %}</span>
-      </div>
-      <div>
-        {% if active_card_loans %}
-        <table class="swiss-table">
-          <thead>
-            <tr>
-              <th>{% if lang == 'ja' %}カード番号{% else %}Card No{% endif %}</th>
-              <th>{% if lang == 'ja' %}借用者{% else %}Borrower{% endif %}</th>
-              <th>{% if lang == 'ja' %}貸出日{% else %}Borrowed Date{% endif %}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for loan in active_card_loans %}
-            <tr>
-              <td class="font-mono" style="font-weight: 600;">{{ loan.card_no }}</td>
-              <td>{{ loan.borrower_name }}</td>
-              <td class="font-mono">{{ loan.borrowed_at }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-        {% else %}
-        <div style="padding: 24px; text-align: center; color: var(--toku-text-muted);">
-          <span class="swiss-chip chip-in-stock">{% if lang == 'ja' %}すべてのカードが返却済みです。{% else %}All access cards returned to depository.{% endif %}</span>
-        </div>
-        {% endif %}
-      </div>
+    {% if expiring_licenses %}
+    <div class="toku-table-wrapper">
+      <table class="toku-table">
+        <thead>
+          <tr>
+            <th>{% if lang == 'ja' %}ソフトウェア{% else %}Software Product{% endif %}</th>
+            <th>{% if lang == 'ja' %}有効期限{% else %}Expiry Date{% endif %}</th>
+            <th style="text-align: right;">{% if lang == 'ja' %}状態{% else %}Status{% endif %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in expiring_licenses %}
+          <tr>
+            <td style="font-weight: 600; color: #0f172a;">{{ item.product_name }}</td>
+            <td class="toku-mono">{{ item.expiry_date }}</td>
+            <td style="text-align: right;">
+              {% if item.is_expired %}
+                <span class="toku-badge danger">{% if lang == 'ja' %}期限切れ{% else %}Expired{% endif %}</span>
+              {% else %}
+                <span class="toku-badge warning">{{ item.days_left }}d left</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
+    {% else %}
+    <div style="padding: 32px 16px; text-align: center; color: var(--toku-text-muted); background: var(--toku-surface-subtle); border-radius: var(--toku-radius-md);">
+      <span class="toku-badge success" style="font-size: 12px; padding: 6px 14px;">
+        ✓ {% if lang == 'ja' %}すべてのライセンスは60日以上有効です。{% else %}All software licenses are healthy (valid &gt; 60 days).{% endif %}
+      </span>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Card 2: Active Access Card Loans -->
+  <div class="toku-card" style="padding: 28px;">
+    <div class="toku-card-header">
+      <div>
+        <h2 class="toku-card-title" style="font-size: 18px;">
+          {% if lang == 'ja' %}貸出中カード台帳 (未返却){% else %}Active Card Loans Registry (Unreturned){% endif %}
+        </h2>
+        <div style="font-size: 12px; color: var(--toku-text-muted); margin-top: 2px;">
+          FR-11: Physical security card monitoring
+        </div>
+      </div>
+      <span class="toku-badge loaned">{{ active_card_loans|length }} {% if lang == 'ja' %}枚{% else %}cards{% endif %}</span>
+    </div>
+
+    {% if active_card_loans %}
+    <div class="toku-table-wrapper">
+      <table class="toku-table">
+        <thead>
+          <tr>
+            <th>{% if lang == 'ja' %}カード番号{% else %}Card No{% endif %}</th>
+            <th>{% if lang == 'ja' %}使用者{% else %}Borrower{% endif %}</th>
+            <th>{% if lang == 'ja' %}貸出日{% else %}Loan Date{% endif %}</th>
+            <th style="text-align: right;">{% if lang == 'ja' %}区分{% else %}Type{% endif %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in active_card_loans %}
+          <tr>
+            <td>
+              <span class="toku-mono" style="font-weight: 700; color: #005bac;">{{ item.card_no }}</span>
+            </td>
+            <td style="font-weight: 600;">{{ item.borrower }}</td>
+            <td class="toku-mono">{{ item.loan_date }}</td>
+            <td style="text-align: right;">
+              <span class="toku-badge {% if item.borrower_type == 'Internal Staff' %}in_stock{% else %}warning{% endif %}">
+                {{ item.borrower_type }}
+              </span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div style="padding: 32px 16px; text-align: center; color: var(--toku-text-muted); background: var(--toku-surface-subtle); border-radius: var(--toku-radius-md);">
+      <span class="toku-badge success" style="font-size: 12px; padding: 6px 14px;">
+        ✓ {% if lang == 'ja' %}未返却のカードはありません。{% else %}No unreturned access cards. All cards in inventory.{% endif %}
+      </span>
+    </div>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

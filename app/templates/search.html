@@ -5,108 +5,143 @@
 {% endblock %}
 
 {% block content %}
-<div class="swiss-dashboard">
-  <!-- Search Input Bar -->
-  <form method="get" action="/search" class="swiss-search-bar" style="margin-bottom: 24px;">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--toku-text-muted); margin-left: 6px;">
-      <circle cx="11" cy="11" r="8"></circle>
-      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-    </svg>
-    <input type="text" name="q" value="{{ query }}" placeholder="{% if lang == 'ja' %}機器コード、シリアル、HWID、MAC、従業員名、契約で検索...{% else %}Search by asset code, serial, HWID, MAC, employee name, contract...{% endif %}" class="swiss-search-input">
-    <button type="submit" class="swiss-search-btn">{% if lang == 'ja' %}検索{% else %}Search{% endif %}</button>
-  </form>
-
-  {% if query %}
-    <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 20px; border-bottom: 1px solid var(--toku-border); padding-bottom: 12px;">
-      <div style="font-size: 15px; font-weight: 700; color: var(--toku-text);">
-        {% if lang == 'ja' %}検索結果{% else %}Search Results for{% endif %}: <span style="color: var(--toku-accent);">"{{ query }}"</span>
-      </div>
-      <div style="font-size: 12px; color: var(--toku-text-muted);">
-        <span class="font-mono" style="font-weight: 600;">{{ total_count }}</span> {% if lang == 'ja' %}件{% else %}records found{% endif %}
+<!-- Search Form Card matching anhtheme.jpg -->
+<div class="toku-card" style="padding: 32px 40px; margin-bottom: 24px;">
+  <div class="toku-card-header" style="margin-bottom: 20px;">
+    <div>
+      <h1 class="toku-card-title">
+        {% if lang == 'ja' %}全社IT統合検索 (Global Search){% else %}Enterprise IT Global Search{% endif %}
+      </h1>
+      <div style="font-size: 13px; color: var(--toku-text-muted); margin-top: 4px;">
+        FR-03: Real-time lookup across Assets, Personnel, Contracts, and Access Cards
       </div>
     </div>
+  </div>
 
-    {% if total_count == 0 %}
-      <div class="swiss-panel" style="padding: 40px; text-align: center; color: var(--toku-text-muted);">
-        {% if lang == 'ja' %}条件に一致するレコードは見つかりませんでした。{% else %}No records matched the provided search criteria.{% endif %}
-      </div>
-    {% endif %}
+  <form method="get" action="/search">
+    <div class="toku-form-group">
+      <label class="toku-label">
+        {% if lang == 'ja' %}検索キーワード{% else %}Search Query / Keyword{% endif %} <span class="required">*</span>
+      </label>
+      <input type="text" name="q" value="{{ query }}" required autofocus class="toku-input" placeholder="{% if lang == 'ja' %}機器コード、シリアル番号、HWID、MACアドレス、社員名、契約コード...{% else %}e.g., LAP-2026, Dell, 5CD1234, TVN-001, Nguyễn Văn A, KHCM-2026...{% endif %}" style="height: 46px;">
+    </div>
 
-    <!-- 1. Assets -->
-    {% if assets %}
-    <div class="swiss-panel">
-      <div class="swiss-panel-header">
-        <h3 class="swiss-panel-title">{% if lang == 'ja' %}IT資産・機器{% else %}IT Assets & Hardware{% endif %}</h3>
-        <span class="swiss-chip chip-neutral font-mono">{{ assets|length }}</span>
+    <div style="display: flex; gap: 12px; align-items: center;">
+      <button type="submit" class="btn-primary" style="height: 44px; padding: 0 28px;">
+        ▶ {% if lang == 'ja' %}検索を実行{% else %}Search Database{% endif %}
+      </button>
+      <a href="/search" class="btn-secondary" style="height: 44px; padding: 0 20px;">
+        ■ {% if lang == 'ja' %}クリア{% else %}Clear Filter{% endif %}
+      </a>
+    </div>
+  </form>
+</div>
+
+{% if query %}
+  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding: 0 8px;">
+    <div style="font-size: 16px; font-weight: 700; color: #0f172a;">
+      {% if lang == 'ja' %}検索結果{% else %}Search Results for{% endif %}: <span style="color: #005bac;">"{{ query }}"</span>
+    </div>
+    <div>
+      <span class="toku-badge role" style="font-size: 12px; padding: 4px 10px;">{{ total_count }} {% if lang == 'ja' %}件該当{% else %}records found{% endif %}</span>
+    </div>
+  </div>
+
+  {% if total_count == 0 %}
+    <div class="toku-card" style="padding: 48px; text-align: center; color: var(--toku-text-muted);">
+      <div style="font-size: 16px; font-weight: 600; margin-bottom: 6px;">
+        {% if lang == 'ja' %}該当するレコードは見つかりませんでした。{% else %}No records matched the provided search query.{% endif %}
       </div>
-      <table class="swiss-table">
+      <div style="font-size: 13px;">
+        {% if lang == 'ja' %}キーワードを確認して再度検索してください。{% else %}Please verify the serial, asset code, or name and try again.{% endif %}
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- 1. Assets -->
+  {% if assets %}
+  <div class="toku-card" style="padding: 28px; margin-bottom: 24px;">
+    <div class="toku-card-header">
+      <h2 class="toku-card-title" style="font-size: 18px;">
+        {% if lang == 'ja' %}ITハードウェア機器{% else %}IT Assets & Hardware{% endif %}
+      </h2>
+      <span class="toku-badge role">{{ assets|length }} units</span>
+    </div>
+
+    <div class="toku-table-wrapper">
+      <table class="toku-table">
         <thead>
           <tr>
             <th>{% if lang == 'ja' %}資産コード{% else %}Asset Code{% endif %}</th>
             <th>{% if lang == 'ja' %}種別{% else %}Category{% endif %}</th>
             <th>{% if lang == 'ja' %}型番{% else %}Model{% endif %}</th>
             <th>Serial</th>
-            <th>MAC</th>
-            <th>{% if lang == 'ja' %}状態{% else %}Status{% endif %}</th>
+            <th>MAC Address</th>
+            <th>{% if lang == 'ja' %}使用者{% else %}Current Holder{% endif %}</th>
+            <th style="text-align: right;">{% if lang == 'ja' %}状態{% else %}Status{% endif %}</th>
           </tr>
         </thead>
         <tbody>
           {% for a in assets %}
           <tr>
-            <td class="font-mono" style="font-weight: 600; color: var(--toku-accent);">{{ a.asset_code }}</td>
+            <td><span class="toku-mono" style="font-weight: 700; color: #005bac;">{{ a.asset_code }}</span></td>
             <td>{{ a.category.name if a.category else "-" }}</td>
-            <td>{{ a.model or "-" }}</td>
-            <td class="font-mono">{{ a.serial or "-" }}</td>
-            <td class="font-mono">{{ a.mac_address or "-" }}</td>
+            <td style="font-weight: 600;">{{ a.model or "-" }}</td>
+            <td class="toku-mono">{{ a.serial or "-" }}</td>
+            <td class="toku-mono">{{ a.mac_address or "-" }}</td>
             <td>
-              {% if a.status == 'in_stock' %}
-                <span class="swiss-chip chip-in-stock">IN STOCK</span>
-              {% elif a.status == 'loaned' %}
-                <span class="swiss-chip chip-loaned">LOANED</span>
+              {% if a.current_holder %}
+                <a href="/person/{{ a.current_holder.id }}/profile" style="color: #005bac; font-weight: 600; text-decoration: none;">
+                  {{ a.current_holder.full_name }}
+                </a>
               {% else %}
-                <span class="swiss-chip chip-lost">LOST</span>
+                <span style="color: #94a3b8;">-</span>
               {% endif %}
+            </td>
+            <td style="text-align: right;">
+              <span class="toku-badge {{ a.status }}">{{ a.status|upper }}</span>
             </td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
-    {% endif %}
+  </div>
+  {% endif %}
 
-    <!-- 2. Personnel -->
-    {% if persons %}
-    <div class="swiss-panel">
-      <div class="swiss-panel-header">
-        <h3 class="swiss-panel-title">{% if lang == 'ja' %}人事・従業員{% else %}Personnel{% endif %}</h3>
-        <span class="swiss-chip chip-neutral font-mono">{{ persons|length }}</span>
-      </div>
-      <table class="swiss-table">
+  <!-- 2. Personnel -->
+  {% if persons %}
+  <div class="toku-card" style="padding: 28px; margin-bottom: 24px;">
+    <div class="toku-card-header">
+      <h2 class="toku-card-title" style="font-size: 18px;">
+        {% if lang == 'ja' %}人事・従業員台帳{% else %}Personnel Dossier{% endif %}
+      </h2>
+      <span class="toku-badge role">{{ persons|length }} staff</span>
+    </div>
+
+    <div class="toku-table-wrapper">
+      <table class="toku-table">
         <thead>
           <tr>
             <th>{% if lang == 'ja' %}社員コード{% else %}Staff Code{% endif %}</th>
             <th>{% if lang == 'ja' %}氏名{% else %}Full Name{% endif %}</th>
             <th>{% if lang == 'ja' %}部署{% else %}Department{% endif %}</th>
             <th>{% if lang == 'ja' %}在籍状態{% else %}Status{% endif %}</th>
-            <th style="text-align: right;">{% if lang == 'ja' %}カルテ{% else %}Dossier{% endif %}</th>
+            <th style="text-align: right;">{% if lang == 'ja' %}詳細{% else %}Action{% endif %}</th>
           </tr>
         </thead>
         <tbody>
           {% for p in persons %}
           <tr>
-            <td class="font-mono" style="font-weight: 600;">{{ p.staff_code }}</td>
+            <td><span class="toku-mono" style="font-weight: 700;">{{ p.staff_code }}</span></td>
             <td style="font-weight: 600;">{{ p.full_name }}</td>
             <td>{{ p.department.name_en if p.department else "-" }}</td>
             <td>
-              {% if p.status == 'active' %}
-                <span class="swiss-chip chip-in-stock">ACTIVE</span>
-              {% else %}
-                <span class="swiss-chip chip-lost">RESIGNED</span>
-              {% endif %}
+              <span class="toku-badge {{ p.status }}">{{ p.status|upper }}</span>
             </td>
             <td style="text-align: right;">
-              <a href="/person/{{ p.id }}/profile" class="button button-secondary" style="padding: 4px 10px; font-size: 11px;">
-                {% if lang == 'ja' %}360度カルテを開く{% else %}Open 360 Dossier{% endif %}
+              <a href="/person/{{ p.id }}/profile" class="btn-primary" style="padding: 6px 14px; font-size: 12px;">
+                ▶ {% if lang == 'ja' %}カルテ表示{% else %}View Profile 360{% endif %}
               </a>
             </td>
           </tr>
@@ -114,72 +149,83 @@
         </tbody>
       </table>
     </div>
-    {% endif %}
+  </div>
+  {% endif %}
 
-    <!-- 3. Contracts -->
-    {% if contracts %}
-    <div class="swiss-panel">
-      <div class="swiss-panel-header">
-        <h3 class="swiss-panel-title">{% if lang == 'ja' %}購買契約{% else %}Procurement Contracts{% endif %}</h3>
-        <span class="swiss-chip chip-neutral font-mono">{{ contracts|length }}</span>
-      </div>
-      <table class="swiss-table">
+  <!-- 3. Contracts -->
+  {% if contracts %}
+  <div class="toku-card" style="padding: 28px; margin-bottom: 24px;">
+    <div class="toku-card-header">
+      <h2 class="toku-card-title" style="font-size: 18px;">
+        {% if lang == 'ja' %}調達契約台帳{% else %}Procurement Contracts{% endif %}
+      </h2>
+      <span class="toku-badge role">{{ contracts|length }} contracts</span>
+    </div>
+
+    <div class="toku-table-wrapper">
+      <table class="toku-table">
         <thead>
           <tr>
-            <th>{% if lang == 'ja' %}契約番号{% else %}Contract Code{% endif %}</th>
-            <th>{% if lang == 'ja' %}納品状態{% else %}Delivery Status{% endif %}</th>
+            <th>{% if lang == 'ja' %}契約コード{% else %}Contract Code{% endif %}</th>
+            <th>{% if lang == 'ja' %}契約日{% else %}Contract Date{% endif %}</th>
+            <th>{% if lang == 'ja' %}納品状況{% else %}Delivery Status{% endif %}</th>
+            <th style="text-align: right;">{% if lang == 'ja' %}備考{% else %}Note{% endif %}</th>
           </tr>
         </thead>
         <tbody>
           {% for c in contracts %}
           <tr>
-            <td class="font-mono" style="font-weight: 600;">{{ c.code }}</td>
+            <td><span class="toku-mono" style="font-weight: 700; color: #005bac;">{{ c.code }}</span></td>
+            <td class="toku-mono">{{ c.contract_date or "-" }}</td>
             <td>
-              {% if c.delivery_status == 'delivered' %}
-                <span class="swiss-chip chip-in-stock">DELIVERED</span>
-              {% else %}
-                <span class="swiss-chip chip-warning">PENDING</span>
-              {% endif %}
+              <span class="toku-badge {% if c.delivery_status == 'fully_received' %}in_stock{% else %}warning{% endif %}">
+                {{ c.delivery_status|upper }}
+              </span>
             </td>
+            <td style="text-align: right; color: var(--toku-text-muted);">{{ c.note or "-" }}</td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
-    {% endif %}
+  </div>
+  {% endif %}
 
-    <!-- 4. Access Cards -->
-    {% if cards %}
-    <div class="swiss-panel">
-      <div class="swiss-panel-header">
-        <h3 class="swiss-panel-title">{% if lang == 'ja' %}入退出カード{% else %}Access Cards{% endif %}</h3>
-        <span class="swiss-chip chip-neutral font-mono">{{ cards|length }}</span>
-      </div>
-      <table class="swiss-table">
+  <!-- 4. Cards -->
+  {% if cards %}
+  <div class="toku-card" style="padding: 28px; margin-bottom: 24px;">
+    <div class="toku-card-header">
+      <h2 class="toku-card-title" style="font-size: 18px;">
+        {% if lang == 'ja' %}セキュリティ入退室カード{% else %}Physical Access Cards{% endif %}
+      </h2>
+      <span class="toku-badge role">{{ cards|length }} cards</span>
+    </div>
+
+    <div class="toku-table-wrapper">
+      <table class="toku-table">
         <thead>
           <tr>
-            <th>{% if lang == 'ja' %}カード番号{% else %}Card Number{% endif %}</th>
-            <th>{% if lang == 'ja' %}状態{% else %}Status{% endif %}</th>
+            <th>{% if lang == 'ja' %}カード番号{% else %}Card No{% endif %}</th>
+            <th>{% if lang == 'ja' %}ステータス{% else %}Status{% endif %}</th>
+            <th style="text-align: right;">{% if lang == 'ja' %}備考{% else %}Note{% endif %}</th>
           </tr>
         </thead>
         <tbody>
           {% for card in cards %}
           <tr>
-            <td class="font-mono" style="font-weight: 600;">{{ card.card_no }}</td>
+            <td><span class="toku-mono" style="font-weight: 700; color: #005bac;">{{ card.card_no }}</span></td>
             <td>
-              {% if card.current_active_loan %}
-                <span class="swiss-chip chip-loaned">ON LOAN</span>
-              {% else %}
-                <span class="swiss-chip chip-in-stock">AVAILABLE</span>
-              {% endif %}
+              <span class="toku-badge {% if card.status == 'in_stock' %}in_stock{% elif card.status == 'loaned' %}warning{% else %}danger{% endif %}">
+                {{ card.status|upper }}
+              </span>
             </td>
+            <td style="text-align: right; color: var(--toku-text-muted);">{{ card.note or "-" }}</td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
-    {% endif %}
-
+  </div>
   {% endif %}
-</div>
+{% endif %}
 {% endblock %}
