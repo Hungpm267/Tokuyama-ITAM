@@ -15,7 +15,7 @@ class Command(BaseCommand):
     help = 'Khởi tạo 3 nhóm quyền RBAC, tài khoản Admin mặc định và dữ liệu danh mục ban đầu cho ITAM Tokuyama'
 
     def handle(self, *args, **options):
-        self.stdout.write(self.style.NOTICE("==> Đang khởi tạo hệ thống ITAM Tokuyama Vietnam..."))
+        self.stdout.write(self.style.NOTICE("==> Initializing ITAM Tokuyama Vietnam..."))
         
         # 1. Tạo các Nhóm quyền (Groups)
         it_admin_group, _ = Group.objects.get_or_create(name='IT Admin')
@@ -54,7 +54,7 @@ class Command(BaseCommand):
         exec_perms = Permission.objects.filter(content_type__in=all_business_types + [audit_type], codename__startswith='view_')
         executive_group.permissions.set(exec_perms)
 
-        self.stdout.write(self.style.SUCCESS("✔ Đã tạo và cấu hình 3 nhóm quyền: IT Admin, GA Manager, Executive."))
+        self.stdout.write(self.style.SUCCESS("[OK] Configured 3 groups: IT Admin, GA Manager, Executive."))
 
         # 2. Tạo tài khoản Admin mặc định
         admin_username = os.getenv('ADMIN_USERNAME', 'admin')
@@ -70,11 +70,11 @@ class Command(BaseCommand):
                 is_superuser=True
             )
             admin_user.groups.add(it_admin_group)
-            self.stdout.write(self.style.SUCCESS(f"✔ Đã tạo Superuser '{admin_username}' (Mật khẩu: {admin_password})."))
+            self.stdout.write(self.style.SUCCESS(f"[OK] Created Superuser '{admin_username}' (Password: {admin_password})."))
         else:
             admin_user = User.objects.get(username=admin_username)
             admin_user.groups.add(it_admin_group)
-            self.stdout.write(self.style.NOTICE(f"ℹ Tài khoản '{admin_username}' đã tồn tại, đã gán vào IT Admin."))
+            self.stdout.write(self.style.NOTICE(f"[INFO] Superuser '{admin_username}' already exists, added to IT Admin."))
 
         # 3. Nạp danh mục mẫu ban đầu (Seed data)
         # 3.1. Phòng ban
@@ -111,5 +111,5 @@ class Command(BaseCommand):
         for room_name in rooms:
             Room.objects.get_or_create(name=room_name)
 
-        self.stdout.write(self.style.SUCCESS("✔ Đã nạp dữ liệu danh mục ban đầu (Phòng ban, Loại tài sản, License, Phòng thẻ)."))
-        self.stdout.write(self.style.SUCCESS("==> Khởi tạo hệ thống ITAM hoàn tất thành công!"))
+        self.stdout.write(self.style.SUCCESS("[OK] Seed categories loaded successfully."))
+        self.stdout.write(self.style.SUCCESS("[OK] System bootstrap completed!"))

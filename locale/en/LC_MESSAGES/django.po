@@ -1,0 +1,89 @@
+# English translations for Tokuyama ITAM
+msgid ""
+msgstr ""
+"Project-Id-Version: toku_itam 1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-06 00:00+0700\n"
+"PO-Revision-Date: 2026-10-06 00:00+0700\n"
+"Last-Translator: Antigravity\n"
+"Language-Team: English\n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Tổng quan Tài sản IT (Dashboard FR-13)"
+msgstr "IT Asset Dashboard (FR-13)"
+
+msgid "Tổng số thiết bị"
+msgstr "Total Assets"
+
+msgid "Trong kho (Sẵn sàng)"
+msgstr "In Stock (Available)"
+
+msgid "Đang cho mượn"
+msgstr "Loaned"
+
+msgid "Thiết bị mất"
+msgstr "Lost"
+
+msgid "License sắp hết hạn (trong 60 ngày)"
+msgstr "Licenses Expiring Soon (Within 60 Days)"
+
+msgid "Thẻ ra vào đang cho mượn"
+msgstr "Currently Loaned Access Cards"
+
+msgid "Tìm kiếm toàn cục / Global Search"
+msgstr "Global Search"
+
+msgid "Tìm kiếm"
+msgstr "Search"
+
+msgid "Thùng rác"
+msgstr "Trash"
+
+msgid "Thùng rác & Khôi phục bản ghi / Trash & Restore"
+msgstr "Trash & Restore"
+
+msgid "Hồ sơ tài sản"
+msgstr "Asset Profile"
+
+msgid "Phần mềm"
+msgstr "Software"
+
+msgid "Hạn dùng"
+msgstr "Expiry Date"
+
+msgid "Còn lại"
+msgstr "Remaining"
+
+msgid "ngày"
+msgstr "days"
+
+msgid "Số thẻ"
+msgstr "Card No"
+
+msgid "Người mượn"
+msgstr "Borrower"
+
+msgid "Ngày mượn"
+msgstr "Borrowed Date"
+
+msgid "Ngày trả"
+msgstr "Returned Date"
+
+msgid "Vĩnh viễn"
+msgstr "Perpetual"
+
+msgid "Xem chi tiết"
+msgstr "View Details"
+
+msgid "Đã nhận đủ"
+msgstr "Fulfilled"
+
+msgid "Chưa đủ"
+msgstr "Pending"
+
+msgid "Khôi phục"
+msgstr "Restore"

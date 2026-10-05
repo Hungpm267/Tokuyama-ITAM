@@ -16,7 +16,7 @@ except admin.sites.NotRegistered:
 
 @admin.register(LogEntry)
 class ImmutableLogEntryAdmin(admin.ModelAdmin):
-    list_display = ('created', 'actor', 'action_display', 'content_type', 'object_repr', 'changes_display')
+    list_display = ('timestamp', 'actor', 'action_display', 'content_type', 'object_repr', 'changes_display')
     list_filter = ('action', 'content_type', 'timestamp')
     search_fields = ('object_repr', 'changes', 'actor__username')
     readonly_fields = [f.name for f in LogEntry._meta.fields]

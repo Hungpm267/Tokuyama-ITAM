@@ -1,0 +1,104 @@
+# Japanese translations for Tokuyama ITAM
+msgid ""
+msgstr ""
+"Project-Id-Version: toku_itam 1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-06 00:00+0700\n"
+"PO-Revision-Date: 2026-10-06 00:00+0700\n"
+"Last-Translator: Antigravity\n"
+"Language-Team: Japanese\n"
+"Language: ja\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+msgid "Tổng quan Tài sản IT (Dashboard FR-13)"
+msgstr "IT資産ダッシュボード (FR-13)"
+
+msgid "Tổng số thiết bị"
+msgstr "総機器数"
+
+msgid "Trong kho (Sẵn sàng)"
+msgstr "在庫（利用可能）"
+
+msgid "Đang cho mượn"
+msgstr "貸出中"
+
+msgid "Thiết bị mất"
+msgstr "紛失"
+
+msgid "License sắp hết hạn (trong 60 ngày)"
+msgstr "期限間近のライセンス（60日以内）"
+
+msgid "Thẻ ra vào đang cho mượn"
+msgstr "貸出中の入退出カード"
+
+msgid "Tìm kiếm toàn cục / Global Search"
+msgstr "グローバル検索"
+
+msgid "Tìm kiếm"
+msgstr "検索"
+
+msgid "Thùng rác"
+msgstr "ゴミ箱"
+
+msgid "Thùng rác & Khôi phục bản ghi / Trash & Restore"
+msgstr "ゴミ箱と復元"
+
+msgid "Hồ sơ tài sản"
+msgstr "資産プロファイル"
+
+msgid "Phần mềm"
+msgstr "ソフトウェア"
+
+msgid "Hạn dùng"
+msgstr "有効期限"
+
+msgid "Còn lại"
+msgstr "残り"
+
+msgid "ngày"
+msgstr "日"
+
+msgid "Số thẻ"
+msgstr "カード番号"
+
+msgid "Người mượn"
+msgstr "借用者"
+
+msgid "Ngày mượn"
+msgstr "貸出日"
+
+msgid "Ngày trả"
+msgstr "返却日"
+
+msgid "Vĩnh viễn"
+msgstr "無期限"
+
+msgid "Xem chi tiết"
+msgstr "詳細を表示"
+
+msgid "Đã nhận đủ"
+msgstr "受領完了"
+
+msgid "Chưa đủ"
+msgstr "未完了"
+
+msgid "Khôi phục"
+msgstr "復元"
+
+msgid "Nhân sự & Phòng ban"
+msgstr "人事・部署管理"
+
+msgid "Tài sản & Thiết bị IT"
+msgstr "IT資産・機器管理"
+
+msgid "Bản quyền & License phần mềm"
+msgstr "ソフトウェアライセンス管理"
+
+msgid "Thẻ từ & Phòng ra vào"
+msgstr "入退出カード・部屋管理"
+
+msgid "Hợp đồng mua sắm"
+msgstr "購買契約管理"
