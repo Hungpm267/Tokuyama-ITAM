@@ -5,3 +5,7 @@ class CoreConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'core'
     verbose_name = _('Hạ tầng & Hệ thống')
+
+    def ready(self):
+        from core.audit import register_auditlog
+        register_auditlog()
