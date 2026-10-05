@@ -1,115 +1,107 @@
-# Hệ thống Quản lý Tài sản IT (ITAM) – Tokuyama Vietnam (TVC)
+# Hệ thống Quản lý Tài sản IT (ITAM) – Tokuyama Vietnam (FastAPI Edition)
 
-Hệ thống quản lý tập trung toàn bộ tài sản thiết bị IT, bản quyền phần mềm (license), thẻ từ ra vào văn phòng và hợp đồng mua sắm theo mã hợp đồng cho Tokuyama Vietnam. Ứng dụng thay thế hoàn toàn các file và sheet Excel phân mảnh, đảm bảo một nguồn dữ liệu duy nhất (Single Source of Truth).
+Hệ thống quản lý tập trung toàn bộ tài sản thiết bị IT, bản quyền phần mềm (license), thẻ từ ra vào văn phòng và hợp đồng mua sắm cho **Tokuyama Vietnam**.
+Ứng dụng được xây dựng trên nền tảng **FastAPI**, **SQLAlchemy 2.0**, **SQLAdmin** và giao diện **Swiss Anchor Design System** (tối giản, tinh tế, 1px border hairline, màu xanh Yves Klein `#002FA7`, không emoji cồng kềnh, tối ưu bảng biểu và số liệu).
 
 ---
 
-## 1. Tính năng cốt lõi (Core Features)
+## 1. Điểm nổi bật & Tính năng cốt lõi
 
-* **6 Module Nghiệp vụ Chuẩn Hóa:**
-  1. **Nhân sự (`organization`):** Quản lý Danh mục Phòng ban (Anh/Nhật), Nhân viên TVC (`staff_code`), trạng thái làm việc/nghỉ việc.
-  2. **Tài sản IT (`assets`):** Danh mục thiết bị (Laptop, màn hình, chuột...), mã tài sản, model, serial, HWID, MAC. Trạng thái tự động: *Trong kho*, *Đang mượn*, *Mất*.
-  3. **Mượn - Trả Thiết bị (`assets`):** Lưu trữ 100% lịch sử các lần mượn của từng nhân viên; tự động cập nhật trạng thái thiết bị.
-  4. **Bản quyền License (`licenses`):** Quản lý gói license, số lượng seats, gán cho máy hoặc người, cảnh báo hạn dùng (hạn 60 ngày hoặc vĩnh viễn), che mờ license key đối với người dùng không phải IT Admin.
-  5. **Thẻ từ ra vào (`cards`):** Thẻ từ, danh sách phòng được phép vào, mượn thẻ cho nhân viên hoặc nhà thầu bên ngoài (tên, công ty), theo dõi thẻ chưa trả.
-  6. **Hợp đồng mua sắm (`contracts`):** Quản lý mã hợp đồng (KHCM-...), dòng hàng đặt mua, tự động tính số lượng thực nhận từ thiết bị gắn vào dòng hàng.
-* **Cơ chế Xóa Mềm (Soft Delete):** Mọi bảng nghiệp vụ kế thừa 8 trường kiểm toán (`created_at`, `created_by`, `updated_at`, `updated_by`, `is_deleted`, `deleted_at`, `deleted_by`, `delete_reason`). Ẩn mặc định các bản ghi đã xóa mềm; partial unique index cho phép tạo lại serial trùng khi bản ghi cũ đã xóa.
-* **Thùng Rác & Khôi Phục (Trash & Restore):** Chỉ IT Admin mới có quyền xem bản ghi đã xóa mềm và khôi phục lại dữ liệu.
-* **Truy vết Bất Biến (Audit Trail):** Tự động ghi lại toàn bộ thay đổi dữ liệu (diff JSON), không một ai có quyền sửa hoặc xóa nhật ký audit log.
-* **Phân quyền 3 Nhóm RBAC:**
-  * **IT Admin:** Toàn quyền hệ thống, quản trị tài khoản, khôi phục thùng rác.
-  * **GA Manager:** Quản lý nhân sự, toàn quyền quản lý thẻ ra vào, xem tài sản/hợp đồng.
-  * **Executive (Giám đốc):** Xem toàn bộ thông tin hệ thống, license key được che mờ.
-* **Trang Tổng Quan (Dashboard FR-13):** Thống kê số lượng thiết bị theo trạng thái, cảnh báo license sắp hết hạn trong 60 ngày, danh sách thẻ đang cho mượn chưa trả.
-* **Tìm Kiếm Toàn Cục (Global Search FR-03):** Tra cứu tức thì theo mã tài sản, serial, HWID, MAC, tên nhân viên, mã hợp đồng.
-* **Hồ Sơ Nhân Sự 360 (Person Profile FR-08):** Xem toàn bộ thiết bị đang giữ, lịch sử máy đã trả, license phần mềm và thẻ từ đang mượn của một nhân viên.
-* **Đa ngôn ngữ & Giao diện:** Hỗ trợ song ngữ Tiếng Anh (English) và Tiếng Nhật (日本語) với nút chọn ngôn ngữ trực quan trên Header; tự động chuyển chế độ Sáng / Tối (Dark/Light mode).
+* **Kiến trúc Hiện đại & Hiệu năng cao:**
+  * **Backend:** FastAPI (Python 3.12 - 3.14), async/await, Pydantic v2 validation.
+  * **ORM & Database:** SQLAlchemy 2.0 hỗ trợ cả SQLite (mặc định) và PostgreSQL qua chuỗi kết nối `DATABASE_URL`.
+  * **Quản trị CRUD:** Tích hợp **SQLAdmin** tại `/admin` có xác thực session bảo mật.
+  * **Giao diện người dùng:** Jinja2 templates chuẩn thiết kế Thụy Sĩ (**Swiss Anchor**).
+  * **Tài liệu API tự động:** Interactive OpenAPI / Swagger UI tại `/docs` và ReDoc tại `/redoc`.
+
+* **Đáp ứng đầy đủ 13 Yêu cầu Nghiệp vụ (BRD):**
+  1. **Nhân sự (`Person`, `Department`):** Quản lý mã nhân viên (`staff_code`), tên tiếng Anh / tiếng Nhật, trạng thái làm việc/nghỉ việc.
+  2. **Tài sản IT (`Asset`):** Mã tài sản, model, serial, HWID, MAC address. Trạng thái tự động: *Trong kho (in_stock)*, *Đang mượn (loaned)*, *Mất (lost)*.
+  3. **Mượn - Trả Thiết bị (`Assignment`):** Lưu 100% lịch sử các lần mượn - trả của nhân viên.
+  4. **Bản quyền License (`License`, `LicenseAssignment`):** Gói phần mềm, số seats, gán theo máy hoặc người, cảnh báo hạn dùng trong 60 ngày hoặc vĩnh viễn, che mờ license key theo quyền.
+  5. **Thẻ từ ra vào (`AccessCard`, `CardLoan`):** Quản lý thẻ từ, phân quyền theo phòng, cho mượn thẻ nội bộ hoặc nhà thầu bên ngoài (External Vendor).
+  6. **Hợp đồng mua sắm (`Contract`, `ContractLine`):** Quản lý mã hợp đồng (KHCM-...), tự động tính số lượng thực nhận từ thiết bị gắn vào dòng hàng.
+  7. **Cơ chế Xóa mềm (Soft Delete):** Mọi bảng kế thừa 8 trường kiểm toán (`created_at`, `created_by_id`, `updated_at`, `updated_by_id`, `is_deleted`, `deleted_at`, `deleted_by_id`, `delete_reason`).
+  8. **Thùng Rác & Khôi Phục (Trash & Restore):** Chỉ IT Admin mới có quyền truy cập `/trash` và khôi phục bản ghi đã xóa.
+  9. **Truy vết Bất biến (Audit Log):** Lưu trữ hành động (create, update, delete, restore) kèm diff dữ liệu dạng JSON.
+  10. **Phân quyền 3 Nhóm RBAC:**
+      * **IT Admin:** Toàn quyền hệ thống, quản lý tài khoản, thùng rác.
+      * **GA Manager:** Quản lý nhân sự, toàn quyền quản lý thẻ từ, xem tài sản.
+      * **Executive (Giám đốc):** Xem báo cáo và toàn bộ dữ liệu, che mờ license key.
+  11. **Dashboard Tổng quan (FR-13):** Thống kê số lượng thiết bị theo trạng thái, cảnh báo license sắp hết hạn trong 60 ngày, danh sách thẻ đang cho mượn chưa trả.
+  12. **Tìm kiếm Toàn cục (Global Search FR-03):** Tra cứu tức thì theo mã tài sản, serial, HWID, MAC, tên nhân viên, mã hợp đồng.
+  13. **Hồ sơ Nhân sự 360 (Person Profile FR-08):** Xem toàn bộ thiết bị đang giữ, lịch sử máy đã trả, license phần mềm và thẻ từ đang mượn của một nhân viên.
 
 ---
 
 ## 2. Hướng dẫn Khởi Chạy Nhanh (Quickstart)
 
 ### 2.1. Yêu cầu môi trường
-* Python 3.10 trở lên (khuyến nghị Python 3.12, 3.13 hoặc 3.14).
-* PostgreSQL 14+ hoặc SQLite (chạy mặc định cho môi trường thử nghiệm).
+* Python 3.10+ (đã kiểm thử hoàn hảo trên Python 3.14).
+* SQLite (có sẵn) hoặc PostgreSQL 14+.
 
-### 2.2. Kích hoạt môi trường và cài đặt
+### 2.2. Kích hoạt môi trường và cài đặt thư viện
 Mở PowerShell tại thư mục dự án `toku-app`:
 
 ```powershell
 # Kích hoạt môi trường ảo
 .\venv\Scripts\Activate.ps1
 
-# Cài đặt thư viện nếu chạy trên máy mới
+# Cài đặt thư viện (nếu cài mới trên máy khác)
 pip install -r requirements.txt
 ```
 
-### 2.3. Khởi tạo cơ sở dữ liệu và dữ liệu mẫu (1 bước duy nhất)
-Chạy lệnh khởi tạo hệ thống để tạo bảng, phân quyền RBAC và nạp danh mục:
+### 2.3. Khởi chạy ứng dụng (1 lệnh duy nhất)
+Chỉ cần chạy lệnh sau, hệ thống sẽ **tự động khởi tạo database, chạy seed dữ liệu mẫu và tài khoản ban đầu**:
 
 ```powershell
-python manage.py migrate
-python manage.py init_system
+python run.py
 ```
-
-**Tài khoản đăng nhập mặc định:**
-* **URL Quản trị:** `http://127.0.0.1:8000/admin/`
-* **Tài khoản:** `admin`
-* **Mật khẩu:** `tokuadmin2026`
-
-### 2.4. Chạy Web Server trong mạng LAN nội bộ
-Để IT Admin, GA Manager và Giám đốc trong mạng nội bộ công ty có thể truy cập được:
-
-```powershell
-python manage.py runserver 0.0.0.0:8000
-```
-*(Người dùng cùng mạng LAN truy cập qua địa chỉ: `http://<IP_LAPTOP_IT>:8000/admin/`)*
+*(Hoặc chạy qua uvicorn trực tiếp: `uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload`)*
 
 ---
 
-## 3. Cấu hình Cơ sở Dữ liệu PostgreSQL
+## 3. Các địa chỉ truy cập & Tài khoản mặc định
 
-Để chuyển sang dùng PostgreSQL local hoặc PostgreSQL online (Supabase/Neon/Server công ty), cấu hình biến `DATABASE_URL` trong tệp `.env`:
+| Mục | Địa chỉ URL | Mô tả |
+| :--- | :--- | :--- |
+| **Cổng Web Portal** | `http://127.0.0.1:8000/` | Giao diện Swiss Anchor với Dashboard, Tìm kiếm, Hồ sơ nhân viên, Thùng rác |
+| **Đăng nhập Web** | `http://127.0.0.1:8000/login` | Form đăng nhập chuẩn thiết kế tối giản Thụy Sĩ |
+| **Bảng Quản trị CRUD** | `http://127.0.0.1:8000/admin` | SQLAdmin mạnh mẽ cho phép quản lý chi tiết mọi bảng dữ liệu |
+| **Interactive API Docs** | `http://127.0.0.1:8000/docs` | Swagger UI tương tác trực tiếp với REST API |
+| **Alternative API Docs**| `http://127.0.0.1:8000/redoc`| ReDoc tài liệu API |
 
-```env
-# Mẫu kết nối PostgreSQL:
-DATABASE_URL=postgres://postgres:mat_khau@localhost:5432/toku_itam
+### Tài khoản đăng nhập hệ thống:
 
-# Hoặc PostgreSQL Cloud có SSL:
-DATABASE_URL=postgres://user:pass@ep-server.neon.tech/toku_itam?sslmode=require
-```
-
-Sau khi sửa `.env`, chạy lệnh migrate:
-```powershell
-python manage.py migrate
-python manage.py init_system
-```
-
----
-
-## 4. Hướng dẫn Sao lưu & Khôi phục (Backup & Restore)
-
-### Sao lưu dữ liệu (Backup định kỳ):
-```powershell
-# Sao lưu dữ liệu ra file SQL
-pg_dump -U postgres -h localhost -d toku_itam > backup_toku_itam_$(Get-Date -Format "yyyyMMdd").sql
-```
-
-### Phục hồi dữ liệu khi chuyển sang máy khác:
-```powershell
-# 1. Tạo database mới
-createdb -U postgres toku_itam
-
-# 2. Khôi phục từ file backup
-psql -U postgres -d toku_itam -f backup_toku_itam_YYYYMMDD.sql
-```
+| Tên đăng nhập | Mật khẩu | Phân quyền (RBAC) | Quyền hạn chính |
+| :--- | :--- | :--- | :--- |
+| **`admin`** | `tokuadmin2026` | **IT Admin** | Toàn quyền hệ thống, xem/khôi phục Thùng Rác, quản trị SQLAdmin |
+| **`ga_manager`** | `toku2026ga` | **GA Manager** | Quản lý thẻ từ ra vào, nhân sự, phòng ban, mượn trả thẻ |
+| **`director`** | `toku2026exec` | **Executive** | Giám đốc xem báo cáo, thống kê, che mờ license key nhạy cảm |
 
 ---
 
-## 5. Chạy Kiểm Thử Tự Động (Automated Tests)
+## 4. Chạy Kiểm Thử Tự Động (Test Suite)
 
-Chạy toàn bộ 19 kịch bản kiểm thử (Models, Soft Delete, RBAC, Masking, Audit Log, Dashboard, Search, Profile):
+Hệ thống có bộ unit test và integration test hoàn chỉnh bằng `pytest` + `httpx.AsyncClient`:
 
 ```powershell
 .\venv\Scripts\pytest -v
 ```
+
+Kết quả: **9/9 tests passed (100%)** bao gồm xác thực, phân quyền, API CRUD, Dashboard, Web Search, Trash/Restore và Soft Delete.
+
+---
+
+## 5. Cấu hình Cơ sở Dữ liệu PostgreSQL (Tùy chọn)
+
+Nếu muốn chuyển từ SQLite sang PostgreSQL trên máy chủ hoặc cloud:
+1. Mở tệp `.env` và sửa dòng `DATABASE_URL`:
+   ```env
+   # PostgreSQL Local:
+   DATABASE_URL=postgresql://postgres:mat_khau@localhost:5432/toku_itam
+
+   # Hoặc PostgreSQL Cloud (Neon / Supabase):
+   DATABASE_URL=postgresql://user:password@ep-server.neon.tech/toku_itam?sslmode=require
+   ```
+2. Chạy `python run.py`. Hệ thống tự động tạo toàn bộ bảng và nạp dữ liệu mẫu trên PostgreSQL.

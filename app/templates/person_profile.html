@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+
+{% block title %}
+{{ person.full_name }} ({{ person.staff_code }}) | ITAM Profile
+{% endblock %}
+
+{% block content %}
+<div class="swiss-dashboard">
+  <!-- Personnel Header Dossier -->
+  <div class="swiss-panel" style="margin-bottom: 24px;">
+    <div style="padding: 24px; display: flex; align-items: center; justify-content: space-between;">
+      <div>
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 6px;">
+          <span class="brand-badge font-mono">{{ person.staff_code }}</span>
+          <h1 style="margin: 0; font-size: 22px; font-weight: 700; color: var(--toku-text); letter-spacing: -0.02em;">
+            {{ person.full_name }}
+          </h1>
+          {% if person.status == 'active' %}
+            <span class="swiss-chip chip-in-stock">ACTIVE</span>
+          {% else %}
+            <span class="swiss-chip chip-lost">RESIGNED</span>
+          {% endif %}
+        </div>
+        <div style="font-size: 13px; color: var(--toku-text-secondary);">
+          {% if lang == 'ja' %}所属部署{% else %}Department{% endif %}: 
+          <strong style="color: var(--toku-text);">
+            {% if lang == 'ja' and person.department and person.department.name_ja %}
+              {{ person.department.name_ja }}
+            {% else %}
+              {{ person.department.name_en if person.department else "Unassigned" }}
+            {% endif %}
+          </strong>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 1: Active Hardware Deployed -->
+  <div class="swiss-panel">
+    <div class="swiss-panel-header">
+      <h3 class="swiss-panel-title">
+        {% if lang == 'ja' %}現在貸出中の機器{% else %}Active Hardware Deployed{% endif %}
+      </h3>
+      <span class="swiss-chip chip-loaned font-mono">{{ current_assignments|length }}</span>
+    </div>
+    <div>
+      {% if current_assignments %}
+      <table class="swiss-table">
+        <thead>
+          <tr>
+            <th>{% if lang == 'ja' %}資産コード{% else %}Asset Code{% endif %}</th>
+            <th>{% if lang == 'ja' %}種別{% else %}Category{% endif %}</th>
+            <th>{% if lang == 'ja' %}型番{% else %}Model{% endif %}</th>
+            <th>Serial</th>
+            <th>MAC</th>
+            <th>{% if lang == 'ja' %}貸出日{% else %}Assignment Date{% endif %}</th>
+            <th>{% if lang == 'ja' %}備考{% else %}Remarks{% endif %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for asgn in current_assignments %}
+          <tr>
+            <td class="font-mono" style="font-weight: 600; color: var(--toku-accent);">{{ asgn.asset.asset_code }}</td>
+            <td>{{ asgn.asset.category.name if asgn.asset.category else "-" }}</td>
+            <td>{{ asgn.asset.model or "-" }}</td>
+            <td class="font-mono">{{ asgn.asset.serial or "-" }}</td>
+            <td class="font-mono">{{ asgn.asset.mac_address or "-" }}</td>
+            <td class="font-mono">{{ asgn.borrowed_at.strftime('%Y-%m-%d') }}</td>
+            <td style="color: var(--toku-text-muted);">{{ asgn.note or "-" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div style="padding: 24px; text-align: center; color: var(--toku-text-muted);">
+        {% if lang == 'ja' %}現在貸出中の機器はありません。{% else %}No hardware units are currently assigned to this personnel.{% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Section 2: Software Licenses Assigned -->
+  <div class="swiss-panel">
+    <div class="swiss-panel-header">
+      <h3 class="swiss-panel-title">
+        {% if lang == 'ja' %}割り当て済みライセンス{% else %}Software Licenses Allocated{% endif %}
+      </h3>
+      <span class="swiss-chip chip-neutral font-mono">{{ licenses_assigned|length }}</span>
+    </div>
+    <div>
+      {% if licenses_assigned %}
+      <table class="swiss-table">
+        <thead>
+          <tr>
+            <th>{% if lang == 'ja' %}ソフトウェア{% else %}Software Product{% endif %}</th>
+            <th>{% if lang == 'ja' %}対象{% else %}Scope{% endif %}</th>
+            <th>{% if lang == 'ja' %}割当年月日{% else %}Allocated Date{% endif %}</th>
+            <th>{% if lang == 'ja' %}有効期限{% else %}Expiry Date{% endif %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for lic in licenses_assigned %}
+          <tr>
+            <td style="font-weight: 600;">{{ lic.license.product.name if lic.license.product else "-" }}</td>
+            <td>
+              {% if lic.asset %}
+                <span class="font-mono" style="color: var(--toku-accent);">{{ lic.asset.asset_code }}</span> ({{ lic.asset.model or "" }})
+              {% else %}
+                <span style="color: var(--toku-text-secondary);">Direct Personnel Grant</span>
+              {% endif %}
+            </td>
+            <td class="font-mono">{{ lic.assigned_at.strftime('%Y-%m-%d') }}</td>
+            <td class="font-mono">
+              {% if lic.license.expiry_date %}
+                {{ lic.license.expiry_date.strftime('%Y-%m-%d') }}
+              {% else %}
+                <span class="swiss-chip chip-in-stock">PERPETUAL</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div style="padding: 24px; text-align: center; color: var(--toku-text-muted);">
+        {% if lang == 'ja' %}割り当てられたライセンスはありません。{% else %}No software license seats are currently allocated.{% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Section 3: Physical Access Cards -->
+  <div class="swiss-panel">
+    <div class="swiss-panel-header">
+      <h3 class="swiss-panel-title">
+        {% if lang == 'ja' %}所持中の入退出カード{% else %}Physical Access Cards Held{% endif %}
+      </h3>
+      <span class="swiss-chip chip-neutral font-mono">{{ current_cards|length }}</span>
+    </div>
+    <div>
+      {% if current_cards %}
+      <table class="swiss-table">
+        <thead>
+          <tr>
+            <th>{% if lang == 'ja' %}カード番号{% else %}Card Number{% endif %}</th>
+            <th>{% if lang == 'ja' %}入室許可部屋{% else %}Authorized Rooms{% endif %}</th>
+            <th>{% if lang == 'ja' %}貸出日{% else %}Check-out Date{% endif %}</th>
+            <th>{% if lang == 'ja' %}目的{% else %}Purpose{% endif %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for loan in current_cards %}
+          <tr>
+            <td class="font-mono" style="font-weight: 600;">{{ loan.card.card_no if loan.card else "-" }}</td>
+            <td>
+              {% if loan.card %}
+                {% for room in loan.card.allowed_rooms %}
+                  <span class="swiss-chip chip-neutral" style="margin-right: 4px;">{{ room.name }}</span>
+                {% empty %}
+                  -
+                {% endfor %}
+              {% endif %}
+            </td>
+            <td class="font-mono">{{ loan.borrowed_at.strftime('%Y-%m-%d') }}</td>
+            <td>{{ loan.purpose or "-" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div style="padding: 24px; text-align: center; color: var(--toku-text-muted);">
+        {% if lang == 'ja' %}現在貸出中のカードはありません。{% else %}No access cards currently checked out.{% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Section 4: Historic Lifecycle Log -->
+  <div class="swiss-panel">
+    <div class="swiss-panel-header">
+      <h3 class="swiss-panel-title" style="color: var(--toku-text-muted);">
+        {% if lang == 'ja' %}過去の機器返却履歴{% else %}Historic Hardware Lifecycle{% endif %}
+      </h3>
+      <span class="swiss-chip chip-neutral font-mono">{{ past_assignments|length }}</span>
+    </div>
+    <div>
+      {% if past_assignments %}
+      <table class="swiss-table">
+        <thead>
+          <tr>
+            <th>{% if lang == 'ja' %}資産コード{% else %}Asset Code{% endif %}</th>
+            <th>{% if lang == 'ja' %}種別{% else %}Category{% endif %}</th>
+            <th>Serial</th>
+            <th>{% if lang == 'ja' %}貸出日{% else %}Check-out{% endif %}</th>
+            <th>{% if lang == 'ja' %}返却日{% else %}Return Date{% endif %}</th>
+            <th>{% if lang == 'ja' %}備考{% else %}Remarks{% endif %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in past_assignments %}
+          <tr style="color: var(--toku-text-secondary);">
+            <td class="font-mono">{{ p.asset.asset_code if p.asset else "-" }}</td>
+            <td>{{ p.asset.category.name if p.asset and p.asset.category else "-" }}</td>
+            <td class="font-mono">{{ p.asset.serial or "-" if p.asset else "-" }}</td>
+            <td class="font-mono">{{ p.borrowed_at.strftime('%Y-%m-%d') }}</td>
+            <td class="font-mono">{{ p.returned_at.strftime('%Y-%m-%d') if p.returned_at else "-" }}</td>
+            <td>{{ p.note or "-" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div style="padding: 24px; text-align: center; color: var(--toku-text-muted);">
+        {% if lang == 'ja' %}過去の返却履歴はありません。{% else %}No prior return records on file.{% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

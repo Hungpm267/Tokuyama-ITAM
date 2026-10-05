@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login | Tokuyama Vietnam ITAM</title>
+  <link rel="stylesheet" href="/static/css/swiss_theme.css">
+  <style>
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: var(--toku-canvas);
+    }
+    .login-card {
+      width: 100%;
+      max-width: 420px;
+      background: var(--toku-surface);
+      border: 1px solid var(--toku-border);
+      border-radius: var(--toku-radius-lg);
+      padding: 36px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+    }
+    .form-group {
+      margin-bottom: 18px;
+    }
+    .form-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--toku-text-muted);
+      margin-bottom: 6px;
+    }
+    .form-input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px 14px;
+      font-size: 14px;
+      border: 1px solid var(--toku-border);
+      border-radius: var(--toku-radius-sm);
+      background: var(--toku-surface);
+      color: var(--toku-text);
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .form-input:focus {
+      border-color: var(--toku-accent);
+      box-shadow: 0 0 0 3px rgba(0, 47, 167, 0.12);
+    }
+    .btn-submit {
+      width: 100%;
+      padding: 11px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      background: var(--toku-accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--toku-radius-sm);
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+    .btn-submit:hover {
+      background: var(--toku-accent-hover);
+    }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 24px;">
+      <span class="brand-badge">TVC</span>
+      <div>
+        <div style="font-size: 16px; font-weight: 700; color: var(--toku-text); letter-spacing: -0.01em;">Tokuyama Vietnam</div>
+        <div style="font-size: 11px; color: var(--toku-text-muted); text-transform: uppercase; letter-spacing: 0.06em;">IT Asset Management</div>
+      </div>
+    </div>
+
+    {% if error %}
+    <div style="background: var(--toku-danger-bg); border: 1px solid var(--toku-danger-border); color: var(--toku-danger); padding: 10px 14px; border-radius: var(--toku-radius-sm); font-size: 12px; margin-bottom: 20px;">
+      {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="post" action="/login">
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <input type="text" name="username" required autofocus class="form-input" placeholder="e.g. admin">
+      </div>
+
+      <div class="form-group" style="margin-bottom: 24px;">
+        <label class="form-label">Password</label>
+        <input type="password" name="password" required class="form-input">
+      </div>
+
+      <button type="submit" class="btn-submit">Sign in</button>
+    </form>
+
+    <div style="margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--toku-border); font-size: 11px; color: var(--toku-text-muted); line-height: 1.6;">
+      <strong style="color: var(--toku-text);">Default System Roles:</strong><br>
+      • IT Admin: <code class="font-mono">admin / tokuadmin2026</code><br>
+      • GA Manager: <code class="font-mono">ga_manager / toku2026ga</code><br>
+      • Director: <code class="font-mono">director / toku2026exec</code>
+    </div>
+  </div>
+</body>
+</html>

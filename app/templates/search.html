@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}
+{% if lang == 'ja' %}グローバル検索 | Tokuyama ITAM{% else %}Global Search | Tokuyama Vietnam ITAM{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="swiss-dashboard">
+  <!-- Search Input Bar -->
+  <form method="get" action="/search" class="swiss-search-bar" style="margin-bottom: 24px;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--toku-text-muted); margin-left: 6px;">
+      <circle cx="11" cy="11" r="8"></circle>
+      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+    </svg>
+    <input type="text" name="q" value="{{ query }}" placeholder="{% if lang == 'ja' %}機器コード、シリアル、HWID、MAC、従業員名、契約で検索...{% else %}Search by asset code, serial, HWID, MAC, employee name, contract...{% endif %}" class="swiss-search-input">
+    <button type="submit" class="swiss-search-btn">{% if lang == 'ja' %}検索{% else %}Search{% endif %}</button>
+  </form>
+
+  {% if query %}
+    <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 20px; border-bottom: 1px solid var(--toku-border); padding-bottom: 12px;">
+      <div style="font-size: 15px; font-weight: 700; color: var(--toku-text);">
+        {% if lang == 'ja' %}検索結果{% else %}Search Results for{% endif %}: <span style="color: var(--toku-accent);">"{{ query }}"</span>
+      </div>
+      <div style="font-size: 12px; color: var(--toku-text-muted);">
+        <span class="font-mono" style="font-weight: 600;">{{ total_count }}</span> {% if lang == 'ja' %}件{% else %}records found{% endif %}
+      </div>
+    </div>
+
+    {% if total_count == 0 %}
+      <div class="swiss-panel" style="padding: 40px; text-align: center; color: var(--toku-text-muted);">
+        {% if lang == 'ja' %}条件に一致するレコードは見つかりませんでした。{% else %}No records matched the provided search criteria.{% endif %}
+      </div>
+    {% endif %}
+
+    <!-- 1. Assets -->
+    {% if assets %}
+    <div class="swiss-panel">
+      <div class="swiss-panel-header">
+        <h3 class="swiss-panel-title">{% if lang == 'ja' %}IT資産・機器{% else %}IT Assets & Hardware{% endif %}</h3>
+        <span class="swiss-chip chip-neutral font-mono">{{ assets|length }}</span>
+      </div>
+      <table class="swiss-table">
+        <thead>
+          <tr>
+            <th>{% if lang == 'ja' %}資産コード{% else %}Asset Code{% endif %}</th>
+            <th>{% if lang == 'ja' %}種別{% else %}Category{% endif %}</th>
+            <th>{% if lang == 'ja' %}型番{% else %}Model{% endif %}</th>
+            <th>Serial</th>
+            <th>MAC</th>
+            <th>{% if lang == 'ja' %}状態{% else %}Status{% endif %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in assets %}
+          <tr>
+            <td class="font-mono" style="font-weight: 600; color: var(--toku-accent);">{{ a.asset_code }}</td>
+            <td>{{ a.category.name if a.category else "-" }}</td>
+            <td>{{ a.model or "-" }}</td>
+            <td class="font-mono">{{ a.serial or "-" }}</td>
+            <td class="font-mono">{{ a.mac_address or "-" }}</td>
+            <td>
+              {% if a.status == 'in_stock' %}
+                <span class="swiss-chip chip-in-stock">IN STOCK</span>
+              {% elif a.status == 'loaned' %}
+                <span class="swiss-chip chip-loaned">LOANED</span>
+              {% else %}
+                <span class="swiss-chip chip-lost">LOST</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    <!-- 2. Personnel -->
+    {% if persons %}
+    <div class="swiss-panel">
+      <div class="swiss-panel-header">
+        <h3 class="swiss-panel-title">{% if lang == 'ja' %}人事・従業員{% else %}Personnel{% endif %}</h3>
+        <span class="swiss-chip chip-neutral font-mono">{{ persons|length }}</span>
+      </div>
+      <table class="swiss-table">
+        <thead>
+          <tr>
+            <th>{% if lang == 'ja' %}社員コード{% else %}Staff Code{% endif %}</th>
+            <th>{% if lang == 'ja' %}氏名{% else %}Full Name{% endif %}</th>
+            <th>{% if lang == 'ja' %}部署{% else %}Department{% endif %}</th>
+            <th>{% if lang == 'ja' %}在籍状態{% else %}Status{% endif %}</th>
+            <th style="text-align: right;">{% if lang == 'ja' %}カルテ{% else %}Dossier{% endif %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in persons %}
+          <tr>
+            <td class="font-mono" style="font-weight: 600;">{{ p.staff_code }}</td>
+            <td style="font-weight: 600;">{{ p.full_name }}</td>
+            <td>{{ p.department.name_en if p.department else "-" }}</td>
+            <td>
+              {% if p.status == 'active' %}
+                <span class="swiss-chip chip-in-stock">ACTIVE</span>
+              {% else %}
+                <span class="swiss-chip chip-lost">RESIGNED</span>
+              {% endif %}
+            </td>
+            <td style="text-align: right;">
+              <a href="/person/{{ p.id }}/profile" class="button button-secondary" style="padding: 4px 10px; font-size: 11px;">
+                {% if lang == 'ja' %}360度カルテを開く{% else %}Open 360 Dossier{% endif %}
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    <!-- 3. Contracts -->
+    {% if contracts %}
+    <div class="swiss-panel">
+      <div class="swiss-panel-header">
+        <h3 class="swiss-panel-title">{% if lang == 'ja' %}購買契約{% else %}Procurement Contracts{% endif %}</h3>
+        <span class="swiss-chip chip-neutral font-mono">{{ contracts|length }}</span>
+      </div>
+      <table class="swiss-table">
+        <thead>
+          <tr>
+            <th>{% if lang == 'ja' %}契約番号{% else %}Contract Code{% endif %}</th>
+            <th>{% if lang == 'ja' %}納品状態{% else %}Delivery Status{% endif %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in contracts %}
+          <tr>
+            <td class="font-mono" style="font-weight: 600;">{{ c.code }}</td>
+            <td>
+              {% if c.delivery_status == 'delivered' %}
+                <span class="swiss-chip chip-in-stock">DELIVERED</span>
+              {% else %}
+                <span class="swiss-chip chip-warning">PENDING</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    <!-- 4. Access Cards -->
+    {% if cards %}
+    <div class="swiss-panel">
+      <div class="swiss-panel-header">
+        <h3 class="swiss-panel-title">{% if lang == 'ja' %}入退出カード{% else %}Access Cards{% endif %}</h3>
+        <span class="swiss-chip chip-neutral font-mono">{{ cards|length }}</span>
+      </div>
+      <table class="swiss-table">
+        <thead>
+          <tr>
+            <th>{% if lang == 'ja' %}カード番号{% else %}Card Number{% endif %}</th>
+            <th>{% if lang == 'ja' %}状態{% else %}Status{% endif %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for card in cards %}
+          <tr>
+            <td class="font-mono" style="font-weight: 600;">{{ card.card_no }}</td>
+            <td>
+              {% if card.current_active_loan %}
+                <span class="swiss-chip chip-loaned">ON LOAN</span>
+              {% else %}
+                <span class="swiss-chip chip-in-stock">AVAILABLE</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+  {% endif %}
+</div>
+{% endblock %}
