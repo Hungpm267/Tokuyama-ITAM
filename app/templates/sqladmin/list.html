@@ -10,7 +10,7 @@
         <div class="flex-grow-1 me-2 min-w-0">
           <div class="card">
             <div class="card-header d-flex align-items-center">
-              <h3 class="card-title mb-0" style="color: #002B49; font-weight: 700;">{{ model_view.name_plural }}</h3>
+              <h3 class="card-title mb-0" style="color: var(--toku-brand-slate-dark); font-weight: 700;">{{ model_view.name_plural }}</h3>
               <div class="ms-auto d-flex align-items-center">
                 {% block model_menu_bar %}
                 {% if model_view.can_export and model_view.check_can_export(request) %}
@@ -46,7 +46,7 @@
                 {% endif %}
                 {% if model_view.can_create and model_view.check_can_create(request) %}
                 <div class="ms-2 d-inline-block">
-                  <a href="{{ url_for('admin:create', identity=model_view.identity) }}" class="btn btn-primary" style="background: #0077C8; border-color: #0077C8; font-weight: 600;">
+                  <a href="{{ url_for('admin:create', identity=model_view.identity) }}" class="btn btn-primary" style="font-weight: 600;">
                     <i class="fa-solid fa-plus me-1"></i> Thêm {{ model_view.name }}
                   </a>
                 </div>
@@ -106,7 +106,7 @@
                       data-search-auto-submit="{{ 'true' if model_view.search_auto_submit else 'false' }}"
                       placeholder="Tìm kiếm: {{ model_view.search_placeholder() }}"
                       value="{{ request.query_params.get('search', '') }}">
-                    <button id="search-button" class="btn btn-primary" type="button" style="background: #0077C8; border-color: #0077C8;">
+                    <button id="search-button" class="btn btn-primary" type="button">
                       <i class="fa-solid fa-magnifying-glass me-1"></i> Tìm
                     </button>
                     <button id="search-reset" class="btn btn-light border" type="button" {% if not request.query_params.get('search')
