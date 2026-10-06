@@ -1,11 +1,12 @@
-__pycache__/
-*.py[cod]
-*$py.class
-*.sqlite3
-*.db
-.env
 .venv/
-venv/
-staticfiles/
-media/
+__pycache__/
+*.pyc
+.env
+.env.*
+*.dump
 .pytest_cache/
+.ruff_cache/
+
+# Khoá mã hoá KHÔNG BAO GIỜ vào repo
+*.key
+secrets/
