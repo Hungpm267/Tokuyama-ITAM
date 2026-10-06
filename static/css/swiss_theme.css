@@ -443,11 +443,11 @@ body {
   border-radius: var(--toku-radius-lg);
   padding: 20px 22px;
   box-shadow: var(--toku-shadow-sm);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .toku-stat-card:hover {
-  transform: translateY(-2px);
+  border-color: #cbd5e1;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
