@@ -5,7 +5,7 @@
 {% endblock %}
 
 {% block content %}
-<!-- Personnel Dossier Card matching anhtheme.jpg -->
+<!-- Personnel Dossier Card -->
 <div class="toku-card" style="padding: 32px 40px; margin-bottom: 24px;">
   <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
     <div>
@@ -17,16 +17,20 @@
           {{ person.full_name }}
         </h1>
         <span class="toku-badge {{ person.status }}">
-          {{ person.status|upper }}
+          {% if person.status == 'active' %}
+            {% if lang == 'vi' %}ĐANG LÀM VIỆC{% elif lang == 'ja' %}在籍中{% else %}ACTIVE{% endif %}
+          {% else %}
+            {% if lang == 'vi' %}ĐÃ NGHỈ VIỆC{% elif lang == 'ja' %}退職済み{% else %}RESIGNED{% endif %}
+          {% endif %}
         </span>
       </div>
       <div style="font-size: 14px; color: var(--toku-text-secondary);">
-        {% if lang == 'ja' %}所属部署{% else %}Department{% endif %}: 
+        {% if lang == 'ja' %}所属部署{% elif lang == 'en' %}Department{% else %}Phòng ban / Bộ phận{% endif %}: 
         <strong>
           {% if lang == 'ja' and person.department and person.department.name_ja %}
             {{ person.department.name_ja }}
           {% else %}
-            {{ person.department.name_en if person.department else "Unassigned" }}
+            {{ person.department.name_en if person.department else "Chưa phân bổ" }}
           {% endif %}
         </strong>
       </div>
@@ -34,7 +38,7 @@
 
     <div>
       <a href="/search" class="btn-secondary" style="padding: 10px 20px; font-size: 13px;">
-        ■ {% if lang == 'ja' %}検索一覧に戻る{% else %}Back to Search{% endif %}
+        ■ {% if lang == 'ja' %}検索一覧に戻る{% elif lang == 'en' %}Back to Search{% else %}Quay lại tra cứu{% endif %}
       </a>
     </div>
   </div>
@@ -45,13 +49,16 @@
   <div class="toku-card-header">
     <div>
       <h2 class="toku-card-title" style="font-size: 18px;">
-        {% if lang == 'ja' %}現在貸出中の機器{% else %}Active Hardware Deployed{% endif %}
+        {% if lang == 'ja' %}現在貸出中の機器
+        {% elif lang == 'en' %}Active Hardware Deployed
+        {% else %}Thiết Bị IT Đang Cấp Phát (Đang Mượn)
+        {% endif %}
       </h2>
       <div style="font-size: 12px; color: var(--toku-text-muted); margin-top: 2px;">
-        FR-08: IT devices currently in custody of this employee
+        FR-08: {% if lang == 'vi' %}Thiết bị phần cứng đang được nhân viên này trực tiếp giữ và sử dụng{% else %}IT devices currently in custody of this employee{% endif %}
       </div>
     </div>
-    <span class="toku-badge loaned">{{ current_assignments|length }} units</span>
+    <span class="toku-badge loaned">{{ current_assignments|length }} {% if lang == 'vi' %}thiết bị{% else %}units{% endif %}</span>
   </div>
 
   {% if current_assignments %}
@@ -59,13 +66,13 @@
     <table class="toku-table">
       <thead>
         <tr>
-          <th>{% if lang == 'ja' %}資産コード{% else %}Asset Code{% endif %}</th>
-          <th>{% if lang == 'ja' %}種別{% else %}Category{% endif %}</th>
-          <th>{% if lang == 'ja' %}型番{% else %}Model{% endif %}</th>
+          <th>{% if lang == 'ja' %}資産コード{% elif lang == 'en' %}Asset Code{% else %}Mã tài sản{% endif %}</th>
+          <th>{% if lang == 'ja' %}種別{% elif lang == 'en' %}Category{% else %}Loại thiết bị{% endif %}</th>
+          <th>{% if lang == 'ja' %}型番{% elif lang == 'en' %}Model{% else %}Model / Cấu hình{% endif %}</th>
           <th>Serial</th>
           <th>MAC Address</th>
-          <th>{% if lang == 'ja' %}貸出日{% else %}Assignment Date{% endif %}</th>
-          <th>{% if lang == 'ja' %}備考{% else %}Remarks{% endif %}</th>
+          <th>{% if lang == 'ja' %}貸出日{% elif lang == 'en' %}Assignment Date{% else %}Ngày bàn giao{% endif %}</th>
+          <th>{% if lang == 'ja' %}備考{% elif lang == 'en' %}Remarks{% else %}Ghi chú{% endif %}</th>
         </tr>
       </thead>
       <tbody>
@@ -85,7 +92,10 @@
   </div>
   {% else %}
   <div style="padding: 32px 16px; text-align: center; color: var(--toku-text-muted); background: var(--toku-surface-subtle); border-radius: var(--toku-radius-md);">
-    {% if lang == 'ja' %}現在貸出中の機器はありません。{% else %}No hardware units are currently assigned to this personnel.{% endif %}
+    {% if lang == 'ja' %}現在貸出中の機器はありません。
+    {% elif lang == 'en' %}No hardware units are currently assigned to this personnel.
+    {% else %}Nhân viên này hiện không giữ thiết bị phần cứng nào.
+    {% endif %}
   </div>
   {% endif %}
 </div>
@@ -95,10 +105,13 @@
   <div class="toku-card-header">
     <div>
       <h2 class="toku-card-title" style="font-size: 18px;">
-        {% if lang == 'ja' %}割り当て済みライセンス{% else %}Software Licenses Allocated{% endif %}
+        {% if lang == 'ja' %}割り当て済みライセンス
+        {% elif lang == 'en' %}Software Licenses Allocated
+        {% else %}Bản Quyền Phần Mềm (Licenses) Được Cấp
+        {% endif %}
       </h2>
       <div style="font-size: 12px; color: var(--toku-text-muted); margin-top: 2px;">
-        FR-10: Software seats bound to employee or currently held hardware
+        FR-10: {% if lang == 'vi' %}Bản quyền phần mềm gán trực tiếp cho nhân viên hoặc máy nhân viên đang giữ{% else %}Software seats bound to employee or currently held hardware{% endif %}
       </div>
     </div>
     <span class="toku-badge role">{{ licenses_assigned|length }} licenses</span>
@@ -109,10 +122,10 @@
     <table class="toku-table">
       <thead>
         <tr>
-          <th>{% if lang == 'ja' %}ソフトウェア{% else %}Software Product{% endif %}</th>
-          <th>{% if lang == 'ja' %}対象{% else %}Scope{% endif %}</th>
-          <th>{% if lang == 'ja' %}割当年月日{% else %}Allocated Date{% endif %}</th>
-          <th>{% if lang == 'ja' %}有効期限{% else %}Expiry Date{% endif %}</th>
+          <th>{% if lang == 'ja' %}ソフトウェア{% elif lang == 'en' %}Software Product{% else %}Phần mềm / Dịch vụ{% endif %}</th>
+          <th>{% if lang == 'ja' %}対象{% elif lang == 'en' %}Scope{% else %}Phạm vi gán{% endif %}</th>
+          <th>{% if lang == 'ja' %}割当年月日{% elif lang == 'en' %}Allocated Date{% else %}Ngày kích hoạt{% endif %}</th>
+          <th>{% if lang == 'ja' %}有効期限{% elif lang == 'en' %}Expiry Date{% else %}Hạn sử dụng{% endif %}</th>
         </tr>
       </thead>
       <tbody>
@@ -121,15 +134,15 @@
           <td style="font-weight: 600; color: #0f172a;">{{ la.license.product.name }}</td>
           <td>
             {% if la.person_id %}
-              <span class="toku-badge role">PERSON</span>
+              <span class="toku-badge role">{% if lang == 'vi' %}THEO NHÂN VIÊN{% else %}PERSON{% endif %}</span>
             {% else %}
-              <span class="toku-badge in_stock">DEVICE ({{ la.asset.asset_code }})</span>
+              <span class="toku-badge in_stock">{% if lang == 'vi' %}THEO MÁY{% else %}DEVICE{% endif %} ({{ la.asset.asset_code }})</span>
             {% endif %}
           </td>
           <td class="toku-mono">{{ la.assigned_at.strftime('%Y-%m-%d') }}</td>
           <td>
             {% if la.license.is_perpetual %}
-              <span class="toku-badge in_stock">PERPETUAL</span>
+              <span class="toku-badge in_stock">{% if lang == 'vi' %}VĨNH VIỄN{% else %}PERPETUAL{% endif %}</span>
             {% else %}
               <span class="toku-mono">{{ la.license.expiry_date.strftime('%Y-%m-%d') if la.license.expiry_date else "-" }}</span>
             {% endif %}
@@ -141,7 +154,10 @@
   </div>
   {% else %}
   <div style="padding: 32px 16px; text-align: center; color: var(--toku-text-muted); background: var(--toku-surface-subtle); border-radius: var(--toku-radius-md);">
-    {% if lang == 'ja' %}割り当てられたライセンスはありません。{% else %}No software licenses allocated to this employee.{% endif %}
+    {% if lang == 'ja' %}割り当てられたライセンスはありません。
+    {% elif lang == 'en' %}No software licenses allocated to this employee.
+    {% else %}Không có license phần mềm nào được cấp riêng cho nhân viên này.
+    {% endif %}
   </div>
   {% endif %}
 </div>
@@ -151,10 +167,13 @@
   <div class="toku-card-header">
     <div>
       <h2 class="toku-card-title" style="font-size: 18px;">
-        {% if lang == 'ja' %}セキュリティカード貸出状況{% else %}Physical Access Card Loans{% endif %}
+        {% if lang == 'ja' %}セキュリティカード貸出状況
+        {% elif lang == 'en' %}Physical Access Card Loans
+        {% else %}Thẻ Từ Ra Vào Văn Phòng Đang Giữ
+        {% endif %}
       </h2>
       <div style="font-size: 12px; color: var(--toku-text-muted); margin-top: 2px;">
-        FR-11: Room access cards in custody
+        FR-11: {% if lang == 'vi' %}Thẻ từ ra vào các phòng chức năng đang cho mượn{% else %}Room access cards in custody{% endif %}
       </div>
     </div>
     <span class="toku-badge role">{{ current_cards|length }} active</span>
@@ -165,10 +184,10 @@
     <table class="toku-table">
       <thead>
         <tr>
-          <th>{% if lang == 'ja' %}カード番号{% else %}Card No{% endif %}</th>
-          <th>{% if lang == 'ja' %}貸出日{% else %}Loan Date{% endif %}</th>
-          <th>{% if lang == 'ja' %}返却予定日{% else %}Expected Return{% endif %}</th>
-          <th>{% if lang == 'ja' %}備考{% else %}Remarks{% endif %}</th>
+          <th>{% if lang == 'ja' %}カード番号{% elif lang == 'en' %}Card No{% else %}Mã thẻ từ{% endif %}</th>
+          <th>{% if lang == 'ja' %}貸出日{% elif lang == 'en' %}Loan Date{% else %}Ngày mượn{% endif %}</th>
+          <th>{% if lang == 'ja' %}返却予定日{% elif lang == 'en' %}Expected Return{% else %}Hạn trả dự kiến{% endif %}</th>
+          <th>{% if lang == 'ja' %}備考{% elif lang == 'en' %}Remarks{% else %}Ghi chú{% endif %}</th>
         </tr>
       </thead>
       <tbody>
@@ -185,7 +204,10 @@
   </div>
   {% else %}
   <div style="padding: 32px 16px; text-align: center; color: var(--toku-text-muted); background: var(--toku-surface-subtle); border-radius: var(--toku-radius-md);">
-    {% if lang == 'ja' %}現在貸出中のカードはありません。{% else %}No active access cards loaned.{% endif %}
+    {% if lang == 'ja' %}現在貸出中のカードはありません。
+    {% elif lang == 'en' %}No active access cards loaned.
+    {% else %}Nhân viên hiện không mượn thẻ từ ra vào nào.
+    {% endif %}
   </div>
   {% endif %}
 </div>
@@ -195,13 +217,16 @@
   <div class="toku-card-header">
     <div>
       <h2 class="toku-card-title" style="font-size: 18px;">
-        {% if lang == 'ja' %}過去の機器配備履歴 (返却済み){% else %}Past Hardware Deployments (Returned History){% endif %}
+        {% if lang == 'ja' %}過去の機器配備履歴 (返却済み)
+        {% elif lang == 'en' %}Past Hardware Deployments (Returned History)
+        {% else %}Lịch Sử Thu Hồi & Trả Thiết Bị
+        {% endif %}
       </h2>
       <div style="font-size: 12px; color: var(--toku-text-muted); margin-top: 2px;">
-        FR-08: Complete lifecycle archive of previously held devices
+        FR-08: {% if lang == 'vi' %}Nhật ký toàn bộ các thiết bị nhân viên đã từng mượn và đã trả về kho{% else %}Complete lifecycle archive of previously held devices{% endif %}
       </div>
     </div>
-    <span class="toku-badge role">{{ past_assignments|length }} records</span>
+    <span class="toku-badge role">{{ past_assignments|length }} {% if lang == 'vi' %}lần trả{% else %}records{% endif %}</span>
   </div>
 
   {% if past_assignments %}
@@ -209,12 +234,12 @@
     <table class="toku-table">
       <thead>
         <tr>
-          <th>{% if lang == 'ja' %}資産コード{% else %}Asset Code{% endif %}</th>
-          <th>{% if lang == 'ja' %}型番{% else %}Model{% endif %}</th>
+          <th>{% if lang == 'ja' %}資産コード{% elif lang == 'en' %}Asset Code{% else %}Mã tài sản{% endif %}</th>
+          <th>{% if lang == 'ja' %}型番{% elif lang == 'en' %}Model{% else %}Model / Cấu hình{% endif %}</th>
           <th>Serial</th>
-          <th>{% if lang == 'ja' %}貸出日{% else %}Loaned Date{% endif %}</th>
-          <th>{% if lang == 'ja' %}返却日{% else %}Returned Date{% endif %}</th>
-          <th>{% if lang == 'ja' %}備考{% else %}Remarks{% endif %}</th>
+          <th>{% if lang == 'ja' %}貸出日{% elif lang == 'en' %}Loaned Date{% else %}Ngày mượn{% endif %}</th>
+          <th>{% if lang == 'ja' %}返却日{% elif lang == 'en' %}Returned Date{% else %}Ngày đã trả về kho{% endif %}</th>
+          <th>{% if lang == 'ja' %}備考{% elif lang == 'en' %}Remarks{% else %}Ghi chú{% endif %}</th>
         </tr>
       </thead>
       <tbody>
@@ -233,7 +258,10 @@
   </div>
   {% else %}
   <div style="padding: 32px 16px; text-align: center; color: var(--toku-text-muted); background: var(--toku-surface-subtle); border-radius: var(--toku-radius-md);">
-    {% if lang == 'ja' %}過去の返却履歴はありません。{% else %}No historical returned assignments recorded.{% endif %}
+    {% if lang == 'ja' %}過去の返却履歴はありません。
+    {% elif lang == 'en' %}No historical returned assignments recorded.
+    {% else %}Chưa có lịch sử trả máy nào trước đây.
+    {% endif %}
   </div>
   {% endif %}
 </div>

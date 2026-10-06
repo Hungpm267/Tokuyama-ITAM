@@ -1,9 +1,14 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ lang or 'vi' }}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Shared Workstation Access Log | Tokuyama Vietnam</title>
+  <title>
+    {% if lang == 'ja' %}ログイン | Tokuyama ITAM
+    {% elif lang == 'en' %}Sign In | Tokuyama Vietnam ITAM
+    {% else %}Đăng nhập | Hệ thống Quản lý Tài sản IT Tokuyama
+    {% endif %}
+  </title>
   <link rel="stylesheet" href="/static/css/swiss_theme.css">
   <style>
     body {
@@ -12,43 +17,51 @@
       align-items: center;
       justify-content: center;
       min-height: 100vh;
-      background-color: #f4f6fa;
+      background-color: var(--toku-canvas);
       padding: 24px;
     }
     .toku-login-card {
       width: 100%;
-      max-width: 540px;
-      background: #ffffff;
-      border: 1px solid #e2e8f0;
-      border-radius: 20px;
+      max-width: 520px;
+      background: var(--toku-surface);
+      border: 1px solid var(--toku-border);
+      border-radius: var(--toku-radius-card);
       padding: 40px;
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+      box-shadow: var(--toku-shadow-card);
     }
     .toku-masthead {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 28px;
-    }
-    .toku-dept-text {
-      font-size: 13px;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      color: #526071;
+      margin-bottom: 24px;
     }
     .toku-page-title {
       font-size: 24px;
       font-weight: 800;
-      color: #0f172a;
+      color: var(--toku-text);
       letter-spacing: -0.02em;
-      margin: 0 0 8px 0;
+      margin: 0 0 6px 0;
+    }
+    .toku-subtitle {
+      font-size: 13.5px;
+      color: var(--toku-text-muted);
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+    .toku-credentials-box {
+      margin-top: 24px;
+      padding: 14px 16px;
+      background: #f8fafc;
+      border: 1px dashed var(--toku-border-strong);
+      border-radius: var(--toku-radius-md);
+      font-size: 12px;
+      color: var(--toku-text-secondary);
     }
   </style>
 </head>
 <body>
   <div class="toku-login-card">
-    <!-- Masthead: Logo on left, Department on right -->
+    <!-- Header: Tokuyama Logo & System Badge -->
     <div class="toku-masthead">
       <svg width="175" height="34" viewBox="0 0 200 40" fill="none" xmlns="http://www.w3.org/2000/svg">
         <text x="0" y="27" font-family="'Inter', sans-serif" font-size="22" font-weight="800" fill="#1e293b" letter-spacing="0.02em">TOKUYAMA</text>
@@ -59,13 +72,21 @@
         <circle cx="182" cy="13" r="6" fill="#FFFFFF" stroke="#1A365D" stroke-width="3"/>
         <circle cx="172" cy="28" r="6" fill="#FFFFFF" stroke="#FF6B00" stroke-width="3"/>
       </svg>
-      <div class="toku-dept-text">IT DEPARTMENT • WORKSTATION 01</div>
+      <span class="toku-station-badge">TOKUYAMA VIETNAM • ITAM</span>
     </div>
 
-    <!-- Title & Warning Strip -->
-    <h1 class="toku-page-title">Shared Workstation Access Log</h1>
-    <div class="toku-warning-strip" style="background: #fffbeb; border: 1px solid #fde68a; color: #92400e; margin-bottom: 24px;">
-      ⚠️ Warning: Active session running by HOANG VAN CANH
+    <!-- Title & System Description -->
+    <h1 class="toku-page-title">
+      {% if lang == 'ja' %}IT資産管理システム ログイン
+      {% elif lang == 'en' %}IT Asset Management Portal
+      {% else %}Hệ Thống Quản Lý Tài Sản IT
+      {% endif %}
+    </h1>
+    <div class="toku-subtitle">
+      {% if lang == 'ja' %}ハードウェア機器、ライセンス、セキュリティカードの統合管理ポータル
+      {% elif lang == 'en' %}Centralized tracking for hardware assets, software licenses, and access cards
+      {% else %}Cổng thông tin quản lý tập trung tài sản IT, bản quyền phần mềm và thẻ từ ra vào
+      {% endif %}
     </div>
 
     {% if error %}
@@ -74,31 +95,52 @@
     </div>
     {% endif %}
 
-    <!-- Login Form matching anhtheme.jpg inputs and buttons -->
+    <!-- Login Form -->
     <form method="post" action="/login">
       <div class="toku-form-group">
-        <label class="toku-label">Operator Name <span class="required">*</span></label>
-        <input type="text" name="username" required autofocus class="toku-input" placeholder="e.g., admin or employee ID">
+        <label class="toku-label">
+          {% if lang == 'ja' %}ユーザー名 (Username){% elif lang == 'en' %}Username{% else %}Tên đăng nhập (Username){% endif %}
+          <span class="required">*</span>
+        </label>
+        <input type="text" name="username" required autofocus class="toku-input" placeholder="e.g. admin, ga_manager, director">
       </div>
 
-      <div class="toku-form-group" style="margin-bottom: 28px;">
-        <label class="toku-label">Access Credential / Password <span class="required">*</span></label>
-        <input type="password" name="password" required class="toku-input" placeholder="Enter password (e.g. tokuadmin2026)">
+      <div class="toku-form-group" style="margin-bottom: 24px;">
+        <label class="toku-label">
+          {% if lang == 'ja' %}パスワード (Password){% elif lang == 'en' %}Password{% else %}Mật khẩu (Password){% endif %}
+          <span class="required">*</span>
+        </label>
+        <input type="password" name="password" required class="toku-input" placeholder="••••••••••••">
       </div>
 
-      <!-- Action Buttons: ▶ Start Session & ■ End Session -->
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-        <button type="submit" class="btn-primary" style="width: 100%;">
-          ▶ Start Session
-        </button>
-        <button type="reset" class="btn-secondary" style="width: 100%;">
-          ■ End Session
-        </button>
-      </div>
+      <!-- Single Logical Primary Action Button -->
+      <button type="submit" class="btn-primary" style="width: 100%; height: 46px; font-size: 15px;">
+        ▶ {% if lang == 'ja' %}システムにログイン (Sign In){% elif lang == 'en' %}Sign In to ITAM Portal{% else %}Đăng nhập hệ thống (Sign In){% endif %}
+      </button>
     </form>
+
+    <!-- Language Switcher & Quick Accounts Helper -->
+    <div class="toku-credentials-box">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; color: var(--toku-text-muted);">
+        <span>{% if lang == 'ja' %}言語切替{% elif lang == 'en' %}Language{% else %}Ngôn ngữ hệ thống{% endif %}</span>
+        <div style="display: flex; gap: 8px;">
+          <a href="/set-lang?lang=vi&next=/login" style="color: {% if lang == 'vi' or not lang %}var(--toku-primary); font-weight: 700;{% else %}#64748b;{% endif %} text-decoration: none;">Tiếng Việt</a>
+          <span>•</span>
+          <a href="/set-lang?lang=en&next=/login" style="color: {% if lang == 'en' %}var(--toku-primary); font-weight: 700;{% else %}#64748b;{% endif %} text-decoration: none;">English</a>
+          <span>•</span>
+          <a href="/set-lang?lang=ja&next=/login" style="color: {% if lang == 'ja' %}var(--toku-primary); font-weight: 700;{% else %}#64748b;{% endif %} text-decoration: none;">日本語</a>
+        </div>
+      </div>
+      <div style="color: #64748b; font-size: 11.5px; line-height: 1.6;">
+        <strong>Tài khoản mặc định:</strong><br>
+        • IT Admin: <code class="toku-mono">admin</code> / <code class="toku-mono">tokuadmin2026</code><br>
+        • GA Manager: <code class="toku-mono">ga_manager</code> / <code class="toku-mono">toku2026ga</code><br>
+        • Executive: <code class="toku-mono">director</code> / <code class="toku-mono">toku2026exec</code>
+      </div>
+    </div>
   </div>
 
-  <div class="toku-footer" style="margin-top: 24px;">
+  <div class="toku-footer">
     Tokuyama Vietnam Co., Ltd. • Internal Operational Utility (GMT+7)
   </div>
 </body>

@@ -1,26 +1,47 @@
 {% extends "base.html" %}
 
 {% block title %}
-{% if lang == 'ja' %}ゴミ箱台帳 | Tokuyama ITAM{% else %}Trash Registry | Tokuyama Vietnam ITAM{% endif %}
+{% if lang == 'ja' %}ゴミ箱台帳 | Tokuyama ITAM
+{% elif lang == 'en' %}Trash Registry | Tokuyama Vietnam ITAM
+{% else %}Thùng Rác & Khôi Phục Dữ Liệu | Tokuyama ITAM
+{% endif %}
 {% endblock %}
 
 {% block content %}
-<!-- Top Header Card matching anhtheme.jpg -->
+<!-- Top Header Card -->
 <div class="toku-card" style="padding: 32px 40px; margin-bottom: 24px;">
   <div class="toku-card-header" style="margin-bottom: 20px;">
     <div>
       <h1 class="toku-card-title">
-        {% if lang == 'ja' %}ゴミ箱台帳・論理削除復元 (Trash Registry){% else %}Trash Registry & Soft-Delete Recovery{% endif %}
+        {% if lang == 'ja' %}ゴミ箱台帳・論理削除復元 (Trash Registry)
+        {% elif lang == 'en' %}Trash Registry & Soft-Delete Recovery
+        {% else %}Thùng Rác Hệ Thống & Khôi Phục Dữ Liệu (Soft-Delete)
+        {% endif %}
       </h1>
-      <div style="font-size: 13px; color: var(--toku-text-muted); margin-top: 4px;">
-        FR-09: Enterprise soft-delete audit depository with single-click restoration
+      <div style="font-size: 13.5px; color: var(--toku-text-muted); margin-top: 4px;">
+        {% if lang == 'ja' %}FR-09: 誤削除防止のための論理削除監査ログとワンクリック復元機能
+        {% elif lang == 'en' %}FR-09: Enterprise soft-delete audit depository with single-click restoration
+        {% else %}FR-09: Cơ chế xóa mềm bảo toàn dữ liệu 100%, cho phép IT Admin kiểm tra lý do và phục hồi
+        {% endif %}
       </div>
     </div>
-    <span class="toku-badge role">IT ADMIN EXCLUSIVE</span>
+    <div style="display: flex; gap: 10px; align-items: center;">
+      <span class="toku-badge role">IT ADMIN EXCLUSIVE</span>
+      <a href="/dashboard" class="btn-secondary" style="padding: 8px 16px; font-size: 12.5px;">
+        ■ {% if lang == 'ja' %}ダッシュボードに戻る{% elif lang == 'en' %}Back to Dashboard{% else %}Về trang chủ{% endif %}
+      </a>
+    </div>
   </div>
 
-  <div class="toku-warning-strip">
-    ⚠️ Warning: Active IT Admin clearance. Records soft-deleted here are hidden from normal operational view, but can be restored with 100% audit fidelity.
+  <div class="toku-info-strip">
+    <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #0284c7; margin-right: 6px;"></span>
+    {% if lang == 'ja' %}
+      通知: ここに一覧表示されているレコードは論理削除されています。本番データとして再利用する場合は「復元実行」をクリックしてください。
+    {% elif lang == 'en' %}
+      Notice: Records listed here are soft-deleted and hidden from daily operations. Click "Restore Record" to safely return any entity to active state.
+    {% else %}
+      Lưu ý: Các bản ghi dưới đây đã bị xóa mềm và ẩn khỏi màn hình vận hành. IT Admin có thể nhấn "Phục hồi bản ghi" để đưa dữ liệu trở lại hoạt động bình thường.
+    {% endif %}
   </div>
 </div>
 
@@ -28,9 +49,12 @@
 <div class="toku-card" style="padding: 28px;">
   <div class="toku-card-header">
     <h2 class="toku-card-title" style="font-size: 18px;">
-      {% if lang == 'ja' %}削除済みエンティティ一覧{% else %}Soft-Deleted Entity Index{% endif %}
+      {% if lang == 'ja' %}削除済みエンティティ一覧
+      {% elif lang == 'en' %}Soft-Deleted Entity Index
+      {% else %}Danh Sách Bản Ghi Đã Xóa Mềm
+      {% endif %}
     </h2>
-    <span class="toku-badge danger">{{ items|length }} records</span>
+    <span class="toku-badge danger">{{ items|length }} {% if lang == 'vi' %}bản ghi{% else %}records{% endif %}</span>
   </div>
 
   {% if items %}
@@ -38,11 +62,11 @@
     <table class="toku-table">
       <thead>
         <tr>
-          <th>{% if lang == 'ja' %}種別{% else %}Entity Type{% endif %}</th>
-          <th>{% if lang == 'ja' %}識別名{% else %}Record Identifier{% endif %}</th>
-          <th>{% if lang == 'ja' %}削除日時{% else %}Deletion Timestamp{% endif %}</th>
-          <th>{% if lang == 'ja' %}削除理由{% else %}Reason Justification{% endif %}</th>
-          <th style="text-align: right;">{% if lang == 'ja' %}操作{% else %}Action{% endif %}</th>
+          <th>{% if lang == 'ja' %}種別{% elif lang == 'en' %}Entity Type{% else %}Loại đối tượng{% endif %}</th>
+          <th>{% if lang == 'ja' %}識別名{% elif lang == 'en' %}Record Identifier{% else %}Mã / Tên định danh{% endif %}</th>
+          <th>{% if lang == 'ja' %}削除日時{% elif lang == 'en' %}Deletion Timestamp{% else %}Thời điểm xóa{% endif %}</th>
+          <th>{% if lang == 'ja' %}削除理由{% elif lang == 'en' %}Reason Justification{% else %}Lý do xóa{% endif %}</th>
+          <th style="text-align: right;">{% if lang == 'ja' %}操作{% elif lang == 'en' %}Action{% else %}Thao tác{% endif %}</th>
         </tr>
       </thead>
       <tbody>
@@ -52,14 +76,14 @@
           <td style="font-weight: 700; color: #0f172a;">{{ item.name }}</td>
           <td class="toku-mono">{{ item.obj.deleted_at.strftime('%Y-%m-%d %H:%M') if item.obj.deleted_at else "-" }}</td>
           <td style="color: #991b1b; font-size: 12.5px; font-weight: 500;">
-            {{ item.obj.delete_reason or "No reason specified" }}
+            {{ item.obj.delete_reason or "Không ghi lý do" }}
           </td>
           <td style="text-align: right;">
             <form method="post" action="/trash/restore" style="margin: 0; display: inline-block;">
               <input type="hidden" name="model_name" value="{{ item.model_name }}">
               <input type="hidden" name="item_id" value="{{ item.obj.id }}">
               <button type="submit" class="btn-primary" style="padding: 6px 14px; font-size: 12px; height: 32px;">
-                ▶ {% if lang == 'ja' %}復元実行{% else %}Restore Record{% endif %}
+                ▶ {% if lang == 'ja' %}復元実行{% elif lang == 'en' %}Restore Record{% else %}Phục hồi bản ghi{% endif %}
               </button>
             </form>
           </td>
@@ -71,10 +95,16 @@
   {% else %}
   <div style="padding: 48px; text-align: center; color: var(--toku-text-muted); background: var(--toku-surface-subtle); border-radius: var(--toku-radius-md);">
     <div style="font-size: 16px; font-weight: 600; color: #0f172a; margin-bottom: 6px;">
-      ✓ {% if lang == 'ja' %}ゴミ箱は空です。{% else %}Trash depository is empty.{% endif %}
+      ✓ {% if lang == 'ja' %}ゴミ箱は空です。
+      {% elif lang == 'en' %}Trash depository is empty.
+      {% else %}Thùng rác hiện đang trống.
+      {% endif %}
     </div>
     <div style="font-size: 13px;">
-      {% if lang == 'ja' %}現在、論理削除されたレコードはありません。{% else %}Zero soft-deleted entities found in the system.{% endif %}
+      {% if lang == 'ja' %}現在、論理削除されたレコードはありません。
+      {% elif lang == 'en' %}Zero soft-deleted entities found in the system.
+      {% else %}Không có bản ghi nào bị xóa mềm trong cơ sở dữ liệu.
+      {% endif %}
     </div>
   </div>
   {% endif %}

@@ -1,19 +1,28 @@
 {% extends "base.html" %}
 
 {% block title %}
-{% if lang == 'ja' %}グローバル検索 | Tokuyama ITAM{% else %}Global Search | Tokuyama Vietnam ITAM{% endif %}
+{% if lang == 'ja' %}グローバル検索 | Tokuyama ITAM
+{% elif lang == 'en' %}Global Search | Tokuyama Vietnam ITAM
+{% else %}Tìm kiếm toàn cục | Tokuyama Vietnam ITAM
+{% endif %}
 {% endblock %}
 
 {% block content %}
-<!-- Search Form Card matching anhtheme.jpg -->
+<!-- Search Form Card -->
 <div class="toku-card" style="padding: 32px 40px; margin-bottom: 24px;">
   <div class="toku-card-header" style="margin-bottom: 20px;">
     <div>
       <h1 class="toku-card-title">
-        {% if lang == 'ja' %}全社IT統合検索 (Global Search){% else %}Enterprise IT Global Search{% endif %}
+        {% if lang == 'ja' %}全社IT統合検索 (Global Search)
+        {% elif lang == 'en' %}Enterprise IT Global Search
+        {% else %}Tra Cứu & Tìm Kiếm Toàn Cục
+        {% endif %}
       </h1>
-      <div style="font-size: 13px; color: var(--toku-text-muted); margin-top: 4px;">
-        FR-03: Real-time lookup across Assets, Personnel, Contracts, and Access Cards
+      <div style="font-size: 13.5px; color: var(--toku-text-muted); margin-top: 4px;">
+        {% if lang == 'ja' %}FR-03: IT資産、従業員、調達契約、入退室カードのリアルタイム検索
+        {% elif lang == 'en' %}FR-03: Instant search across Assets, Personnel, Procurement Contracts, and Access Cards
+        {% else %}FR-03: Tra cứu tức thời trên toàn bộ Thiết bị IT, Nhân sự, Hợp đồng và Thẻ từ ra vào
+        {% endif %}
       </div>
     </div>
   </div>
@@ -21,17 +30,18 @@
   <form method="get" action="/search">
     <div class="toku-form-group">
       <label class="toku-label">
-        {% if lang == 'ja' %}検索キーワード{% else %}Search Query / Keyword{% endif %} <span class="required">*</span>
+        {% if lang == 'ja' %}検索キーワード{% elif lang == 'en' %}Search Keyword{% else %}Từ khóa tìm kiếm{% endif %}
+        <span class="required">*</span>
       </label>
-      <input type="text" name="q" value="{{ query }}" required autofocus class="toku-input" placeholder="{% if lang == 'ja' %}機器コード、シリアル番号、HWID、MACアドレス、社員名、契約コード...{% else %}e.g., LAP-2026, Dell, 5CD1234, TVN-001, Nguyễn Văn A, KHCM-2026...{% endif %}" style="height: 46px;">
+      <input type="text" name="q" value="{{ query }}" required autofocus class="toku-input" placeholder="{% if lang == 'ja' %}機器コード、シリアル番号、HWID、MACアドレス、社員名、契約コード...{% elif lang == 'en' %}e.g. LAP-2026, Dell, 5CD1234, TVN-001, Nguyễn Văn A, KHCM-2026...{% else %}Nhập mã tài sản (LAP-...), số Serial, địa chỉ MAC, tên nhân viên hoặc mã hợp đồng (KHCM-...)...{% endif %}" style="height: 46px;">
     </div>
 
     <div style="display: flex; gap: 12px; align-items: center;">
       <button type="submit" class="btn-primary" style="height: 44px; padding: 0 28px;">
-        ▶ {% if lang == 'ja' %}検索を実行{% else %}Search Database{% endif %}
+        ▶ {% if lang == 'ja' %}検索を実行{% elif lang == 'en' %}Search Database{% else %}Tra cứu ngay{% endif %}
       </button>
       <a href="/search" class="btn-secondary" style="height: 44px; padding: 0 20px;">
-        ■ {% if lang == 'ja' %}クリア{% else %}Clear Filter{% endif %}
+        ■ {% if lang == 'ja' %}クリア{% elif lang == 'en' %}Clear Filter{% else %}Đặt lại bộ lọc{% endif %}
       </a>
     </div>
   </form>
@@ -40,20 +50,29 @@
 {% if query %}
   <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding: 0 8px;">
     <div style="font-size: 16px; font-weight: 700; color: #0f172a;">
-      {% if lang == 'ja' %}検索結果{% else %}Search Results for{% endif %}: <span style="color: #005bac;">"{{ query }}"</span>
+      {% if lang == 'ja' %}検索結果{% elif lang == 'en' %}Search Results for{% else %}Kết quả tra cứu cho{% endif %}: 
+      <span style="color: #005bac;">"{{ query }}"</span>
     </div>
     <div>
-      <span class="toku-badge role" style="font-size: 12px; padding: 4px 10px;">{{ total_count }} {% if lang == 'ja' %}件該当{% else %}records found{% endif %}</span>
+      <span class="toku-badge role" style="font-size: 12px; padding: 4px 10px;">
+        {{ total_count }} {% if lang == 'ja' %}件該当{% elif lang == 'en' %}records found{% else %}bản ghi tìm thấy{% endif %}
+      </span>
     </div>
   </div>
 
   {% if total_count == 0 %}
     <div class="toku-card" style="padding: 48px; text-align: center; color: var(--toku-text-muted);">
-      <div style="font-size: 16px; font-weight: 600; margin-bottom: 6px;">
-        {% if lang == 'ja' %}該当するレコードは見つかりませんでした。{% else %}No records matched the provided search query.{% endif %}
+      <div style="font-size: 16px; font-weight: 600; color: #0f172a; margin-bottom: 6px;">
+        {% if lang == 'ja' %}該当するレコードは見つかりませんでした。
+        {% elif lang == 'en' %}No records matched the provided search query.
+        {% else %}Không tìm thấy bản ghi nào phù hợp với từ khóa trên.
+        {% endif %}
       </div>
       <div style="font-size: 13px;">
-        {% if lang == 'ja' %}キーワードを確認して再度検索してください。{% else %}Please verify the serial, asset code, or name and try again.{% endif %}
+        {% if lang == 'ja' %}キーワードを確認して再度検索してください。
+        {% elif lang == 'en' %}Please verify the serial, asset code, or name and try again.
+        {% else %}Vui lòng kiểm tra lại mã tài sản, số serial, hoặc tên nhân viên và thử lại.
+        {% endif %}
       </div>
     </div>
   {% endif %}
@@ -63,7 +82,7 @@
   <div class="toku-card" style="padding: 28px; margin-bottom: 24px;">
     <div class="toku-card-header">
       <h2 class="toku-card-title" style="font-size: 18px;">
-        {% if lang == 'ja' %}ITハードウェア機器{% else %}IT Assets & Hardware{% endif %}
+        {% if lang == 'ja' %}ITハードウェア機器{% elif lang == 'en' %}IT Assets & Hardware{% else %}Thiết Bị Phần Cứng IT{% endif %}
       </h2>
       <span class="toku-badge role">{{ assets|length }} units</span>
     </div>
@@ -72,13 +91,13 @@
       <table class="toku-table">
         <thead>
           <tr>
-            <th>{% if lang == 'ja' %}資産コード{% else %}Asset Code{% endif %}</th>
-            <th>{% if lang == 'ja' %}種別{% else %}Category{% endif %}</th>
-            <th>{% if lang == 'ja' %}型番{% else %}Model{% endif %}</th>
+            <th>{% if lang == 'ja' %}資産コード{% elif lang == 'en' %}Asset Code{% else %}Mã tài sản{% endif %}</th>
+            <th>{% if lang == 'ja' %}種別{% elif lang == 'en' %}Category{% else %}Loại thiết bị{% endif %}</th>
+            <th>{% if lang == 'ja' %}型番{% elif lang == 'en' %}Model{% else %}Model / Cấu hình{% endif %}</th>
             <th>Serial</th>
             <th>MAC Address</th>
-            <th>{% if lang == 'ja' %}使用者{% else %}Current Holder{% endif %}</th>
-            <th style="text-align: right;">{% if lang == 'ja' %}状態{% else %}Status{% endif %}</th>
+            <th>{% if lang == 'ja' %}使用者{% elif lang == 'en' %}Current Holder{% else %}Người đang giữ{% endif %}</th>
+            <th style="text-align: right;">{% if lang == 'ja' %}状態{% elif lang == 'en' %}Status{% else %}Trạng thái{% endif %}</th>
           </tr>
         </thead>
         <tbody>
@@ -99,7 +118,15 @@
               {% endif %}
             </td>
             <td style="text-align: right;">
-              <span class="toku-badge {{ a.status }}">{{ a.status|upper }}</span>
+              <span class="toku-badge {{ a.status }}">
+                {% if a.status == 'in_stock' %}
+                  {% if lang == 'vi' %}TRONG KHO{% elif lang == 'ja' %}在庫{% else %}IN STOCK{% endif %}
+                {% elif a.status == 'loaned' %}
+                  {% if lang == 'vi' %}ĐANG MƯỢN{% elif lang == 'ja' %}貸出中{% else %}LOANED{% endif %}
+                {% else %}
+                  {% if lang == 'vi' %}BÁO MẤT{% elif lang == 'ja' %}紛失{% else %}LOST{% endif %}
+                {% endif %}
+              </span>
             </td>
           </tr>
           {% endfor %}
@@ -114,7 +141,7 @@
   <div class="toku-card" style="padding: 28px; margin-bottom: 24px;">
     <div class="toku-card-header">
       <h2 class="toku-card-title" style="font-size: 18px;">
-        {% if lang == 'ja' %}人事・従業員台帳{% else %}Personnel Dossier{% endif %}
+        {% if lang == 'ja' %}人事・従業員台帳{% elif lang == 'en' %}Personnel Dossier{% else %}Danh Sách Nhân Sự{% endif %}
       </h2>
       <span class="toku-badge role">{{ persons|length }} staff</span>
     </div>
@@ -123,11 +150,11 @@
       <table class="toku-table">
         <thead>
           <tr>
-            <th>{% if lang == 'ja' %}社員コード{% else %}Staff Code{% endif %}</th>
-            <th>{% if lang == 'ja' %}氏名{% else %}Full Name{% endif %}</th>
-            <th>{% if lang == 'ja' %}部署{% else %}Department{% endif %}</th>
-            <th>{% if lang == 'ja' %}在籍状態{% else %}Status{% endif %}</th>
-            <th style="text-align: right;">{% if lang == 'ja' %}詳細{% else %}Action{% endif %}</th>
+            <th>{% if lang == 'ja' %}社員コード{% elif lang == 'en' %}Staff Code{% else %}Mã nhân viên{% endif %}</th>
+            <th>{% if lang == 'ja' %}氏名{% elif lang == 'en' %}Full Name{% else %}Họ và tên{% endif %}</th>
+            <th>{% if lang == 'ja' %}部署{% elif lang == 'en' %}Department{% else %}Phòng ban{% endif %}</th>
+            <th>{% if lang == 'ja' %}在籍状態{% elif lang == 'en' %}Status{% else %}Trạng thái làm việc{% endif %}</th>
+            <th style="text-align: right;">{% if lang == 'ja' %}詳細{% elif lang == 'en' %}Action{% else %}Thao tác{% endif %}</th>
           </tr>
         </thead>
         <tbody>
@@ -137,11 +164,17 @@
             <td style="font-weight: 600;">{{ p.full_name }}</td>
             <td>{{ p.department.name_en if p.department else "-" }}</td>
             <td>
-              <span class="toku-badge {{ p.status }}">{{ p.status|upper }}</span>
+              <span class="toku-badge {{ p.status }}">
+                {% if p.status == 'active' %}
+                  {% if lang == 'vi' %}ĐANG LÀM VIỆC{% elif lang == 'ja' %}在籍{% else %}ACTIVE{% endif %}
+                {% else %}
+                  {% if lang == 'vi' %}ĐÃ NGHỈ VIỆC{% elif lang == 'ja' %}退職{% else %}RESIGNED{% endif %}
+                {% endif %}
+              </span>
             </td>
             <td style="text-align: right;">
               <a href="/person/{{ p.id }}/profile" class="btn-primary" style="padding: 6px 14px; font-size: 12px;">
-                ▶ {% if lang == 'ja' %}カルテ表示{% else %}View Profile 360{% endif %}
+                ▶ {% if lang == 'ja' %}カルテ表示{% elif lang == 'en' %}View Profile 360{% else %}Xem Hồ Sơ 360°{% endif %}
               </a>
             </td>
           </tr>
@@ -157,7 +190,7 @@
   <div class="toku-card" style="padding: 28px; margin-bottom: 24px;">
     <div class="toku-card-header">
       <h2 class="toku-card-title" style="font-size: 18px;">
-        {% if lang == 'ja' %}調達契約台帳{% else %}Procurement Contracts{% endif %}
+        {% if lang == 'ja' %}調達契約台帳{% elif lang == 'en' %}Procurement Contracts{% else %}Hợp Đồng Mua Sắm IT{% endif %}
       </h2>
       <span class="toku-badge role">{{ contracts|length }} contracts</span>
     </div>
@@ -166,10 +199,10 @@
       <table class="toku-table">
         <thead>
           <tr>
-            <th>{% if lang == 'ja' %}契約コード{% else %}Contract Code{% endif %}</th>
-            <th>{% if lang == 'ja' %}契約日{% else %}Contract Date{% endif %}</th>
-            <th>{% if lang == 'ja' %}納品状況{% else %}Delivery Status{% endif %}</th>
-            <th style="text-align: right;">{% if lang == 'ja' %}備考{% else %}Note{% endif %}</th>
+            <th>{% if lang == 'ja' %}契約コード{% elif lang == 'en' %}Contract Code{% else %}Mã hợp đồng{% endif %}</th>
+            <th>{% if lang == 'ja' %}契約日{% elif lang == 'en' %}Contract Date{% else %}Ngày hợp đồng{% endif %}</th>
+            <th>{% if lang == 'ja' %}納品状況{% elif lang == 'en' %}Delivery Status{% else %}Tình trạng nhận hàng{% endif %}</th>
+            <th style="text-align: right;">{% if lang == 'ja' %}備考{% elif lang == 'en' %}Note{% else %}Ghi chú{% endif %}</th>
           </tr>
         </thead>
         <tbody>
@@ -179,7 +212,13 @@
             <td class="toku-mono">{{ c.contract_date or "-" }}</td>
             <td>
               <span class="toku-badge {% if c.delivery_status == 'fully_received' %}in_stock{% else %}warning{% endif %}">
-                {{ c.delivery_status|upper }}
+                {% if c.delivery_status == 'fully_received' %}
+                  {% if lang == 'vi' %}ĐÃ NHẬN ĐỦ{% elif lang == 'ja' %}納品完了{% else %}FULLY RECEIVED{% endif %}
+                {% elif c.delivery_status == 'partially_received' %}
+                  {% if lang == 'vi' %}NHẬN MỘT PHẦN{% elif lang == 'ja' %}一部納品{% else %}PARTIAL{% endif %}
+                {% else %}
+                  {% if lang == 'vi' %}CHỜ GIAO HÀNG{% elif lang == 'ja' %}未納{% else %}PENDING{% endif %}
+                {% endif %}
               </span>
             </td>
             <td style="text-align: right; color: var(--toku-text-muted);">{{ c.note or "-" }}</td>
@@ -196,7 +235,7 @@
   <div class="toku-card" style="padding: 28px; margin-bottom: 24px;">
     <div class="toku-card-header">
       <h2 class="toku-card-title" style="font-size: 18px;">
-        {% if lang == 'ja' %}セキュリティ入退室カード{% else %}Physical Access Cards{% endif %}
+        {% if lang == 'ja' %}セキュリティ入退室カード{% elif lang == 'en' %}Physical Access Cards{% else %}Thẻ Từ Ra Vào Văn Phòng{% endif %}
       </h2>
       <span class="toku-badge role">{{ cards|length }} cards</span>
     </div>
@@ -205,9 +244,9 @@
       <table class="toku-table">
         <thead>
           <tr>
-            <th>{% if lang == 'ja' %}カード番号{% else %}Card No{% endif %}</th>
-            <th>{% if lang == 'ja' %}ステータス{% else %}Status{% endif %}</th>
-            <th style="text-align: right;">{% if lang == 'ja' %}備考{% else %}Note{% endif %}</th>
+            <th>{% if lang == 'ja' %}カード番号{% elif lang == 'en' %}Card No{% else %}Mã số thẻ{% endif %}</th>
+            <th>{% if lang == 'ja' %}ステータス{% elif lang == 'en' %}Status{% else %}Trạng thái thẻ{% endif %}</th>
+            <th style="text-align: right;">{% if lang == 'ja' %}備考{% elif lang == 'en' %}Note{% else %}Ghi chú{% endif %}</th>
           </tr>
         </thead>
         <tbody>
@@ -216,7 +255,13 @@
             <td><span class="toku-mono" style="font-weight: 700; color: #005bac;">{{ card.card_no }}</span></td>
             <td>
               <span class="toku-badge {% if card.status == 'in_stock' %}in_stock{% elif card.status == 'loaned' %}warning{% else %}danger{% endif %}">
-                {{ card.status|upper }}
+                {% if card.status == 'in_stock' %}
+                  {% if lang == 'vi' %}TRONG KHO{% elif lang == 'ja' %}保管中{% else %}IN STOCK{% endif %}
+                {% elif card.status == 'loaned' %}
+                  {% if lang == 'vi' %}ĐANG MƯỢN{% elif lang == 'ja' %}貸出中{% else %}LOANED{% endif %}
+                {% else %}
+                  {% if lang == 'vi' %}BÁO MẤT{% elif lang == 'ja' %}紛失{% else %}LOST{% endif %}
+                {% endif %}
               </span>
             </td>
             <td style="text-align: right; color: var(--toku-text-muted);">{{ card.note or "-" }}</td>
@@ -227,5 +272,29 @@
     </div>
   </div>
   {% endif %}
+{% else %}
+  <!-- Default Guide State when no search query has been submitted -->
+  <div class="toku-card" style="padding: 36px; background: #ffffff;">
+    <div style="display: flex; gap: 16px; align-items: flex-start;">
+      <div style="font-size: 24px; line-height: 1;">💡</div>
+      <div>
+        <h3 style="margin: 0 0 6px 0; font-size: 15px; font-weight: 700; color: #0f172a;">
+          {% if lang == 'ja' %}クイック検索ガイド
+          {% elif lang == 'en' %}Quick Search Guide
+          {% else %}Hướng Dẫn Tra Cứu Nhanh
+          {% endif %}
+        </h3>
+        <p style="margin: 0 0 12px 0; font-size: 13.5px; color: var(--toku-text-secondary); line-height: 1.6;">
+          {% if lang == 'ja' %}
+            システムは部分一致検索に対応しています。資産コード（LAP-...）、シリアル番号、MACアドレス、従業員名、または調達契約コード（KHCM-...）を入力してください。
+          {% elif lang == 'en' %}
+            The search engine supports fuzzy partial matching. Enter any asset code (LAP-...), hardware serial number, MAC address, staff name, or contract code (KHCM-...).
+          {% else %}
+            Hệ thống hỗ trợ tìm kiếm gần đúng theo nhiều tiêu chí. Bạn có thể nhập mã tài sản (ví dụ: <code class="toku-mono">LAP-</code>), số serial máy, địa chỉ MAC, tên hoặc mã nhân viên, hoặc mã hợp đồng mua sắm (ví dụ: <code class="toku-mono">KHCM-</code>).
+          {% endif %}
+        </p>
+      </div>
+    </div>
+  </div>
 {% endif %}
 {% endblock %}

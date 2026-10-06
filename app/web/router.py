@@ -33,10 +33,11 @@ def get_current_user_from_cookie(request: Request, db: Session = Depends(get_db)
 
 @web_router.get("/login", response_class=HTMLResponse)
 def login_page(request: Request):
+    lang = request.cookies.get("toku_lang", "vi")
     return templates.TemplateResponse(
         request=request,
         name="login.html",
-        context={"error": None}
+        context={"lang": lang, "error": None}
     )
 
 @web_router.post("/login", response_class=HTMLResponse)
@@ -49,10 +50,14 @@ def login_post(
 ):
     user = authenticate_user(db, username, password)
     if not user:
+        lang = request.cookies.get("toku_lang", "vi")
         return templates.TemplateResponse(
             request=request,
             name="login.html",
-            context={"error": "Invalid username or password / Tên đăng nhập hoặc mật khẩu không đúng."}
+            context={
+                "lang": lang,
+                "error": "Tên đăng nhập hoặc mật khẩu không chính xác / Invalid username or password."
+            }
         )
     token = create_session_token(user.id, user.role)
     redirect = RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
@@ -88,7 +93,7 @@ def dashboard_page(
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
     stats = get_dashboard_stats(db)
-    lang = request.cookies.get("toku_lang", "en")
+    lang = request.cookies.get("toku_lang", "vi")
 
     return templates.TemplateResponse(
         request=request,
@@ -112,7 +117,7 @@ def search_page(
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
-    lang = request.cookies.get("toku_lang", "en")
+    lang = request.cookies.get("toku_lang", "vi")
     query = (q or "").strip()
 
     assets, persons, contracts, cards = [], [], [], []
@@ -172,7 +177,7 @@ def person_profile_page(
     if not person:
         raise HTTPException(status_code=404, detail="Person not found")
 
-    lang = request.cookies.get("toku_lang", "en")
+    lang = request.cookies.get("toku_lang", "vi")
 
     # 1. Current assets
     current_assignments = [a for a in person.assignments if not a.is_deleted and a.returned_at is None]
@@ -180,10 +185,15 @@ def person_profile_page(
     past_assignments = [a for a in person.assignments if not a.is_deleted and a.returned_at is not None]
     # 3. Licenses
     current_asset_ids = [a.asset_id for a in current_assignments]
+    if current_asset_ids:
+        cond = (LicenseAssignment.person_id == person.id) | (LicenseAssignment.asset_id.in_(current_asset_ids))
+    else:
+        cond = (LicenseAssignment.person_id == person.id)
+
     licenses_assigned = db.query(LicenseAssignment).filter(
         LicenseAssignment.is_deleted == False,
         LicenseAssignment.removed_at == None,
-        (LicenseAssignment.person_id == person.id) | (LicenseAssignment.asset_id.in_(current_asset_ids))
+        cond
     ).all()
     # 4. Card loans
     current_cards = [l for l in person.card_loans if not l.is_deleted and l.returned_at is None]
@@ -213,7 +223,7 @@ def trash_page(
     if not user or user.role != "it_admin":
         return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
-    lang = request.cookies.get("toku_lang", "en")
+    lang = request.cookies.get("toku_lang", "vi")
 
     deleted_assets = db.query(Asset).filter(Asset.is_deleted == True).all()
     deleted_persons = db.query(Person).filter(Person.is_deleted == True).all()
