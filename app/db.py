@@ -17,10 +17,12 @@ from sqlalchemy import (
     Index,
     MetaData,
     String,
+    create_engine,
     func,
     text,
 )
-from sqlalchemy.orm import DeclarativeBase, Mapped, declared_attr, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, declared_attr, mapped_column, sessionmaker
+from app.config import settings
 
 # Quy ước đặt tên ràng buộc. Bắt buộc có, nếu không Alembic sẽ sinh ra tên
 # ngẫu nhiên và migration sau này không drop được constraint cũ.
@@ -158,3 +160,17 @@ class LinkBase(Base):
 def biz_args(*extra: Any) -> tuple[Any, ...]:
     """__table_args__ cho bảng nghiệp vụ: luôn kèm check xoá mềm."""
     return (*extra, soft_delete_coherent())
+
+
+engine = create_engine(settings.database_url)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+def get_db():
+    """Dependency cung cấp session DB cho FastAPI route."""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
