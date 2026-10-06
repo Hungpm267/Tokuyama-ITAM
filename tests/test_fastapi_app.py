@@ -157,3 +157,133 @@ async def test_soft_delete_and_restore():
         assert restored.is_deleted is False
     finally:
         db.close()
+
+@pytest.mark.anyio
+async def test_admin_auth_only_permits_it_admin():
+    from app.admin import authentication_backend
+    from app.services.auth import create_session_token
+    from starlette.requests import Request
+    
+    # Simulate a Request with non-it_admin token
+    ga_token = create_session_token(user_id=99, role="ga_manager")
+    scope = {
+        "type": "http",
+        "method": "GET",
+        "path": "/admin/",
+        "headers": [(b"cookie", f"toku_session={ga_token}".encode("utf-8"))],
+        "session": {}
+    }
+    request = Request(scope)
+    is_authenticated = await authentication_backend.authenticate(request)
+    assert is_authenticated is False, "Non-it_admin user should not be authenticated in /admin"
+
+    # Simulate a Request with it_admin token
+    admin_token = create_session_token(user_id=1, role="it_admin")
+    scope_admin = {
+        "type": "http",
+        "method": "GET",
+        "path": "/admin/",
+        "headers": [(b"cookie", f"toku_session={admin_token}".encode("utf-8"))],
+        "session": {}
+    }
+    request_admin = Request(scope_admin)
+    is_admin_auth = await authentication_backend.authenticate(request_admin)
+    assert is_admin_auth is True, "it_admin user must be authenticated in /admin"
+
+def test_admin_categories_and_view_configurations():
+    from app.admin import AssetAdmin, UserAdmin, LicenseAdmin, AccessCardAdmin, ContractAdmin
+    
+    # Check categorized groupings
+    assert AssetAdmin.category is not None and len(AssetAdmin.category) > 0
+    assert LicenseAdmin.category is not None and len(LicenseAdmin.category) > 0
+    assert AccessCardAdmin.category is not None and len(AccessCardAdmin.category) > 0
+    assert UserAdmin.category is not None and len(UserAdmin.category) > 0
+    assert ContractAdmin.category is not None and len(ContractAdmin.category) > 0
+
+    # Check export capability
+    assert AssetAdmin.can_export is True
+    
+    # Check friendly column labels
+    assert AssetAdmin.column_labels is not None
+    assert "asset_code" in AssetAdmin.column_labels
+
+@pytest.mark.anyio
+async def test_admin_user_password_hashing():
+    from app.admin import UserAdmin
+    from app.models.user import User
+    from starlette.requests import Request
+    
+    admin_view = UserAdmin()
+    user = User(username="newuser", role="it_admin")
+    data = {"password_hash": "plaintextpass123"}
+    scope = {"type": "http", "session": {}}
+    request = Request(scope)
+    
+    await admin_view.on_model_change(data, user, True, request)
+    assert data["password_hash"].startswith("pbkdf2_sha256$")
+    assert "plaintextpass123" not in data["password_hash"]
+
+@pytest.mark.anyio
+async def test_admin_soft_delete_and_audit_log():
+    from app.admin import AssetAdmin
+    from app.models.audit import AuditLog
+    from starlette.requests import Request
+    
+    db = SessionLocal()
+    try:
+        # Create test asset
+        asset = Asset(
+            asset_code="ADMIN-DEL-01",
+            model="Dell OptiPlex 7090",
+            serial="SN-ADM-01",
+            status="in_stock"
+        )
+        db.add(asset)
+        db.commit()
+        db.refresh(asset)
+        asset_id = asset.id
+    finally:
+        db.close()
+
+    admin_view = AssetAdmin()
+    scope = {
+        "type": "http",
+        "session": {"user_id": 1, "user_name": "admin"}
+    }
+    request = Request(scope)
+    await admin_view.delete_model(request, asset_id)
+
+    db = SessionLocal()
+    try:
+        # Verify asset was soft-deleted, not removed
+        deleted_asset = db.query(Asset).filter(Asset.id == asset_id).first()
+        assert deleted_asset is not None
+        assert deleted_asset.is_deleted is True
+
+        # Verify audit log was created
+        log = db.query(AuditLog).filter(
+            AuditLog.table_name == "assets",
+            AuditLog.record_id == asset_id,
+            AuditLog.action == "delete"
+        ).first()
+        assert log is not None
+        assert log.user_name == "admin"
+    finally:
+        db.close()
+
+@pytest.mark.anyio
+async def test_admin_http_dashboard_and_theme():
+    from app.services.auth import create_session_token
+    token = create_session_token(user_id=1, role="it_admin")
+    
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        # Request /admin/ with session cookie
+        client.cookies.set("toku_session", token)
+        res = await client.get("/admin/", follow_redirects=True)
+        assert res.status_code == 200
+        # Check custom Tokuyama layout elements
+        assert "toku-admin-sidebar" in res.text
+        assert "Quay lại Dashboard" in res.text
+        assert "Tokuyama" in res.text
+
+
