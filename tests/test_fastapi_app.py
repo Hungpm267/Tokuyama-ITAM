@@ -286,4 +286,22 @@ async def test_admin_http_dashboard_and_theme():
         assert "Quay lại Dashboard" in res.text
         assert "Tokuyama" in res.text
 
+@pytest.mark.anyio
+async def test_all_admin_list_views_accessible():
+    from app.services.auth import create_session_token
+    token = create_session_token(user_id=1, role="it_admin")
+    identities = [
+        "asset", "asset-category", "assignment", "license-product", "license",
+        "license-assignment", "access-card", "room", "access-card-room",
+        "card-loan", "department", "person", "user", "contract",
+        "contract-line", "audit-log"
+    ]
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        client.cookies.set("toku_session", token)
+        for ident in identities:
+            url = f"/admin/{ident}/list"
+            res = await client.get(url)
+            assert res.status_code == 200, f"Admin view {url} failed with {res.status_code}"
+
+
 

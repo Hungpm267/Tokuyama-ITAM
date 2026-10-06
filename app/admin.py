@@ -3,6 +3,7 @@ import anyio
 from typing import Any
 from sqladmin import Admin, ModelView
 from sqladmin.authentication import AuthenticationBackend
+from sqladmin.filters import BooleanFilter, AllUniqueStringValuesFilter
 from starlette.requests import Request
 from starlette.responses import RedirectResponse
 
@@ -148,7 +149,10 @@ class AssetAdmin(BaseAdminView, model=Asset):
     ]
     column_searchable_list = [Asset.asset_code, Asset.serial, Asset.model, Asset.mac_address]
     column_sortable_list = [Asset.id, Asset.asset_code, Asset.status, Asset.is_deleted]
-    column_filters = [Asset.status, Asset.is_deleted]
+    column_filters = [
+        AllUniqueStringValuesFilter(Asset.status, title="Trạng thái"),
+        BooleanFilter(Asset.is_deleted, title="Đã xóa (Trash)")
+    ]
     form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["assignments", "license_assignments"]
     column_labels = {
         "asset_code": "Mã thiết bị",
@@ -170,7 +174,9 @@ class AssetCategoryAdmin(BaseAdminView, model=AssetCategory):
     icon = "fa-solid fa-tags"
     column_list = [AssetCategory.id, AssetCategory.name, AssetCategory.is_deleted]
     column_searchable_list = [AssetCategory.name]
-    column_filters = [AssetCategory.is_deleted]
+    column_filters = [
+        BooleanFilter(AssetCategory.is_deleted, title="Đã xóa (Trash)")
+    ]
     form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["assets"]
     column_labels = {
         "name": "Tên phân loại",
@@ -249,7 +255,9 @@ class AccessCardAdmin(BaseAdminView, model=AccessCard):
     icon = "fa-solid fa-address-card"
     column_list = [AccessCard.id, AccessCard.card_no, AccessCard.is_deleted]
     column_searchable_list = [AccessCard.card_no]
-    column_filters = [AccessCard.is_deleted]
+    column_filters = [
+        BooleanFilter(AccessCard.is_deleted, title="Đã hủy (Trash)")
+    ]
     form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["loans", "room_accesses"]
     column_labels = {
         "card_no": "Mã số thẻ từ",
@@ -309,7 +317,9 @@ class DepartmentAdmin(BaseAdminView, model=Department):
     icon = "fa-solid fa-building"
     column_list = [Department.id, Department.name_en, Department.name_ja, Department.is_deleted]
     column_searchable_list = [Department.name_en, Department.name_ja]
-    column_filters = [Department.is_deleted]
+    column_filters = [
+        BooleanFilter(Department.is_deleted, title="Đã xóa (Trash)")
+    ]
     form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["members"]
     column_labels = {
         "name_en": "Tên phòng (Tiếng Anh)",
@@ -325,7 +335,10 @@ class PersonAdmin(BaseAdminView, model=Person):
     icon = "fa-solid fa-users"
     column_list = [Person.id, Person.staff_code, Person.full_name, Person.department, Person.status, Person.is_deleted]
     column_searchable_list = [Person.staff_code, Person.full_name]
-    column_filters = [Person.status, Person.is_deleted]
+    column_filters = [
+        AllUniqueStringValuesFilter(Person.status, title="Trạng thái"),
+        BooleanFilter(Person.is_deleted, title="Đã xóa (Trash)")
+    ]
     form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["assignments", "license_assignments", "card_loans"]
     column_labels = {
         "staff_code": "Mã nhân viên",
@@ -343,7 +356,10 @@ class UserAdmin(BaseAdminView, model=User):
     icon = "fa-solid fa-user-shield"
     column_list = [User.id, User.username, User.full_name, User.role, User.is_active, User.created_at]
     column_searchable_list = [User.username, User.full_name]
-    column_filters = [User.role, User.is_active]
+    column_filters = [
+        AllUniqueStringValuesFilter(User.role, title="Vai trò"),
+        BooleanFilter(User.is_active, title="Đang hoạt động")
+    ]
     form_excluded_columns = ["created_at", "updated_at"]
     column_labels = {
         "username": "Tên đăng nhập",
@@ -369,7 +385,9 @@ class ContractAdmin(BaseAdminView, model=Contract):
     icon = "fa-solid fa-file-contract"
     column_list = [Contract.id, Contract.code, Contract.delivery_status]
     column_searchable_list = [Contract.code]
-    column_filters = [Contract.delivery_status]
+    column_filters = [
+        AllUniqueStringValuesFilter(Contract.delivery_status, title="Tình trạng")
+    ]
     form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["lines"]
     column_labels = {
         "code": "Mã / Số hợp đồng",
@@ -401,7 +419,10 @@ class AuditLogAdmin(BaseAdminView, model=AuditLog):
     can_delete = False
     column_list = [AuditLog.id, AuditLog.timestamp, AuditLog.user_name, AuditLog.action, AuditLog.table_name, AuditLog.record_id, AuditLog.changes_json]
     column_searchable_list = [AuditLog.table_name, AuditLog.user_name, AuditLog.action]
-    column_filters = [AuditLog.action, AuditLog.table_name]
+    column_filters = [
+        AllUniqueStringValuesFilter(AuditLog.action, title="Hành động"),
+        AllUniqueStringValuesFilter(AuditLog.table_name, title="Bảng dữ liệu")
+    ]
     column_labels = {
         "timestamp": "Thời gian",
         "user_name": "Tài khoản thực hiện",
