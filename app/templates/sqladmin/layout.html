@@ -13,93 +13,161 @@
     background-color: var(--toku-bg) !important;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   }
+  
+  /* Sidebar Layout & Responsive Width */
+  @media (min-width: 992px) {
+    .navbar-vertical.navbar-expand-lg {
+      width: 275px !important;
+    }
+    .navbar-vertical.navbar-expand-lg ~ .page-wrapper {
+      margin-left: 275px !important;
+    }
+  }
+
   .toku-admin-sidebar {
     background-color: var(--toku-navy) !important;
     border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
     box-shadow: 2px 0 10px rgba(0, 0, 0, 0.15);
   }
+  
+  /* Logo Container */
   .toku-brand-container {
-    padding: 16px 12px;
+    padding: 14px 12px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    margin-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    margin-bottom: 8px;
     background: rgba(0, 0, 0, 0.18);
     border-radius: 8px;
-    margin-top: 8px;
+    margin-top: 4px;
   }
   .toku-brand-logo {
-    max-height: 44px;
-    max-width: 180px;
+    max-height: 42px;
+    max-width: 195px;
     object-fit: contain;
     background: #ffffff;
-    padding: 4px 10px;
+    padding: 4px 12px;
     border-radius: 6px;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
   }
   .toku-brand-subtitle {
     font-size: 11px;
     font-weight: 700;
-    letter-spacing: 1px;
+    letter-spacing: 0.8px;
     color: #7dd3fc;
     text-transform: uppercase;
     margin-top: 8px;
   }
-  /* Nav item styles */
-  .navbar-vertical .navbar-nav .nav-link {
-    font-size: 13.5px;
-    font-weight: 500;
-    color: #e2e8f0 !important;
-    border-radius: 6px;
-    margin: 2px 8px;
-    padding: 9px 12px;
-    transition: all 0.2s ease;
+  
+  /* Category Headers */
+  .toku-nav-category {
+    margin-bottom: 2px;
   }
-  .navbar-vertical .navbar-nav .nav-link:hover {
-    background-color: rgba(255, 255, 255, 0.1) !important;
+  .toku-nav-category > .nav-link {
+    font-size: 13.5px !important;
+    font-weight: 600 !important;
+    color: #f1f5f9 !important;
+    padding: 9px 12px !important;
+    margin: 2px 6px !important;
+    border-radius: 6px !important;
+    display: flex !important;
+    align-items: center !important;
+    background: transparent !important;
+    transition: all 0.2s ease !important;
+  }
+  .toku-nav-category > .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.08) !important;
     color: #ffffff !important;
   }
-  .navbar-vertical .navbar-nav .nav-item.active .nav-link,
-  .navbar-vertical .navbar-nav .nav-link.active {
-    background-color: var(--toku-blue) !important;
-    color: #ffffff !important;
-    font-weight: 600;
-    box-shadow: 0 2px 8px rgba(0, 119, 200, 0.4);
+  .toku-nav-category.show > .nav-link,
+  .toku-nav-category.active > .nav-link {
+    background-color: rgba(0, 119, 200, 0.22) !important;
+    color: #38bdf8 !important;
+    border-left: 3px solid #0077C8 !important;
   }
-  .navbar-vertical .navbar-nav .dropdown-menu {
-    background-color: var(--toku-navy-dark) !important;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 6px;
-    padding: 4px;
+  .toku-nav-category > .nav-link .nav-link-icon {
+    width: 22px !important;
+    margin-right: 8px !important;
+    text-align: center !important;
+    color: #38bdf8 !important;
+    font-size: 14px !important;
   }
-  .navbar-vertical .navbar-nav .dropdown-item {
+  .toku-nav-category > .nav-link .nav-link-title {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    flex-grow: 1 !important;
+  }
+  .toku-nav-category > .nav-link.dropdown-toggle::after {
+    margin-left: auto !important;
+    transition: transform 0.2s ease;
+  }
+  .toku-nav-category.show > .nav-link.dropdown-toggle::after {
+    transform: rotate(90deg);
+  }
+
+  /* Submenus & Children */
+  .navbar-vertical .dropdown-menu.toku-submenu {
+    background: rgba(0, 18, 34, 0.55) !important;
+    border: none !important;
+    border-left: 2px solid rgba(0, 119, 200, 0.45) !important;
+    margin: 2px 8px 6px 20px !important;
+    padding: 4px 0 4px 4px !important;
+    border-radius: 0 6px 6px 0 !important;
+    position: static !important;
+    float: none !important;
+    box-shadow: none !important;
+  }
+  .toku-sublink {
+    font-size: 12.5px !important;
+    font-weight: 500 !important;
     color: #cbd5e1 !important;
-    border-radius: 4px;
-    padding: 6px 12px;
-    font-size: 13px;
+    padding: 7px 12px !important;
+    margin: 2px 4px !important;
+    border-radius: 5px !important;
+    display: flex !important;
+    align-items: center !important;
+    transition: all 0.15s ease !important;
+    text-decoration: none !important;
   }
-  .navbar-vertical .navbar-nav .dropdown-item:hover,
-  .navbar-vertical .navbar-nav .dropdown-item.active {
+  .toku-sublink:hover {
     color: #ffffff !important;
-    background-color: rgba(0, 119, 200, 0.35) !important;
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    transform: translateX(3px) !important;
   }
+  .toku-sublink.active {
+    color: #ffffff !important;
+    background-color: #0077C8 !important;
+    font-weight: 600 !important;
+    box-shadow: 0 2px 6px rgba(0, 119, 200, 0.4) !important;
+  }
+  .toku-sublink .nav-link-icon {
+    width: 18px !important;
+    font-size: 11px !important;
+    margin-right: 8px !important;
+    text-align: center !important;
+    opacity: 0.85 !important;
+  }
+
   /* Buttons */
   .btn-toku-back {
-    background-color: #0077C8;
+    background-color: #0077C8 !important;
     color: #ffffff !important;
-    border: none;
-    font-weight: 600;
-    font-size: 13px;
-    transition: all 0.2s;
-    border-radius: 6px;
+    border: none !important;
+    font-weight: 600 !important;
+    font-size: 13px !important;
+    border-radius: 6px !important;
+    padding: 9px 14px !important;
+    transition: all 0.2s !important;
   }
   .btn-toku-back:hover {
-    background-color: #005fa3;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 10px rgba(0, 119, 200, 0.4);
+    background-color: #005fa3 !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 10px rgba(0, 119, 200, 0.4) !important;
   }
-  /* Content styling */
+
+  /* Content Styling */
   .page-title {
     color: var(--toku-navy);
     font-weight: 700;
@@ -149,7 +217,7 @@
         <div class="toku-brand-subtitle">IT Asset System Admin</div>
       </div>
       
-      <nav class="navbar navbar-expand-sm shadow-none flex-grow-1 w-100 align-items-start" id="navbar-menu"
+      <nav class="navbar navbar-expand-sm shadow-none flex-grow-1 w-100 align-items-start overflow-y-auto" id="navbar-menu"
         data-sqladmin-menu="{{ admin.base_url }}">
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
           aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
@@ -160,13 +228,13 @@
         </div>
       </nav>
 
-      <div class="w-100 px-2 pb-3 d-flex flex-column gap-2 mt-auto">
+      <div class="w-100 px-2 pb-3 d-flex flex-column gap-2 mt-auto pt-2" style="border-top: 1px solid rgba(255,255,255,0.08);">
         <a href="/dashboard" class="btn btn-toku-back btn-icon px-3 py-2 w-100 d-flex align-items-center justify-content-center">
           <i class="fa fa-arrow-left me-2"></i>
           <span>Quay lại Dashboard</span>
         </a>
         {% if admin.authentication_backend %}
-        <a href="{{ request.url_for('admin:logout') }}" class="btn btn-outline-secondary btn-icon px-3 py-2 w-100 d-flex align-items-center justify-content-center text-white-50" style="font-size: 13px; border-color: rgba(255,255,255,0.2);">
+        <a href="{{ request.url_for('admin:logout') }}" class="btn btn-outline-secondary btn-icon px-3 py-2 w-100 d-flex align-items-center justify-content-center text-white-50" style="font-size: 13px; border-color: rgba(255,255,255,0.18);">
           <i class="fa fa-sign-out me-2"></i>
           <span>{{ _("Logout") }}</span>
         </a>

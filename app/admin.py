@@ -137,7 +137,7 @@ class BaseAdminView(ModelView):
 # --- Category 1: IT Hardware & Devices ---
 
 class AssetAdmin(BaseAdminView, model=Asset):
-    category = "💻 Thiết bị IT (Hardware)"
+    category = "Thiết bị IT (Hardware)"
     category_icon = "fa-solid fa-laptop"
     name = "Thiết bị IT"
     name_plural = "Danh mục Thiết bị IT"
@@ -163,7 +163,7 @@ class AssetAdmin(BaseAdminView, model=Asset):
     }
 
 class AssetCategoryAdmin(BaseAdminView, model=AssetCategory):
-    category = "💻 Thiết bị IT (Hardware)"
+    category = "Thiết bị IT (Hardware)"
     category_icon = "fa-solid fa-laptop"
     name = "Loại thiết bị"
     name_plural = "Phân loại Thiết bị"
@@ -178,7 +178,7 @@ class AssetCategoryAdmin(BaseAdminView, model=AssetCategory):
     }
 
 class AssignmentAdmin(BaseAdminView, model=Assignment):
-    category = "💻 Thiết bị IT (Hardware)"
+    category = "Thiết bị IT (Hardware)"
     category_icon = "fa-solid fa-laptop"
     name = "Bàn giao thiết bị"
     name_plural = "Lịch sử Mượn / Bàn giao"
@@ -196,7 +196,7 @@ class AssignmentAdmin(BaseAdminView, model=Assignment):
 # --- Category 2: Software & Licensing ---
 
 class LicenseProductAdmin(BaseAdminView, model=LicenseProduct):
-    category = "🔑 Bản quyền & Phần mềm"
+    category = "Bản quyền & Phần mềm"
     category_icon = "fa-solid fa-key"
     name = "Sản phẩm phần mềm"
     name_plural = "Danh mục Phần mềm"
@@ -209,7 +209,7 @@ class LicenseProductAdmin(BaseAdminView, model=LicenseProduct):
     }
 
 class LicenseAdmin(BaseAdminView, model=License):
-    category = "🔑 Bản quyền & Phần mềm"
+    category = "Bản quyền & Phần mềm"
     category_icon = "fa-solid fa-key"
     name = "Gói bản quyền"
     name_plural = "Bản quyền / License"
@@ -224,7 +224,7 @@ class LicenseAdmin(BaseAdminView, model=License):
     }
 
 class LicenseAssignmentAdmin(BaseAdminView, model=LicenseAssignment):
-    category = "🔑 Bản quyền & Phần mềm"
+    category = "Bản quyền & Phần mềm"
     category_icon = "fa-solid fa-key"
     name = "Cấp phát License"
     name_plural = "Cấp phát Bản quyền"
@@ -242,7 +242,7 @@ class LicenseAssignmentAdmin(BaseAdminView, model=LicenseAssignment):
 # --- Category 3: Security & Access Control ---
 
 class AccessCardAdmin(BaseAdminView, model=AccessCard):
-    category = "🛡️ An ninh & Thẻ từ"
+    category = "An ninh & Thẻ từ"
     category_icon = "fa-solid fa-address-card"
     name = "Thẻ từ ra vào"
     name_plural = "Danh sách Thẻ từ"
@@ -257,7 +257,7 @@ class AccessCardAdmin(BaseAdminView, model=AccessCard):
     }
 
 class RoomAdmin(BaseAdminView, model=Room):
-    category = "🛡️ An ninh & Thẻ từ"
+    category = "An ninh & Thẻ từ"
     category_icon = "fa-solid fa-address-card"
     name = "Phòng / Khu vực"
     name_plural = "Danh sách Phòng ban / Cửa"
@@ -270,7 +270,7 @@ class RoomAdmin(BaseAdminView, model=Room):
     }
 
 class AccessCardRoomAdmin(BaseAdminView, model=AccessCardRoom):
-    category = "🛡️ An ninh & Thẻ từ"
+    category = "An ninh & Thẻ từ"
     category_icon = "fa-solid fa-address-card"
     name = "Quyền truy cập phòng"
     name_plural = "Phân quyền Thẻ - Phòng"
@@ -283,7 +283,7 @@ class AccessCardRoomAdmin(BaseAdminView, model=AccessCardRoom):
     }
 
 class CardLoanAdmin(BaseAdminView, model=CardLoan):
-    category = "🛡️ An ninh & Thẻ từ"
+    category = "An ninh & Thẻ từ"
     category_icon = "fa-solid fa-address-card"
     name = "Mượn trả thẻ"
     name_plural = "Sổ theo dõi Mượn Thẻ"
@@ -302,7 +302,7 @@ class CardLoanAdmin(BaseAdminView, model=CardLoan):
 # --- Category 4: Organization & Personnel ---
 
 class DepartmentAdmin(BaseAdminView, model=Department):
-    category = "🏢 Tổ chức & Nhân sự"
+    category = "Tổ chức & Nhân sự"
     category_icon = "fa-solid fa-users"
     name = "Phòng ban"
     name_plural = "Danh mục Phòng ban"
@@ -318,7 +318,7 @@ class DepartmentAdmin(BaseAdminView, model=Department):
     }
 
 class PersonAdmin(BaseAdminView, model=Person):
-    category = "🏢 Tổ chức & Nhân sự"
+    category = "Tổ chức & Nhân sự"
     category_icon = "fa-solid fa-users"
     name = "Nhân sự"
     name_plural = "Hồ sơ Nhân sự"
@@ -336,7 +336,7 @@ class PersonAdmin(BaseAdminView, model=Person):
     }
 
 class UserAdmin(BaseAdminView, model=User):
-    category = "🏢 Tổ chức & Nhân sự"
+    category = "Tổ chức & Nhân sự"
     category_icon = "fa-solid fa-users"
     name = "Tài khoản"
     name_plural = "Tài khoản & Phân quyền"
@@ -362,7 +362,7 @@ class UserAdmin(BaseAdminView, model=User):
 # --- Category 5: Contracts & Governance ---
 
 class ContractAdmin(BaseAdminView, model=Contract):
-    category = "📑 Hợp đồng & Giám sát"
+    category = "Hợp đồng & Giám sát"
     category_icon = "fa-solid fa-file-contract"
     name = "Hợp đồng"
     name_plural = "Hợp đồng Mua sắm IT"
@@ -377,7 +377,7 @@ class ContractAdmin(BaseAdminView, model=Contract):
     }
 
 class ContractLineAdmin(BaseAdminView, model=ContractLine):
-    category = "📑 Hợp đồng & Giám sát"
+    category = "Hợp đồng & Giám sát"
     category_icon = "fa-solid fa-file-contract"
     name = "Chi tiết hợp đồng"
     name_plural = "Hạng mục Hợp đồng"
@@ -391,7 +391,7 @@ class ContractLineAdmin(BaseAdminView, model=ContractLine):
     }
 
 class AuditLogAdmin(BaseAdminView, model=AuditLog):
-    category = "📑 Hợp đồng & Giám sát"
+    category = "Hợp đồng & Giám sát"
     category_icon = "fa-solid fa-shield-halved"
     name = "Nhật ký kiểm toán"
     name_plural = "Audit Trail (Bất biến)"
