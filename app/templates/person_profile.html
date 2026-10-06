@@ -1,19 +1,27 @@
 {% extends "base.html" %}
 
 {% block title %}
-{{ person.full_name }} ({{ person.staff_code }}) | ITAM Dossier 360
+Tokuyama ITAM | {{ person.full_name }} ({{ person.staff_code }})
+{% endblock %}
+
+{% block breadcrumbs %}
+<a href="/search" class="breadcrumb-item">
+  {% if lang == 'ja' %}従業員台帳{% elif lang == 'en' %}Personnel{% else %}Nhân sự{% endif %}
+</a>
+<span>/</span>
+<span class="breadcrumb-current">{{ person.full_name }} ({{ person.staff_code }})</span>
 {% endblock %}
 
 {% block content %}
 <!-- Personnel Dossier Card -->
-<div class="toku-card" style="padding: 32px 40px; margin-bottom: 24px;">
+<div class="toku-card" style="margin-bottom: 24px;">
   <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
     <div>
       <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
         <span class="toku-mono" style="font-size: 15px; font-weight: 800; color: #005bac; padding: 4px 10px; background: #e0f2fe; border-color: #bae6fd;">
           {{ person.staff_code }}
         </span>
-        <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #0f172a; letter-spacing: -0.02em;">
+        <h1 style="margin: 0; font-size: 22px; font-weight: 800; color: #0f172a; letter-spacing: -0.02em;">
           {{ person.full_name }}
         </h1>
         <span class="toku-badge {{ person.status }}">
@@ -24,7 +32,7 @@
           {% endif %}
         </span>
       </div>
-      <div style="font-size: 14px; color: var(--toku-text-secondary);">
+      <div style="font-size: 13.5px; color: var(--toku-text-secondary);">
         {% if lang == 'ja' %}所属部署{% elif lang == 'en' %}Department{% else %}Phòng ban / Bộ phận{% endif %}: 
         <strong>
           {% if lang == 'ja' and person.department and person.department.name_ja %}
@@ -37,7 +45,7 @@
     </div>
 
     <div>
-      <a href="/search" class="btn-secondary" style="padding: 10px 20px; font-size: 13px;">
+      <a href="/search" class="btn-secondary" style="padding: 8px 18px; font-size: 13px;">
         ■ {% if lang == 'ja' %}検索一覧に戻る{% elif lang == 'en' %}Back to Search{% else %}Quay lại tra cứu{% endif %}
       </a>
     </div>
@@ -45,10 +53,10 @@
 </div>
 
 <!-- 1. Active Hardware Deployed -->
-<div class="toku-card" style="padding: 28px; margin-bottom: 24px;">
+<div class="toku-card" style="margin-bottom: 24px;">
   <div class="toku-card-header">
     <div>
-      <h2 class="toku-card-title" style="font-size: 18px;">
+      <h2 class="toku-card-title" style="font-size: 17px;">
         {% if lang == 'ja' %}現在貸出中の機器
         {% elif lang == 'en' %}Active Hardware Deployed
         {% else %}Thiết Bị IT Đang Cấp Phát (Đang Mượn)
@@ -91,7 +99,7 @@
     </table>
   </div>
   {% else %}
-  <div style="padding: 32px 16px; text-align: center; color: var(--toku-text-muted); background: var(--toku-surface-subtle); border-radius: var(--toku-radius-md);">
+  <div style="padding: 28px 16px; text-align: center; color: var(--toku-text-muted); background: var(--toku-surface-subtle); border-radius: var(--toku-radius-md);">
     {% if lang == 'ja' %}現在貸出中の機器はありません。
     {% elif lang == 'en' %}No hardware units are currently assigned to this personnel.
     {% else %}Nhân viên này hiện không giữ thiết bị phần cứng nào.
@@ -101,10 +109,10 @@
 </div>
 
 <!-- 2. Software Licenses Allocated -->
-<div class="toku-card" style="padding: 28px; margin-bottom: 24px;">
+<div class="toku-card" style="margin-bottom: 24px;">
   <div class="toku-card-header">
     <div>
-      <h2 class="toku-card-title" style="font-size: 18px;">
+      <h2 class="toku-card-title" style="font-size: 17px;">
         {% if lang == 'ja' %}割り当て済みライセンス
         {% elif lang == 'en' %}Software Licenses Allocated
         {% else %}Bản Quyền Phần Mềm (Licenses) Được Cấp
@@ -153,7 +161,7 @@
     </table>
   </div>
   {% else %}
-  <div style="padding: 32px 16px; text-align: center; color: var(--toku-text-muted); background: var(--toku-surface-subtle); border-radius: var(--toku-radius-md);">
+  <div style="padding: 28px 16px; text-align: center; color: var(--toku-text-muted); background: var(--toku-surface-subtle); border-radius: var(--toku-radius-md);">
     {% if lang == 'ja' %}割り当てられたライセンスはありません。
     {% elif lang == 'en' %}No software licenses allocated to this employee.
     {% else %}Không có license phần mềm nào được cấp riêng cho nhân viên này.
@@ -163,10 +171,10 @@
 </div>
 
 <!-- 3. Physical Access Card Loans -->
-<div class="toku-card" style="padding: 28px; margin-bottom: 24px;">
+<div class="toku-card" style="margin-bottom: 24px;">
   <div class="toku-card-header">
     <div>
-      <h2 class="toku-card-title" style="font-size: 18px;">
+      <h2 class="toku-card-title" style="font-size: 17px;">
         {% if lang == 'ja' %}セキュリティカード貸出状況
         {% elif lang == 'en' %}Physical Access Card Loans
         {% else %}Thẻ Từ Ra Vào Văn Phòng Đang Giữ
@@ -203,7 +211,7 @@
     </table>
   </div>
   {% else %}
-  <div style="padding: 32px 16px; text-align: center; color: var(--toku-text-muted); background: var(--toku-surface-subtle); border-radius: var(--toku-radius-md);">
+  <div style="padding: 28px 16px; text-align: center; color: var(--toku-text-muted); background: var(--toku-surface-subtle); border-radius: var(--toku-radius-md);">
     {% if lang == 'ja' %}現在貸出中のカードはありません。
     {% elif lang == 'en' %}No active access cards loaned.
     {% else %}Nhân viên hiện không mượn thẻ từ ra vào nào.
@@ -213,10 +221,10 @@
 </div>
 
 <!-- 4. Historical Deployments (Returned) -->
-<div class="toku-card" style="padding: 28px;">
+<div class="toku-card">
   <div class="toku-card-header">
     <div>
-      <h2 class="toku-card-title" style="font-size: 18px;">
+      <h2 class="toku-card-title" style="font-size: 17px;">
         {% if lang == 'ja' %}過去の機器配備履歴 (返却済み)
         {% elif lang == 'en' %}Past Hardware Deployments (Returned History)
         {% else %}Lịch Sử Thu Hồi & Trả Thiết Bị
@@ -257,7 +265,7 @@
     </table>
   </div>
   {% else %}
-  <div style="padding: 32px 16px; text-align: center; color: var(--toku-text-muted); background: var(--toku-surface-subtle); border-radius: var(--toku-radius-md);">
+  <div style="padding: 28px 16px; text-align: center; color: var(--toku-text-muted); background: var(--toku-surface-subtle); border-radius: var(--toku-radius-md);">
     {% if lang == 'ja' %}過去の返却履歴はありません。
     {% elif lang == 'en' %}No historical returned assignments recorded.
     {% else %}Chưa có lịch sử trả máy nào trước đây.

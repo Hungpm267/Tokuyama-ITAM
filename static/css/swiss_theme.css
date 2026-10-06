@@ -1,28 +1,21 @@
 /* ==========================================================================
-   Tokuyama Vietnam ITAM - Operational Utility Design System
-   Source Theme: anhtheme.jpg (Tokuyama Vietnam Internal Operational Utility)
-   Tokens:
-     - Palette: Canvas #F4F6FA, Surface #FFFFFF, Input Fill #F1F5F9
-     - Primary Action: Tokuyama Forest Emerald #006847 (Hover: #005439)
-     - Secondary Action: Slate Surface #F1F5F9, Border #CBD5E1, Text #475569
-     - Molecule Accent: Blue #005BAC, Navy #1A365D, Orange #FF6B00
-     - Typography: Inter, Segoe UI, sans-serif; weights 500, 600, 700, 800
-     - Structure: Floating Cards (border-radius 18px, border 1px solid #E2E8F0, soft elevation)
+   Tokuyama Vietnam ITAM - Enterprise Dashboard Design System
+   Architecture: Professional Sidebar + Topbar + Card Grid
+   Palette: Canvas #F8FAFC, Surface #FFFFFF, Accent Navy #005BAC, Forest #006847
+   Typography: Inter, Segoe UI, sans-serif
    ========================================================================== */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 :root {
   /* Surfaces */
-  --toku-canvas: #f4f6fa;
+  --toku-canvas: #f8fafc;
   --toku-surface: #ffffff;
   --toku-surface-subtle: #f1f5f9;
-  --toku-surface-muted: #e2e8f0;
   
   /* Borders */
   --toku-border: #e2e8f0;
   --toku-border-strong: #cbd5e1;
-  --toku-border-focus: #005bac;
   
   /* Typography */
   --toku-text: #0f172a;
@@ -30,20 +23,20 @@
   --toku-text-muted: #64748b;
   --toku-text-light: #94a3b8;
   
-  /* Brand Actions & Logo Accents */
-  --toku-primary: #006847;          /* Emerald Green from anhtheme.jpg */
+  /* Brand Accents */
+  --toku-blue: #005bac;
+  --toku-blue-hover: #004b8d;
+  --toku-blue-subtle: #eff6ff;
+  
+  --toku-primary: #006847;          /* Forest Emerald */
   --toku-primary-hover: #005439;
-  --toku-primary-active: #00422d;
-  --toku-secondary: #f1f5f9;        /* Slate Button from anhtheme.jpg */
+  
+  --toku-secondary: #f1f5f9;
   --toku-secondary-border: #cbd5e1;
   --toku-secondary-text: #475569;
   --toku-secondary-hover: #e2e8f0;
-  
-  --toku-molecule-blue: #005bac;
-  --toku-molecule-navy: #1a365d;
-  --toku-molecule-orange: #ff6b00;
 
-  /* Semantic Alerts */
+  /* Status Colors */
   --toku-success: #059669;
   --toku-success-bg: #ecfdf5;
   --toku-success-border: #a7f3d0;
@@ -60,22 +53,19 @@
   --toku-info-bg: #f0f9ff;
   --toku-info-border: #bae6fd;
   
-  /* Fonts & Metrics */
+  /* Fonts & Radius */
   --toku-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --toku-font-mono: 'JetBrains Mono', SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   
-  /* Radii */
   --toku-radius-sm: 6px;
   --toku-radius-md: 8px;
   --toku-radius-lg: 12px;
-  --toku-radius-card: 18px;
+  --toku-radius-card: 14px;
   
-  /* Shadows */
-  --toku-shadow-card: 0 10px 30px -5px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
   --toku-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --toku-shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
 }
 
-/* Base Reset */
 *, *::before, *::after {
   box-sizing: border-box;
 }
@@ -89,96 +79,195 @@ body {
   font-size: 14px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+}
+
+/* ==========================================================================
+   App Shell Layout (Sidebar + Topbar + Content)
+   ========================================================================== */
+.app-shell {
+  display: flex;
   min-height: 100vh;
 }
 
-/* Header Masthead */
-.toku-navbar {
+/* Left Sidebar */
+.app-sidebar {
+  width: 250px;
   background: #ffffff;
-  border-bottom: 1px solid var(--toku-border);
-  padding: 12px 32px;
+  border-right: 1px solid var(--toku-border);
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  flex-direction: column;
+  flex-shrink: 0;
   position: sticky;
   top: 0;
+  height: 100vh;
   z-index: 100;
 }
 
-.toku-brand {
+.sidebar-header {
+  padding: 20px 20px 16px 20px;
+  border-bottom: 1px solid var(--toku-border);
+}
+
+.sidebar-brand {
   display: flex;
-  align-items: center;
-  gap: 16px;
+  flex-direction: column;
+  gap: 6px;
   text-decoration: none;
 }
 
-.toku-station-badge {
-  font-size: 11px;
+.sidebar-badge {
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #526071;
-  padding: 4px 10px;
-  background: #f1f5f9;
+  color: #005bac;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  padding: 2px 8px;
   border-radius: var(--toku-radius-sm);
-  border: 1px solid var(--toku-border);
+  display: inline-block;
+  align-self: flex-start;
 }
 
-.toku-nav-links {
+.sidebar-nav {
+  padding: 16px 12px;
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  overflow-y: auto;
 }
 
-.toku-nav-item {
-  color: var(--toku-text-secondary);
-  text-decoration: none;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 8px 14px;
-  border-radius: var(--toku-radius-sm);
-  transition: all 0.15s ease;
-}
-
-.toku-nav-item:hover {
-  background: var(--toku-surface-subtle);
-  color: var(--toku-text);
-}
-
-.toku-nav-item.active {
-  background: #ecfdf5;
-  color: var(--toku-primary);
-  font-weight: 700;
-}
-
-.toku-nav-item.external {
-  color: #0284c7;
-}
-
-.toku-nav-item.external:hover {
-  background: #f0f9ff;
-}
-
-.toku-user-area {
+.sidebar-link {
   display: flex;
   align-items: center;
   gap: 12px;
+  padding: 10px 14px;
+  border-radius: var(--toku-radius-md);
+  color: #475569;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.15s ease;
 }
 
-/* Container */
-.toku-container {
-  max-width: 1360px;
+.sidebar-link:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.sidebar-link.active {
+  background: #eff6ff;
+  color: #005bac;
+  font-weight: 700;
+}
+
+.sidebar-link.external {
+  color: #0284c7;
+}
+
+.sidebar-link.external:hover {
+  background: #f0f9ff;
+}
+
+.sidebar-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.sidebar-user {
+  padding: 16px;
+  border-top: 1px solid var(--toku-border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #fafafa;
+}
+
+.user-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #e0f2fe;
+  color: #005bac;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 13px;
+  flex-shrink: 0;
+  border: 1px solid #bae6fd;
+}
+
+/* Main Area */
+.app-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* Topbar */
+.app-topbar {
+  height: 60px;
+  background: #ffffff;
+  border-bottom: 1px solid var(--toku-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+  position: sticky;
+  top: 0;
+  z-index: 90;
+}
+
+.breadcrumb-area {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  color: var(--toku-text-muted);
+}
+
+.breadcrumb-item {
+  color: var(--toku-text-muted);
+  text-decoration: none;
+}
+
+.breadcrumb-item:hover {
+  color: var(--toku-text);
+}
+
+.breadcrumb-current {
+  color: var(--toku-text);
+  font-weight: 700;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* Content Area */
+.app-content {
+  flex: 1;
+  padding: 32px;
+  max-width: 1400px;
+  width: 100%;
+  box-sizing: border-box;
   margin: 0 auto;
-  padding: 32px 24px;
 }
 
-/* Card Component (Identical to anhtheme.jpg) */
+/* ==========================================================================
+   Component: Card (Clean, Sharp 12px Radius)
+   ========================================================================== */
 .toku-card {
   background: var(--toku-surface);
   border: 1px solid var(--toku-border);
   border-radius: var(--toku-radius-card);
-  padding: 36px 40px;
+  padding: 28px 32px;
   box-shadow: var(--toku-shadow-card);
   margin-bottom: 24px;
 }
@@ -187,34 +276,20 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 24px;
-  padding-bottom: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 14px;
   border-bottom: 1px solid var(--toku-border);
 }
 
 .toku-card-title {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 800;
   color: var(--toku-text);
   margin: 0;
   letter-spacing: -0.01em;
 }
 
-/* Warning & Status Strips */
-.toku-warning-strip {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: #fffbeb;
-  border: 1px solid #fde68a;
-  color: #92400e;
-  padding: 10px 16px;
-  border-radius: var(--toku-radius-md);
-  font-size: 13px;
-  font-weight: 500;
-  margin-bottom: 24px;
-}
-
+/* Informative Strips */
 .toku-info-strip {
   display: flex;
   align-items: center;
@@ -226,20 +301,34 @@ body {
   border-radius: var(--toku-radius-md);
   font-size: 13px;
   font-weight: 500;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
-/* Form Controls (Slate fill with 8px radius from anhtheme.jpg) */
-.toku-form-group {
+.toku-warning-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+  padding: 10px 16px;
+  border-radius: var(--toku-radius-md);
+  font-size: 13px;
+  font-weight: 500;
   margin-bottom: 20px;
+}
+
+/* Form Controls */
+.toku-form-group {
+  margin-bottom: 18px;
 }
 
 .toku-label {
   display: block;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--toku-text-secondary);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .toku-label .required {
@@ -249,15 +338,16 @@ body {
 
 .toku-input, .toku-select, .toku-textarea {
   width: 100%;
-  padding: 12px 16px;
+  padding: 10px 14px;
   font-size: 14px;
   font-family: inherit;
   color: var(--toku-text);
-  background-color: var(--toku-surface-subtle);
-  border: 1px solid var(--toku-border);
+  background-color: var(--toku-surface);
+  border: 1px solid var(--toku-border-strong);
   border-radius: var(--toku-radius-md);
   outline: none;
   transition: all 0.15s ease;
+  box-sizing: border-box;
 }
 
 .toku-input::placeholder, .toku-textarea::placeholder {
@@ -265,30 +355,22 @@ body {
 }
 
 .toku-input:focus, .toku-select:focus, .toku-textarea:focus {
-  background-color: #ffffff;
-  border-color: var(--toku-molecule-blue);
+  border-color: var(--toku-blue);
   box-shadow: 0 0 0 3px rgba(0, 91, 172, 0.12);
 }
 
-/* Buttons (Matching anhtheme.jpg ▶ Start Session & ■ End Session) */
-.toku-btn-group {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 24px;
-}
-
+/* Buttons */
 .btn-primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background-color: var(--toku-primary);
+  background-color: var(--toku-blue);
   color: #ffffff;
   border: none;
-  border-radius: var(--toku-radius-sm);
-  padding: 12px 24px;
-  font-size: 14px;
+  border-radius: var(--toku-radius-md);
+  padding: 10px 20px;
+  font-size: 13.5px;
   font-weight: 600;
   cursor: pointer;
   text-decoration: none;
@@ -297,12 +379,30 @@ body {
 }
 
 .btn-primary:hover {
-  background-color: var(--toku-primary-hover);
-  box-shadow: 0 4px 12px rgba(0, 104, 71, 0.2);
+  background-color: var(--toku-blue-hover);
+  box-shadow: 0 4px 10px rgba(0, 91, 172, 0.2);
 }
 
-.btn-primary:active {
-  background-color: var(--toku-primary-active);
+.btn-emerald {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: var(--toku-primary);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--toku-radius-md);
+  padding: 10px 20px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.btn-emerald:hover {
+  background-color: var(--toku-primary-hover);
+  box-shadow: 0 4px 10px rgba(0, 104, 71, 0.2);
 }
 
 .btn-secondary {
@@ -310,12 +410,12 @@ body {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background-color: var(--toku-secondary);
+  background-color: #ffffff;
   color: var(--toku-secondary-text);
-  border: 1px solid var(--toku-secondary-border);
-  border-radius: var(--toku-radius-sm);
-  padding: 12px 24px;
-  font-size: 14px;
+  border: 1px solid var(--toku-border-strong);
+  border-radius: var(--toku-radius-md);
+  padding: 10px 18px;
+  font-size: 13.5px;
   font-weight: 600;
   cursor: pointer;
   text-decoration: none;
@@ -324,58 +424,38 @@ body {
 }
 
 .btn-secondary:hover {
-  background-color: var(--toku-secondary-hover);
+  background-color: #f8fafc;
   color: var(--toku-text);
+  border-color: #94a3b8;
 }
 
-.btn-danger {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  background-color: #fee2e2;
-  color: #991b1b;
-  border: 1px solid #fecaca;
-  border-radius: var(--toku-radius-sm);
-  padding: 8px 16px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  text-decoration: none;
-  transition: all 0.15s ease;
-}
-
-.btn-danger:hover {
-  background-color: #fecaca;
-}
-
-/* Stat Grid */
+/* Stat KPI Grid */
 .toku-stat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  margin-bottom: 28px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 18px;
+  margin-bottom: 24px;
 }
 
 .toku-stat-card {
   background: #ffffff;
   border: 1px solid var(--toku-border);
   border-radius: var(--toku-radius-lg);
-  padding: 20px 24px;
+  padding: 20px 22px;
   box-shadow: var(--toku-shadow-sm);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .toku-stat-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .toku-stat-label {
   font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   color: var(--toku-text-muted);
   margin-bottom: 8px;
 }
@@ -394,7 +474,7 @@ body {
   margin-top: 6px;
 }
 
-/* Tables */
+/* Data Tables */
 .toku-table-wrapper {
   overflow-x: auto;
   border: 1px solid var(--toku-border);
@@ -474,7 +554,6 @@ body {
   border: 1px solid #cbd5e1;
 }
 
-/* Code & Monospace */
 .toku-mono {
   font-family: var(--toku-font-mono);
   font-size: 12.5px;
@@ -485,11 +564,9 @@ body {
   color: #0f172a;
 }
 
-/* Centered Utility Footer */
 .toku-footer {
   text-align: center;
   color: #94a3b8;
-  font-size: 12.5px;
-  font-weight: 500;
-  padding: 32px 16px;
+  font-size: 12px;
+  padding: 28px 16px;
 }

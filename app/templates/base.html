@@ -3,75 +3,135 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}Tokuyama Vietnam ITAM{% endblock %}</title>
+  <title>{% block title %}Tokuyama ITAM{% endblock %}</title>
   <link rel="stylesheet" href="/static/css/swiss_theme.css">
   {% block extra_head %}{% endblock %}
 </head>
 <body>
   {% if user %}
-  <header class="toku-navbar">
-    <div style="display: flex; align-items: center; gap: 20px;">
-      <a href="/dashboard" class="toku-brand">
-        <!-- Authentic Tokuyama Molecule Logo -->
-        <svg width="175" height="34" viewBox="0 0 200 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <text x="0" y="27" font-family="'Inter', sans-serif" font-size="22" font-weight="800" fill="#1e293b" letter-spacing="0.02em">TOKUYAMA</text>
-          <line x1="162" y1="13" x2="182" y2="13" stroke="#64748b" stroke-width="2.5" stroke-linecap="round"/>
-          <line x1="162" y1="13" x2="172" y2="28" stroke="#64748b" stroke-width="2.5" stroke-linecap="round"/>
-          <line x1="182" y1="13" x2="172" y2="28" stroke="#64748b" stroke-width="2.5" stroke-linecap="round"/>
-          <circle cx="162" cy="13" r="6" fill="#FFFFFF" stroke="#005BAC" stroke-width="3"/>
-          <circle cx="182" cy="13" r="6" fill="#FFFFFF" stroke="#1A365D" stroke-width="3"/>
-          <circle cx="172" cy="28" r="6" fill="#FFFFFF" stroke="#FF6B00" stroke-width="3"/>
-        </svg>
-      </a>
-      <span class="toku-station-badge">TOKUYAMA ITAM • VIETNAM PORTAL</span>
-
-      <nav class="toku-nav-links">
-        <a href="/dashboard" class="toku-nav-item {% if request.url.path in ['/', '/dashboard'] %}active{% endif %}">
-          {% if lang == 'ja' %}ダッシュボード{% elif lang == 'en' %}Dashboard{% else %}Tổng quan{% endif %}
+  <div class="app-shell">
+    <!-- Left Navigation Sidebar -->
+    <aside class="app-sidebar">
+      <div class="sidebar-header">
+        <a href="/dashboard" class="sidebar-brand">
+          <!-- Tokuyama Molecule Logo -->
+          <svg width="160" height="30" viewBox="0 0 200 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <text x="0" y="27" font-family="'Inter', sans-serif" font-size="22" font-weight="800" fill="#1e293b" letter-spacing="0.02em">TOKUYAMA</text>
+            <line x1="162" y1="13" x2="182" y2="13" stroke="#64748b" stroke-width="2.5" stroke-linecap="round"/>
+            <line x1="162" y1="13" x2="172" y2="28" stroke="#64748b" stroke-width="2.5" stroke-linecap="round"/>
+            <line x1="182" y1="13" x2="172" y2="28" stroke="#64748b" stroke-width="2.5" stroke-linecap="round"/>
+            <circle cx="162" cy="13" r="6" fill="#FFFFFF" stroke="#005BAC" stroke-width="3"/>
+            <circle cx="182" cy="13" r="6" fill="#FFFFFF" stroke="#1A365D" stroke-width="3"/>
+            <circle cx="172" cy="28" r="6" fill="#FFFFFF" stroke="#FF6B00" stroke-width="3"/>
+          </svg>
+          <span class="sidebar-badge">TOKUYAMA ITAM • VIETNAM PORTAL</span>
         </a>
-        <a href="/search" class="toku-nav-item {% if '/search' in request.url.path %}active{% endif %}">
-          {% if lang == 'ja' %}検索{% elif lang == 'en' %}Global Search{% else %}Tìm kiếm toàn cục{% endif %}
-        </a>
-        {% if user.role == 'it_admin' %}
-        <a href="/trash" class="toku-nav-item {% if '/trash' in request.url.path %}active{% endif %}">
-          {% if lang == 'ja' %}ゴミ箱{% elif lang == 'en' %}Trash Registry{% else %}Thùng rác{% endif %}
-        </a>
-        {% endif %}
-        <a href="/admin" class="toku-nav-item external" target="_blank">
-          {% if lang == 'ja' %}管理ポータル{% elif lang == 'en' %}Admin Portal{% else %}Quản trị CSDL{% endif %} ↗
-        </a>
-        <a href="/docs" class="toku-nav-item external" target="_blank">API Docs ↗</a>
-      </nav>
-    </div>
-
-    <div class="toku-user-area">
-      <!-- Language Selector with Vietnamese, English, Japanese -->
-      <select onchange="window.location.href='/set-lang?lang=' + this.value + '&next=' + encodeURIComponent(window.location.pathname)" class="toku-select" style="width: auto; padding: 6px 12px; font-size: 12px; height: 34px;">
-        <option value="vi" {% if lang == 'vi' or not lang %}selected{% endif %}>Tiếng Việt (VI)</option>
-        <option value="en" {% if lang == 'en' %}selected{% endif %}>English (EN)</option>
-        <option value="ja" {% if lang == 'ja' %}selected{% endif %}>日本語 (JA)</option>
-      </select>
-
-      <!-- User Badge -->
-      <div style="display: flex; align-items: center; gap: 8px;">
-        <span style="font-size: 13px; font-weight: 600; color: var(--toku-text-secondary);">{{ user.full_name }}</span>
-        <span class="toku-badge role">{{ user.role|upper }}</span>
       </div>
 
-      <!-- Logout Button -->
-      <a href="/logout" class="btn-secondary" style="padding: 6px 14px; font-size: 12px; height: 34px;">
-        ■ {% if lang == 'ja' %}ログアウト{% elif lang == 'en' %}Sign out{% else %}Đăng xuất{% endif %}
-      </a>
+      <!-- Navigation Menu -->
+      <nav class="sidebar-nav">
+        <!-- Dashboard Link -->
+        <a href="/dashboard" class="sidebar-link {% if request.url.path in ['/', '/dashboard'] %}active{% endif %}">
+          <svg class="sidebar-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+          </svg>
+          <span>{% if lang == 'ja' %}ダッシュボード{% elif lang == 'en' %}Dashboard{% else %}Tổng quan{% endif %}</span>
+        </a>
+
+        <!-- Global Search Link -->
+        <a href="/search" class="sidebar-link {% if '/search' in request.url.path %}active{% endif %}">
+          <svg class="sidebar-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <span>{% if lang == 'ja' %}全社統合検索{% elif lang == 'en' %}Global Search{% else %}Tra cứu toàn cục{% endif %}</span>
+        </a>
+
+        <!-- Trash Registry (IT Admin only) -->
+        {% if user.role == 'it_admin' %}
+        <a href="/trash" class="sidebar-link {% if '/trash' in request.url.path %}active{% endif %}">
+          <svg class="sidebar-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+          </svg>
+          <span>{% if lang == 'ja' %}ゴミ箱台帳{% elif lang == 'en' %}Trash Registry{% else %}Thùng rác hệ thống{% endif %}</span>
+        </a>
+        {% endif %}
+
+        <div style="height: 1px; background: var(--toku-border); margin: 10px 4px;"></div>
+
+        <!-- External Admin & API Links -->
+        <a href="/admin" class="sidebar-link external" target="_blank">
+          <svg class="sidebar-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2 1.5 3 3.5 3s3.5-1 3.5-3V7M4 7c0-2 1.5-3 3.5-3S11 5 11 7m-7 0h7m4 0v10c0 2 1.5 3 3.5 3s3.5-1 3.5-3V7m-7 0h7"/>
+          </svg>
+          <span>{% if lang == 'ja' %}管理ポータル{% elif lang == 'en' %}Admin Portal{% else %}Quản trị CSDL{% endif %} ↗</span>
+        </a>
+
+        <a href="/docs" class="sidebar-link external" target="_blank">
+          <svg class="sidebar-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
+          </svg>
+          <span>Swagger API Docs ↗</span>
+        </a>
+      </nav>
+
+      <!-- Sidebar User Profile Footer -->
+      <div class="sidebar-user">
+        <div class="user-avatar">
+          {{ user.username[:2]|upper }}
+        </div>
+        <div style="flex: 1; min-width: 0;">
+          <div style="font-size: 13px; font-weight: 700; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+            {{ user.full_name }}
+          </div>
+          <div style="margin-top: 2px;">
+            <span class="toku-badge role" style="font-size: 9.5px; padding: 2px 6px;">{{ user.role|upper }}</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Container Area -->
+    <div class="app-main">
+      <!-- Topbar Header -->
+      <header class="app-topbar">
+        <!-- Breadcrumbs Area -->
+        <div class="breadcrumb-area">
+          <a href="/dashboard" class="breadcrumb-item">ITAM</a>
+          <span>/</span>
+          {% block breadcrumbs %}
+          <span class="breadcrumb-current">Dashboard</span>
+          {% endblock %}
+        </div>
+
+        <!-- Topbar Right Actions -->
+        <div class="topbar-actions">
+          <!-- Language Switcher -->
+          <select onchange="window.location.href='/set-lang?lang=' + this.value + '&next=' + encodeURIComponent(window.location.pathname)" class="toku-select" style="width: auto; padding: 6px 12px; font-size: 12px; height: 34px;">
+            <option value="vi" {% if lang == 'vi' or not lang %}selected{% endif %}>Tiếng Việt (VI)</option>
+            <option value="en" {% if lang == 'en' %}selected{% endif %}>English (EN)</option>
+            <option value="ja" {% if lang == 'ja' %}selected{% endif %}>日本語 (JA)</option>
+          </select>
+
+          <!-- Logout Button -->
+          <a href="/logout" class="btn-secondary" style="padding: 6px 14px; font-size: 12px; height: 34px;">
+            ■ {% if lang == 'ja' %}ログアウト{% elif lang == 'en' %}Sign out{% else %}Đăng xuất{% endif %}
+          </a>
+        </div>
+      </header>
+
+      <!-- Main Dynamic Content -->
+      <main class="app-content">
+        {% block content %}{% endblock %}
+      </main>
+
+      <footer class="toku-footer">
+        Tokuyama Vietnam Co., Ltd. • Centralized IT Asset Management System (ITAM)
+      </footer>
     </div>
-  </header>
+  </div>
+  {% else %}
+  <!-- Unauthenticated fallback content -->
+  {% block unauthenticated %}{% endblock %}
   {% endif %}
-
-  <main class="toku-container">
-    {% block content %}{% endblock %}
-  </main>
-
-  <footer class="toku-footer">
-    Tokuyama Vietnam Co., Ltd. • Internal Operational Utility (GMT+7)
-  </footer>
 </body>
 </html>

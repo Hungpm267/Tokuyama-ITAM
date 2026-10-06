@@ -1,24 +1,27 @@
 {% extends "base.html" %}
 
 {% block title %}
-{% if lang == 'ja' %}ゴミ箱台帳 | Tokuyama ITAM
-{% elif lang == 'en' %}Trash Registry | Tokuyama Vietnam ITAM
-{% else %}Thùng Rác & Khôi Phục Dữ Liệu | Tokuyama ITAM
-{% endif %}
+Tokuyama ITAM | {% if lang == 'ja' %}ゴミ箱台帳{% elif lang == 'en' %}Trash Registry{% else %}Thùng rác hệ thống{% endif %}
+{% endblock %}
+
+{% block breadcrumbs %}
+<span class="breadcrumb-current">
+  {% if lang == 'ja' %}ゴミ箱台帳・論理削除復元{% elif lang == 'en' %}Trash Registry{% else %}Thùng rác hệ thống & Phục hồi{% endif %}
+</span>
 {% endblock %}
 
 {% block content %}
 <!-- Top Header Card -->
-<div class="toku-card" style="padding: 32px 40px; margin-bottom: 24px;">
-  <div class="toku-card-header" style="margin-bottom: 20px;">
+<div class="toku-card" style="margin-bottom: 24px;">
+  <div class="toku-card-header" style="margin-bottom: 18px;">
     <div>
       <h1 class="toku-card-title">
         {% if lang == 'ja' %}ゴミ箱台帳・論理削除復元 (Trash Registry)
         {% elif lang == 'en' %}Trash Registry & Soft-Delete Recovery
-        {% else %}Thùng Rác Hệ Thống & Khôi Phục Dữ Liệu (Soft-Delete)
+        {% else %}Thùng Rác Hệ Thống & Khôi Phục Dữ Liệu
         {% endif %}
       </h1>
-      <div style="font-size: 13.5px; color: var(--toku-text-muted); margin-top: 4px;">
+      <div style="font-size: 13px; color: var(--toku-text-muted); margin-top: 4px;">
         {% if lang == 'ja' %}FR-09: 誤削除防止のための論理削除監査ログとワンクリック復元機能
         {% elif lang == 'en' %}FR-09: Enterprise soft-delete audit depository with single-click restoration
         {% else %}FR-09: Cơ chế xóa mềm bảo toàn dữ liệu 100%, cho phép IT Admin kiểm tra lý do và phục hồi
@@ -27,9 +30,6 @@
     </div>
     <div style="display: flex; gap: 10px; align-items: center;">
       <span class="toku-badge role">IT ADMIN EXCLUSIVE</span>
-      <a href="/dashboard" class="btn-secondary" style="padding: 8px 16px; font-size: 12.5px;">
-        ■ {% if lang == 'ja' %}ダッシュボードに戻る{% elif lang == 'en' %}Back to Dashboard{% else %}Về trang chủ{% endif %}
-      </a>
     </div>
   </div>
 
@@ -46,9 +46,9 @@
 </div>
 
 <!-- Deleted Records List Card -->
-<div class="toku-card" style="padding: 28px;">
+<div class="toku-card">
   <div class="toku-card-header">
-    <h2 class="toku-card-title" style="font-size: 18px;">
+    <h2 class="toku-card-title" style="font-size: 17px;">
       {% if lang == 'ja' %}削除済みエンティティ一覧
       {% elif lang == 'en' %}Soft-Deleted Entity Index
       {% else %}Danh Sách Bản Ghi Đã Xóa Mềm

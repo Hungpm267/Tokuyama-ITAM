@@ -4,12 +4,18 @@
 Tokuyama ITAM | {% if lang == 'ja' %}ダッシュボード{% elif lang == 'en' %}Dashboard{% else %}Tổng quan Quản lý Tài sản IT{% endif %}
 {% endblock %}
 
+{% block breadcrumbs %}
+<span class="breadcrumb-current">
+  {% if lang == 'ja' %}ダッシュボード{% elif lang == 'en' %}Dashboard{% else %}Tổng quan hệ thống{% endif %}
+</span>
+{% endblock %}
+
 {% block content %}
 <!-- Top Header Card -->
-<div class="toku-card" style="padding: 28px 36px; margin-bottom: 24px;">
+<div class="toku-card" style="margin-bottom: 24px;">
   <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 20px;">
     <div>
-      <h1 class="toku-card-title" style="font-size: 24px;">
+      <h1 class="toku-card-title" style="font-size: 22px;">
         {% if lang == 'ja' %}IT資産運用管理ダッシュボード
         {% elif lang == 'en' %}IT Asset Management Dashboard
         {% else %}Bảng Điều Khiển Quản Lý Tài Sản IT
@@ -25,34 +31,25 @@ Tokuyama ITAM | {% if lang == 'ja' %}ダッシュボード{% elif lang == 'en' %
 
     <!-- Quick Operations Links -->
     <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-      <a href="/admin/asset/list" target="_blank" class="btn-primary" style="padding: 9px 18px; font-size: 13px;">
+      <a href="/admin/asset/list" target="_blank" class="btn-primary" style="padding: 8px 16px; font-size: 13px;">
         ▶ {% if lang == 'ja' %}機器台帳 (Assets){% elif lang == 'en' %}Hardware Assets{% else %}Quản lý Thiết bị{% endif %}
       </a>
-      <a href="/admin/access-card/list" target="_blank" class="btn-secondary" style="padding: 9px 18px; font-size: 13px;">
+      <a href="/admin/access-card/list" target="_blank" class="btn-secondary" style="padding: 8px 16px; font-size: 13px;">
         ■ {% if lang == 'ja' %}カード管理 (Cards){% elif lang == 'en' %}Access Cards{% else %}Quản lý Thẻ từ{% endif %}
       </a>
-      <a href="/admin/license/list" target="_blank" class="btn-secondary" style="padding: 9px 18px; font-size: 13px;">
+      <a href="/admin/license/list" target="_blank" class="btn-secondary" style="padding: 8px 16px; font-size: 13px;">
         ■ {% if lang == 'ja' %}ライセンス (Licenses){% elif lang == 'en' %}Licenses{% else %}Quản lý License{% endif %}
       </a>
     </div>
   </div>
 
-  <!-- Informative System Status Strip (Not a fake alarming warning) -->
-  <div class="toku-info-strip">
-    <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--toku-success); margin-right: 6px;"></span>
-    {% if lang == 'ja' %}システム稼働中 • ログイン中: <strong>{{ user.full_name }}</strong> ({{ user.role|upper }})
-    {% elif lang == 'en' %}System Operational • Authenticated as: <strong>{{ user.full_name }}</strong> ({{ user.role|upper }})
-    {% else %}Hệ thống hoạt động bình thường • Đang đăng nhập: <strong>{{ user.full_name }}</strong> ({{ user.role|upper }})
-    {% endif %}
-  </div>
-
   <!-- Unified Search Form -->
   <form action="/search" method="get">
-    <div style="display: flex; gap: 12px; align-items: center;">
+    <div style="display: flex; gap: 10px; align-items: center;">
       <div style="flex: 1;">
-        <input type="text" name="q" placeholder="{% if lang == 'ja' %}機器コード、シリアル、HWID、MACアドレス、従業員名、契約コードで検索...{% elif lang == 'en' %}Search by asset code, serial, HWID, MAC address, employee name, contract code...{% else %}Nhập mã tài sản, số serial, địa chỉ MAC, tên nhân viên hoặc mã hợp đồng...{% endif %}" class="toku-input" style="height: 46px;">
+        <input type="text" name="q" placeholder="{% if lang == 'ja' %}機器コード、シリアル、HWID、MACアドレス、従業員名、契約コードで検索...{% elif lang == 'en' %}Search by asset code, serial, HWID, MAC address, employee name, contract code...{% else %}Nhập mã tài sản (LAP-...), số serial, địa chỉ MAC, tên nhân viên, hoặc mã hợp đồng...{% endif %}" class="toku-input" style="height: 44px;">
       </div>
-      <button type="submit" class="btn-primary" style="height: 46px; padding: 0 24px;">
+      <button type="submit" class="btn-primary" style="height: 44px; padding: 0 24px;">
         ▶ {% if lang == 'ja' %}検索実行{% elif lang == 'en' %}Search Database{% else %}Tra cứu dữ liệu{% endif %}
       </button>
     </div>
@@ -103,12 +100,12 @@ Tokuyama ITAM | {% if lang == 'ja' %}ダッシュボード{% elif lang == 'en' %
 </div>
 
 <!-- Operations Registry: Two Side-by-Side Cards -->
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(480px, 1fr)); gap: 24px;">
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); gap: 24px;">
   <!-- Card 1: Expiring Licenses -->
-  <div class="toku-card" style="padding: 28px;">
+  <div class="toku-card" style="margin-bottom: 0;">
     <div class="toku-card-header">
       <div>
-        <h2 class="toku-card-title" style="font-size: 18px;">
+        <h2 class="toku-card-title" style="font-size: 17px;">
           {% if lang == 'ja' %}ライセンス期限ウォッチリスト (60日以内)
           {% elif lang == 'en' %}License Expiration Watchlist (60 Days)
           {% else %}Cảnh Báo Hạn Bản Quyền License (Trong 60 Ngày)
@@ -152,7 +149,7 @@ Tokuyama ITAM | {% if lang == 'ja' %}ダッシュボード{% elif lang == 'en' %
       </table>
     </div>
     {% else %}
-    <div style="padding: 32px 16px; text-align: center; color: var(--toku-text-muted); background: var(--toku-surface-subtle); border-radius: var(--toku-radius-md);">
+    <div style="padding: 28px 16px; text-align: center; color: var(--toku-text-muted); background: var(--toku-surface-subtle); border-radius: var(--toku-radius-md);">
       <span class="toku-badge success" style="font-size: 12px; padding: 6px 14px;">
         ✓ {% if lang == 'ja' %}すべてのライセンスは60日以上有効です。
         {% elif lang == 'en' %}All software licenses are healthy (valid &gt; 60 days).
@@ -164,10 +161,10 @@ Tokuyama ITAM | {% if lang == 'ja' %}ダッシュボード{% elif lang == 'en' %
   </div>
 
   <!-- Card 2: Active Access Card Loans -->
-  <div class="toku-card" style="padding: 28px;">
+  <div class="toku-card" style="margin-bottom: 0;">
     <div class="toku-card-header">
       <div>
-        <h2 class="toku-card-title" style="font-size: 18px;">
+        <h2 class="toku-card-title" style="font-size: 17px;">
           {% if lang == 'ja' %}貸出中カード台帳 (未返却)
           {% elif lang == 'en' %}Active Card Loans Registry (Unreturned)
           {% else %}Sổ Theo Dõi Thẻ Từ Đang Mượn (Chưa Trả)
@@ -213,7 +210,7 @@ Tokuyama ITAM | {% if lang == 'ja' %}ダッシュボード{% elif lang == 'en' %
       </table>
     </div>
     {% else %}
-    <div style="padding: 32px 16px; text-align: center; color: var(--toku-text-muted); background: var(--toku-surface-subtle); border-radius: var(--toku-radius-md);">
+    <div style="padding: 28px 16px; text-align: center; color: var(--toku-text-muted); background: var(--toku-surface-subtle); border-radius: var(--toku-radius-md);">
       <span class="toku-badge success" style="font-size: 12px; padding: 6px 14px;">
         ✓ {% if lang == 'ja' %}未返却のカードはありません。
         {% elif lang == 'en' %}No unreturned access cards. All cards in inventory.
