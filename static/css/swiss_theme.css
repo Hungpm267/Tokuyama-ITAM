@@ -118,13 +118,10 @@ body {
 .sidebar-badge {
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #005bac;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  padding: 2px 8px;
-  border-radius: var(--toku-radius-sm);
+  color: #64748b;
+  margin-top: 3px;
   display: inline-block;
   align-self: flex-start;
 }
@@ -552,6 +549,37 @@ body {
   background: #f1f5f9;
   color: #334155;
   border: 1px solid #cbd5e1;
+}
+
+.toku-badge.neutral {
+  background: #f8fafc;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+
+.toku-badge.info {
+  background: #f0f9ff;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+}
+
+.toku-empty-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 20px;
+  background: #f0fdf4;
+  border: 1px solid #dcfce7;
+  border-radius: var(--toku-radius-md);
+  color: #15803d;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+  line-height: 1.5;
+  margin: 12px 0 4px 0;
+  white-space: normal;
+  word-break: normal;
 }
 
 .toku-mono {
