@@ -513,7 +513,10 @@ class License(BizBase):
     )
 
     def __str__(self) -> str:
-        prod = self.product.name if self.product else "License"
+        try:
+            prod = self.product.name if self.product else "License"
+        except Exception:
+            prod = "License"
         return f"{prod} ({self.seats} seats)"
 
 
@@ -640,6 +643,7 @@ class CardLoan(BizBase):
     returned_at: Mapped[dt.date | None] = mapped_column(Date, nullable=True)
 
     card: Mapped[AccessCard] = relationship(back_populates="loans")
+    person: Mapped[Person | None] = relationship()
 
     __table_args__ = biz_args(
         CheckConstraint(

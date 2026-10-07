@@ -586,7 +586,7 @@ class CardLoanAdmin(BaseAdminView, model=CardLoan):
     icon = "fa-solid fa-clock-rotate-left"
     category = "Thẻ ra vào"
     can_delete = False
-    column_list = [CardLoan.id, CardLoan.card, CardLoan.person_id, CardLoan.external_name, CardLoan.borrowed_at, CardLoan.returned_at]
+    column_list = [CardLoan.id, CardLoan.card, CardLoan.person, CardLoan.external_name, CardLoan.borrowed_at, CardLoan.returned_at]
 
 
 class ContractAdmin(BaseAdminView, model=Contract):

@@ -481,3 +481,19 @@ def test_sqladmin_user_create_with_password(db: Session, rbac_roles_and_users):
     assert verify_password("NewSecretPassword456!", new_user.password_hash) is True
 
 
+def test_sqladmin_relation_list_views(db: Session, rbac_roles_and_users):
+    admin = rbac_roles_and_users["admin"]
+    client = TestClient(app)
+    admin_token = create_session_token({"user_id": admin.id, "role": "ADMIN", "username": admin.username})
+    client.cookies.set("itam_session", admin_token)
+
+    for path in [
+        "/admin/license-assignment/list",
+        "/admin/license/list",
+        "/admin/assignment/list",
+        "/admin/card-loan/list",
+    ]:
+        res = client.get(path)
+        assert res.status_code == 200
+
+
