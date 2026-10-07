@@ -156,6 +156,62 @@ class AdminAuth(AuthenticationBackend):
 authentication_backend = AdminAuth(secret_key=SESSION_SECRET)
 
 
+def humanize_error_str(msg: str, lang: str = "vi") -> str:
+    """Chuyển đổi các thông báo lỗi kỹ thuật/SQL/Constraint thành thông báo tiếng Việt/Anh thân thiện."""
+    if not msg:
+        return ""
+    m = str(msg)
+    is_en = (lang == "en")
+
+    if "expiry_after_start" in m:
+        return "Expiry date cannot be before start date." if is_en else "Ngày hết hạn không được trước ngày bắt đầu."
+    if "returned_after_borrowed" in m:
+        return "Return date cannot be before borrow date." if is_en else "Ngày trả không được trước ngày mượn."
+    if "removed_after_assigned" in m:
+        return "Removal date cannot be before assignment date." if is_en else "Ngày thu hồi bản quyền không được trước ngày cấp phát."
+    if "seats_positive" in m:
+        return "Seats count must be greater than 0." if is_en else "Số lượng bản quyền (Seats) phải lớn hơn 0."
+    if "qty_positive" in m:
+        return "Ordered quantity must be greater than 0." if is_en else "Số lượng đặt hàng phải lớn hơn 0."
+    if "has_some_identifier" in m:
+        return "Asset must have at least one identifier (GA code, Vendor code or Serial)." if is_en else "Tài sản phải có ít nhất một mã định danh (Mã GA, Mã Vendor hoặc Số Serial)."
+    if "target_required" in m:
+        return "License must be assigned to either an asset or a person." if is_en else "Bản quyền phải được gán cho thiết bị hoặc nhân viên."
+    if "borrower_required" in m:
+        return "Must select a person or enter external borrower name." if is_en else "Mượn thẻ phải chọn nhân viên hoặc nhập tên người mượn ngoài."
+    if "staff_code_format" in m:
+        return "Staff code does not match standard TVC format (e.g. TVC00001)." if is_en else "Mã nhân viên không đúng định dạng chuẩn TVC (Ví dụ: TVC00001)."
+    if "smallint out of range" in m or "numericvalueoutofrange" in m.lower():
+        return "Numeric value is out of allowable range." if is_en else "Giá trị số nhập vào vượt quá giới hạn cho phép."
+
+    if "unique constraint" in m.lower() or "uniqueviolation" in m.lower():
+        if "serial" in m:
+            return "Serial number already exists in system." if is_en else "Số Serial này đã tồn tại trong hệ thống (bị trùng lặp)."
+        if "asset_code" in m:
+            return "Asset code already exists in system." if is_en else "Mã tài sản này đã tồn tại trong hệ thống (bị trùng lặp)."
+        if "vendor_code" in m:
+            return "Vendor code already exists in system." if is_en else "Mã Vendor này đã tồn tại trong hệ thống (bị trùng lặp)."
+        if "card_no" in m:
+            return "Card number already exists in system." if is_en else "Số thẻ này đã tồn tại trong hệ thống (bị trùng lặp)."
+        if "staff_code" in m:
+            return "Staff code already exists in system." if is_en else "Mã nhân viên này đã tồn tại trong hệ thống (bị trùng lặp)."
+        if "username" in m:
+            return "Username already exists in system." if is_en else "Tên đăng nhập này đã tồn tại trong hệ thống (bị trùng lặp)."
+        return "Record already exists in system (duplicate)." if is_en else "Dữ liệu bị trùng lặp với bản ghi đã tồn tại trong hệ thống."
+
+    if "foreign key" in m.lower() or "foreignkeyviolation" in m.lower():
+        return "Cannot save or delete because data is referenced elsewhere." if is_en else "Không thể lưu hoặc xóa vì dữ liệu đang được liên kết với bản ghi khác."
+    if "not-null constraint" in m.lower() or "notnullviolation" in m.lower():
+        return "Please fill in all required fields." if is_en else "Vui lòng nhập đầy đủ các trường thông tin bắt buộc."
+
+    if "(psycopg." in m or "[SQL:" in m:
+        clean = m.split("[SQL:")[0].strip()
+        clean = clean.split("DETAIL:")[0].strip()
+        return clean
+
+    return m
+
+
 # --- Base Model View ---
 
 class BaseAdminView(ModelView):
@@ -163,6 +219,51 @@ class BaseAdminView(ModelView):
     page_size = 25
     page_size_options = [10, 25, 50, 100]
     form_excluded_columns = COMMON_EXCLUDED_COLUMNS
+
+    async def insert_model(self, request: Request, data: dict) -> Any:
+        try:
+            return await super().insert_model(request, data)
+        except Exception as e:
+            lang = request.session.get("lang", "vi")
+            raise ValueError(humanize_error_str(str(e), lang=lang)) from e
+
+    async def update_model(self, request: Request, pk: Any, data: dict) -> Any:
+        try:
+            return await super().update_model(request, pk, data)
+        except Exception as e:
+            lang = request.session.get("lang", "vi")
+            raise ValueError(humanize_error_str(str(e), lang=lang)) from e
+
+    async def on_model_change(
+        self, data: dict, model: Any, is_created: bool, request: Request
+    ) -> None:
+        lang = request.session.get("lang", "vi")
+        is_en = (lang == "en")
+
+        # Kiểm tra tính hợp lệ của ngày tháng trước khi ghi DB
+        if "start_date" in data and "expiry_date" in data:
+            s = data.get("start_date")
+            ex = data.get("expiry_date")
+            if s and ex and ex < s:
+                msg = "Expiry date cannot be before start date." if is_en else "Ngày hết hạn không được trước ngày bắt đầu."
+                raise ValueError(msg)
+
+        if "borrowed_at" in data and "returned_at" in data:
+            b = data.get("borrowed_at")
+            r = data.get("returned_at")
+            if b and r and r < b:
+                msg = "Return date cannot be before borrow date." if is_en else "Ngày trả không được trước ngày mượn."
+                raise ValueError(msg)
+
+        if "assigned_at" in data and "removed_at" in data:
+            a = data.get("assigned_at")
+            rem = data.get("removed_at")
+            if a and rem and rem < a:
+                msg = "Removal date cannot be before assignment date." if is_en else "Ngày thu hồi bản quyền không được trước ngày cấp phát."
+                raise ValueError(msg)
+
+        await super().on_model_change(data, model, is_created, request)
+
 
     def list_query(self, request: Request) -> Select:
         stmt = super().list_query(request)
@@ -441,7 +542,7 @@ class LicenseAdmin(BaseAdminView, model=License):
     icon = "fa-solid fa-certificate"
     category = "License"
     column_list = [License.id, License.product, License.seats, License.start_date, License.expiry_date]
-    form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["license_key_enc", "assignments"]
+    form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["license_key_enc", "key_version", "assignments"]
 
 
 class LicenseAssignmentAdmin(BaseAdminView, model=LicenseAssignment):
@@ -450,7 +551,24 @@ class LicenseAssignmentAdmin(BaseAdminView, model=LicenseAssignment):
     icon = "fa-solid fa-user-check"
     category = "License"
     can_delete = False
-    column_list = [LicenseAssignment.id, LicenseAssignment.license, LicenseAssignment.person_id, LicenseAssignment.asset_id, LicenseAssignment.assigned_at, LicenseAssignment.removed_at]
+    column_list = [
+        LicenseAssignment.id,
+        LicenseAssignment.license,
+        LicenseAssignment.asset,
+        LicenseAssignment.person,
+        LicenseAssignment.assigned_at,
+        LicenseAssignment.expiry_date,
+        LicenseAssignment.removed_at,
+    ]
+    form_columns = [
+        "license",
+        "asset",
+        "person",
+        "assigned_at",
+        "expiry_date",
+        "removed_at",
+        "note",
+    ]
 
 
 class AccessCardAdmin(BaseAdminView, model=AccessCard):
@@ -601,6 +719,8 @@ def setup_admin(app, engine):
     admin.templates.env.globals["t"] = translate
     admin.templates.env.filters["t"] = translate
     admin.templates.env.globals["get_current_lang"] = get_current_lang
+    admin.templates.env.globals["humanize_error"] = humanize_error_str
+    admin.templates.env.filters["humanize_error"] = humanize_error_str
 
     # 1. Hệ thống & phân quyền
     admin.add_view(UserAdmin)

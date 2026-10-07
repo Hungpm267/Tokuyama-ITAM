@@ -17,7 +17,7 @@
         enctype="multipart/form-data">
         {% if error %}
         <div class="alert alert-danger py-2 px-3 mb-4 shadow-sm" role="alert" style="font-size: 13.5px; border-radius: 6px;">
-          <i class="fa-solid fa-circle-exclamation me-2"></i>{{ error }}
+          <i class="fa-solid fa-circle-exclamation me-2"></i>{{ humanize_error(error, current_lang) if humanize_error is defined else error }}
         </div>
         {% endif %}
         <fieldset class="form-fieldset border-0 p-0 mb-4">

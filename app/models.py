@@ -541,6 +541,8 @@ class LicenseAssignment(BizBase):
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     license: Mapped[License] = relationship(back_populates="assignments")
+    asset: Mapped[Asset | None] = relationship()
+    person: Mapped[Person | None] = relationship()
 
     __table_args__ = biz_args(
         CheckConstraint(
