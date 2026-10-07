@@ -114,6 +114,9 @@ class User(BizBase):
         ),
     )
 
+    def __str__(self) -> str:
+        return f"{self.display_name} ({self.username})"
+
 
 class Role(BizBase):
     __tablename__ = "roles"
@@ -130,6 +133,9 @@ class Role(BizBase):
     )
 
     __table_args__ = biz_args(alive_unique("roles", "code"))
+
+    def __str__(self) -> str:
+        return f"{self.name_en} ({self.code})"
 
 
 class RolePermission(Base):
@@ -153,6 +159,9 @@ class RolePermission(Base):
         ),
     )
 
+    def __str__(self) -> str:
+        return f"{self.module}:{self.action}"
+
 
 class UserPermissionOverride(Base):
     """Admin cấp thêm / thu hồi quyền lẻ cho một người, không đổi vai trò."""
@@ -174,6 +183,10 @@ class UserPermissionOverride(Base):
         ),
     )
 
+    def __str__(self) -> str:
+        status = "Allow" if self.granted else "Deny"
+        return f"User #{self.user_id} - {self.module}:{self.action} ({status})"
+
 
 # =============================================================================
 # 2. DANH MỤC DÙNG CHUNG
@@ -192,6 +205,9 @@ class Department(BizBase):
         alive_unique("departments", "name_en"),
     )
 
+    def __str__(self) -> str:
+        return f"{self.name_en} ({self.code})" if self.code else self.name_en
+
 
 class AssetCategory(BizBase):
     """Laptop, Monitor, Handy Terminal, Mouse..."""
@@ -202,6 +218,9 @@ class AssetCategory(BizBase):
     name_ja: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     __table_args__ = biz_args(alive_unique("asset_categories", "name_en"))
+
+    def __str__(self) -> str:
+        return self.name_en
 
 
 class AssetTag(BizBase):
@@ -220,6 +239,9 @@ class AssetTag(BizBase):
     color: Mapped[str | None] = mapped_column(String(7), nullable=True)
 
     __table_args__ = biz_args(alive_unique("asset_tags", "code"))
+
+    def __str__(self) -> str:
+        return f"{self.name_en} ({self.code})"
 
 
 class Location(BizBase):
@@ -243,6 +265,10 @@ class Location(BizBase):
     __table_args__ = biz_args(
         alive_unique("locations", "building", "floor", "room_en")
     )
+
+    def __str__(self) -> str:
+        parts = [p for p in (self.building, self.floor, self.room_en) if p]
+        return " - ".join(parts) if parts else f"Location #{self.id}"
 
 
 # =============================================================================
@@ -287,6 +313,9 @@ class Person(BizBase):
         alive_unique("persons", "email", extra="email IS NOT NULL"),
         Index("ix_persons_full_name", "full_name"),
     )
+
+    def __str__(self) -> str:
+        return f"{self.full_name} ({self.staff_code})"
 
 
 class PersonSecret(Base):
@@ -385,6 +414,10 @@ class Asset(BizBase):
         ),
     )
 
+    def __str__(self) -> str:
+        code = self.asset_code or self.vendor_code or self.serial or f"Asset #{self.id}"
+        return f"{code} ({self.model})" if self.model else str(code)
+
 
 class AssetTagLink(LinkBase):
     __tablename__ = "asset_tag_links"
@@ -420,6 +453,9 @@ class Assignment(BizBase):
         closes_after_opens("borrowed_at", "returned_at", "returned_after_borrowed"),
     )
 
+    def __str__(self) -> str:
+        return f"Assignment #{self.id}"
+
 
 # =============================================================================
 # 5. LICENSE
@@ -438,6 +474,9 @@ class LicenseProduct(BizBase):
     )
 
     __table_args__ = biz_args(alive_unique("license_products", "name"))
+
+    def __str__(self) -> str:
+        return self.name
 
 
 class License(BizBase):
@@ -472,6 +511,10 @@ class License(BizBase):
             name="expiry_after_start",
         ),
     )
+
+    def __str__(self) -> str:
+        prod = self.product.name if self.product else "License"
+        return f"{prod} ({self.seats} seats)"
 
 
 class LicenseAssignment(BizBase):
@@ -521,6 +564,9 @@ class LicenseAssignment(BizBase):
         ),
     )
 
+    def __str__(self) -> str:
+        return f"LicenseAssignment #{self.id}"
+
 
 # =============================================================================
 # 6. THẺ RA VÀO
@@ -546,6 +592,14 @@ class AccessCard(BizBase):
     loans: Mapped[list[CardLoan]] = relationship(back_populates="card")
 
     __table_args__ = biz_args(alive_unique("access_cards", "card_no"))
+
+    def __str__(self) -> str:
+        card_type_val = (
+            self.card_type.value
+            if hasattr(self.card_type, "value")
+            else str(self.card_type)
+        )
+        return f"{self.card_no} ({card_type_val})"
 
 
 class AccessCardLocation(LinkBase):
@@ -598,6 +652,9 @@ class CardLoan(BizBase):
         one_open_per("card_loans", "card_id", close_col="returned_at"),
     )
 
+    def __str__(self) -> str:
+        return f"Loan #{self.id}"
+
 
 # =============================================================================
 # 7. HỢP ĐỒNG
@@ -623,6 +680,10 @@ class Contract(BizBase):
 
     __table_args__ = biz_args(alive_unique("contracts", "code"))
 
+    def __str__(self) -> str:
+        vendor = f" - {self.vendor_name}" if self.vendor_name else ""
+        return f"{self.code}{vendor}"
+
 
 class ContractLine(BizBase):
     """Một dòng hàng trong hợp đồng.
@@ -647,6 +708,9 @@ class ContractLine(BizBase):
     __table_args__ = biz_args(
         CheckConstraint("qty_ordered > 0", name="qty_positive")
     )
+
+    def __str__(self) -> str:
+        return f"{self.item_type} (x{self.qty_ordered})"
 
 
 # =============================================================================
@@ -683,6 +747,10 @@ class Phone(BizBase):
         ),
     )
 
+    def __str__(self) -> str:
+        ext = f" (Ext: {self.extension_number})" if self.extension_number else ""
+        return f"{self.device_name}{ext}"
+
 
 # =============================================================================
 # 9. TRUY VẾT
@@ -718,6 +786,9 @@ class AuditLog(Base):
         Index("ix_audit_logs_created_at", "created_at"),
         Index("ix_audit_logs_user_action", "user_id", "action"),
     )
+
+    def __str__(self) -> str:
+        return f"Audit #{self.id} ({self.action.value} {self.table_name})"
 
 
 #: Tên cột không bao giờ được xuất hiện trong audit log, API response,

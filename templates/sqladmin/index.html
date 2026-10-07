@@ -1,0 +1,217 @@
+{% extends "sqladmin/layout.html" %}
+
+{% block content %}
+{% set current_lang = current_lang or get_current_lang(request) %}
+
+<!-- Top Metrics Strip (Modern Swiss Tabular Cards, Zero Cliché Borders) -->
+<div class="row g-3 mb-4">
+  <!-- Metric 1: Hardware Assets -->
+  <div class="col-sm-6 col-lg-3">
+    <a href="{{ url_for('admin:list', identity='asset') }}" class="text-decoration-none">
+      <div class="card p-3 h-100 toku-kpi-card">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="text-muted fw-semibold" style="font-size: 11.5px; letter-spacing: 0.03em;">{{ t('Thiết bị IT', current_lang) }}</span>
+          <span class="toku-kpi-icon"><i class="fa-solid fa-laptop"></i></span>
+        </div>
+        <div class="d-flex align-items-baseline justify-content-between mt-auto pt-2">
+          <div class="d-flex align-items-baseline gap-1">
+            <span class="num-tabular fw-bold text-dark" style="font-size: 28px; letter-spacing: -0.02em; line-height: 1;">{{ asset_count }}</span>
+            <span class="text-muted small ms-1" style="font-size: 12px;">{{ t('máy', current_lang) }}</span>
+          </div>
+          <span class="text-muted small toku-kpi-link" style="font-size: 11px; font-weight: 500;">{{ t('Chi tiết', current_lang) }} &rarr;</span>
+        </div>
+      </div>
+    </a>
+  </div>
+
+  <!-- Metric 2: Active Assignments -->
+  <div class="col-sm-6 col-lg-3">
+    <a href="{{ url_for('admin:list', identity='assignment') }}" class="text-decoration-none">
+      <div class="card p-3 h-100 toku-kpi-card">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="text-muted fw-semibold" style="font-size: 11.5px; letter-spacing: 0.03em;">{{ t('Đang cấp phát', current_lang) }}</span>
+          <span class="toku-kpi-icon"><i class="fa-solid fa-arrow-right-arrow-left"></i></span>
+        </div>
+        <div class="d-flex align-items-baseline justify-content-between mt-auto pt-2">
+          <div class="d-flex align-items-baseline gap-1">
+            <span class="num-tabular fw-bold text-dark" style="font-size: 28px; letter-spacing: -0.02em; line-height: 1;">{{ assignment_count }}</span>
+            <span class="text-muted small ms-1" style="font-size: 12px;">{{ t('lượt', current_lang) }}</span>
+          </div>
+          <span class="text-muted small toku-kpi-link" style="font-size: 11px; font-weight: 500;">{{ t('Chi tiết', current_lang) }} &rarr;</span>
+        </div>
+      </div>
+    </a>
+  </div>
+
+  <!-- Metric 3: Software Licenses -->
+  <div class="col-sm-6 col-lg-3">
+    <a href="{{ url_for('admin:list', identity='license') }}" class="text-decoration-none">
+      <div class="card p-3 h-100 toku-kpi-card">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="text-muted fw-semibold" style="font-size: 11.5px; letter-spacing: 0.03em;">{{ t('Bản quyền phần mềm', current_lang) }}</span>
+          <span class="toku-kpi-icon"><i class="fa-solid fa-key"></i></span>
+        </div>
+        <div class="d-flex align-items-baseline justify-content-between mt-auto pt-2">
+          <div class="d-flex align-items-baseline gap-1">
+            <span class="num-tabular fw-bold text-dark" style="font-size: 28px; letter-spacing: -0.02em; line-height: 1;">{{ license_count }}</span>
+            <span class="text-muted small ms-1" style="font-size: 12px;">{{ t('gói', current_lang) }}</span>
+          </div>
+          <span class="text-muted small toku-kpi-link" style="font-size: 11px; font-weight: 500;">{{ t('Chi tiết', current_lang) }} &rarr;</span>
+        </div>
+      </div>
+    </a>
+  </div>
+
+  <!-- Metric 4: Access Cards -->
+  <div class="col-sm-6 col-lg-3">
+    <a href="{{ url_for('admin:list', identity='access-card') }}" class="text-decoration-none">
+      <div class="card p-3 h-100 toku-kpi-card">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="text-muted fw-semibold" style="font-size: 11.5px; letter-spacing: 0.03em;">{{ t('Thẻ ra vào', current_lang) }}</span>
+          <span class="toku-kpi-icon"><i class="fa-solid fa-id-card"></i></span>
+        </div>
+        <div class="d-flex align-items-baseline justify-content-between mt-auto pt-2">
+          <div class="d-flex align-items-baseline gap-1">
+            <span class="num-tabular fw-bold text-dark" style="font-size: 28px; letter-spacing: -0.02em; line-height: 1;">{{ card_count }}</span>
+            <span class="text-muted small ms-1" style="font-size: 12px;">{{ t('thẻ', current_lang) }}</span>
+          </div>
+          <span class="text-muted small toku-kpi-link" style="font-size: 11px; font-weight: 500;">{{ t('Chi tiết', current_lang) }} &rarr;</span>
+        </div>
+      </div>
+    </a>
+  </div>
+</div>
+
+<!-- Main Operational Layout (Asymmetric 8 / 4 Grid) -->
+<div class="row g-3 mb-4">
+  <!-- Left Column: Live Activity Audit Table (8 cols) -->
+  <div class="col-lg-8">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center py-3 px-4">
+        <span class="card-title fw-bold" style="font-size: 14.5px;">{{ t('Nhật ký hoạt động gần nhất', current_lang) }}</span>
+        <a href="{{ url_for('admin:list', identity='audit-log') }}" class="btn btn-outline-secondary btn-sm py-1 px-3" style="font-size: 11.5px; font-weight: 600;">
+          {{ t('Xem tất cả nhật ký', current_lang) }} &rarr;
+        </a>
+      </div>
+      <div class="table-responsive">
+        <table class="table card-table table-vcenter mb-0">
+          <thead>
+            <tr>
+              <th style="width: 70px;">{{ t('Mã', current_lang) }}</th>
+              <th style="width: 170px;">{{ t('Thời điểm', current_lang) }}</th>
+              <th style="width: 110px;">{{ t('Hành động', current_lang) }}</th>
+              <th>{{ t('Bảng dữ liệu', current_lang) }}</th>
+              <th style="width: 90px;">{{ t('Bản ghi ID', current_lang) }}</th>
+              <th style="width: 130px;">{{ t('Địa chỉ IP', current_lang) }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if recent_logs %}
+              {% for log in recent_logs %}
+              <tr>
+                <td class="num-tabular text-muted" style="font-size: 12px;">#{{ log.id }}</td>
+                <td class="num-tabular text-dark" style="font-size: 12px;">{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') if log.created_at else '—' }}</td>
+                <td>
+                  {% if log.action.value == 'LOGIN' %}
+                  <span class="fw-bold" style="font-size: 11px; color: #15803d; letter-spacing: 0.03em;">LOGIN</span>
+                  {% elif log.action.value == 'LOGIN_FAIL' %}
+                  <span class="fw-bold" style="font-size: 11px; color: #dc2626; letter-spacing: 0.03em;">LOGIN FAIL</span>
+                  {% elif log.action.value == 'CREATE' %}
+                  <span class="fw-bold" style="font-size: 11px; color: #4D5CB0; letter-spacing: 0.03em;">CREATE</span>
+                  {% elif log.action.value == 'UPDATE' %}
+                  <span class="fw-bold" style="font-size: 11px; color: #475569; letter-spacing: 0.03em;">UPDATE</span>
+                  {% elif log.action.value == 'DELETE' %}
+                  <span class="fw-bold" style="font-size: 11px; color: #b91c1c; letter-spacing: 0.03em;">DELETE</span>
+                  {% elif log.action.value == 'REVEAL' %}
+                  <span class="fw-bold" style="font-size: 11px; color: #b45309; letter-spacing: 0.03em;">REVEAL</span>
+                  {% else %}
+                  <span class="fw-bold text-muted" style="font-size: 11px; letter-spacing: 0.03em;">{{ log.action.value }}</span>
+                  {% endif %}
+                </td>
+                <td><span class="num-tabular text-dark fw-medium" style="font-size: 12px; font-family: var(--toku-font-mono);">{{ log.table_name }}</span></td>
+                <td class="num-tabular text-dark" style="font-size: 12px;">{{ log.record_id if log.record_id is not none else '—' }}</td>
+                <td class="num-tabular text-muted" style="font-size: 11.5px;">{{ log.ip_address or '127.0.0.1' }}</td>
+              </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="6" class="text-center py-4 text-muted" style="font-size: 12.5px;">
+                  {{ t('Chưa có dữ liệu kiểm toán phát sinh trong phiên làm việc này.', current_lang) }}
+                </td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Column: Operations Summary & Quick Actions (4 cols) -->
+  <div class="col-lg-4 d-flex flex-column gap-3">
+    <!-- Operational Metrics Summary Card -->
+    <div class="card p-4">
+      <div class="card-title fw-bold mb-3" style="font-size: 14px;">{{ t('Tổng quan vận hành', current_lang) }}</div>
+      
+      <div class="d-flex flex-column gap-3">
+        <!-- Allocation Ratio -->
+        <div>
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <span class="text-muted small fw-medium">{{ t('Tỷ lệ cấp phát', current_lang) }}</span>
+            <span class="num-tabular fw-bold text-dark" style="font-size: 13px;">{{ allocation_rate }}%</span>
+          </div>
+          <div class="progress" style="height: 5px; background-color: #f1f5f9; border-radius: 3px;">
+            <div class="progress-bar" role="progressbar" style="width: {{ allocation_rate }}%; background-color: #4D5CB0; border-radius: 3px;"></div>
+          </div>
+        </div>
+
+        <div class="border-top" style="border-color: #f1f5f9 !important;"></div>
+
+        <!-- Total Personnel -->
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="text-muted small fw-medium">{{ t('Nhân sự đang làm việc', current_lang) }}</span>
+          <span class="num-tabular fw-bold text-dark" style="font-size: 13px;">{{ person_count }} {{ t('người', current_lang) }}</span>
+        </div>
+
+        <div class="border-top" style="border-color: #f1f5f9 !important;"></div>
+
+        <!-- Procurement Contracts -->
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="text-muted small fw-medium">{{ t('Hợp đồng mua sắm', current_lang) }}</span>
+          <span class="num-tabular fw-bold text-dark" style="font-size: 13px;">{{ contract_count }} {{ t('hợp đồng', current_lang) }}</span>
+        </div>
+
+        <div class="border-top" style="border-color: #f1f5f9 !important;"></div>
+
+        <!-- Cards on Loan -->
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="text-muted small fw-medium">{{ t('Thẻ đang mượn', current_lang) }}</span>
+          <span class="num-tabular fw-bold text-dark" style="font-size: 13px;">{{ active_card_loans }} {{ t('thẻ', current_lang) }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Direct Quick Actions Card (Clean action rows, zero paragraphs) -->
+    <div class="card p-4">
+      <div class="card-title fw-bold mb-3" style="font-size: 14px;">{{ t('Thao tác nhanh', current_lang) }}</div>
+      <div class="d-flex flex-column gap-2">
+        <a href="{{ url_for('admin:create', identity='asset') }}" class="btn btn-outline-secondary d-flex align-items-center justify-content-between py-2 px-3 text-start" style="font-size: 12.5px; font-weight: 600;">
+          <span><i class="fa-solid fa-plus text-primary me-2"></i>{{ t('Thêm thiết bị mới', current_lang) }}</span>
+          <i class="fa-solid fa-chevron-right text-muted" style="font-size: 10px;"></i>
+        </a>
+        <a href="{{ url_for('admin:create', identity='assignment') }}" class="btn btn-outline-secondary d-flex align-items-center justify-content-between py-2 px-3 text-start" style="font-size: 12.5px; font-weight: 600;">
+          <span><i class="fa-solid fa-arrow-right-arrow-left text-warning me-2"></i>{{ t('Cấp phát tài sản', current_lang) }}</span>
+          <i class="fa-solid fa-chevron-right text-muted" style="font-size: 10px;"></i>
+        </a>
+        <a href="{{ url_for('admin:create', identity='person') }}" class="btn btn-outline-secondary d-flex align-items-center justify-content-between py-2 px-3 text-start" style="font-size: 12.5px; font-weight: 600;">
+          <span><i class="fa-solid fa-user-plus text-info me-2"></i>{{ t('Thêm nhân sự', current_lang) }}</span>
+          <i class="fa-solid fa-chevron-right text-muted" style="font-size: 10px;"></i>
+        </a>
+        <a href="{{ url_for('admin:create', identity='card-loan') }}" class="btn btn-outline-secondary d-flex align-items-center justify-content-between py-2 px-3 text-start" style="font-size: 12.5px; font-weight: 600;">
+          <span><i class="fa-solid fa-id-badge text-secondary me-2"></i>{{ t('Cho mượn thẻ', current_lang) }}</span>
+          <i class="fa-solid fa-chevron-right text-muted" style="font-size: 10px;"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

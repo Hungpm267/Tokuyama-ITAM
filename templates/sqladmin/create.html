@@ -1,0 +1,40 @@
+{% extends "sqladmin/layout.html" %}
+{% from 'sqladmin/_macros.html' import render_form_fields %}
+{% block content %}
+{% set current_lang = current_lang or get_current_lang(request) %}
+<div class="col-12">
+  <div class="card shadow-sm border" style="border-color: var(--toku-border) !important; border-radius: 8px;">
+    <div class="card-header bg-white py-3 d-flex align-items-center justify-content-between" style="border-bottom: 1px solid var(--toku-border) !important;">
+      <h3 class="card-title fw-bold text-dark m-0" style="font-size: 16px;">
+        {{ '+ Thêm mới' if current_lang != 'en' else '+ New' }} {{ t(model_view.name, current_lang) }}
+      </h3>
+      <a href="{{ url_for('admin:list', identity=model_view.identity) }}" class="btn btn-outline-secondary btn-sm" style="font-size: 13px;">
+        <i class="fa-solid fa-arrow-left me-1"></i> {{ 'Quay lại' if current_lang != 'en' else 'Back to list' }}
+      </a>
+    </div>
+    <div class="card-body p-4 bg-white">
+      <form action="{{ url_for('admin:create', identity=model_view.identity) }}" method="POST"
+        enctype="multipart/form-data">
+        {% if error %}
+        <div class="alert alert-danger py-2 px-3 mb-4 shadow-sm" role="alert" style="font-size: 13.5px; border-radius: 6px;">
+          <i class="fa-solid fa-circle-exclamation me-2"></i>{{ error }}
+        </div>
+        {% endif %}
+        <fieldset class="form-fieldset border-0 p-0 mb-4">
+          {{ render_form_fields(form, form_opts=form_opts) }}
+        </fieldset>
+        <div class="d-flex align-items-center justify-content-between pt-3 border-top" style="border-color: var(--toku-border) !important;">
+          <a href="{{ url_for('admin:list', identity=model_view.identity) }}" class="btn btn-outline-secondary btn-sm px-3" style="font-size: 13px; font-weight: 600;">
+            {{ 'Hủy' if current_lang != 'en' else 'Cancel' }}
+          </a>
+          <div class="btn-group gap-2">
+            <input type="submit" name="save" value="{{ 'Lưu' if current_lang != 'en' else 'Save' }}" class="btn btn-primary btn-sm px-3" style="font-size: 13px; font-weight: 600;">
+            <input type="submit" name="save" value="{{ 'Lưu và tiếp tục sửa' if current_lang != 'en' else 'Save and continue editing' }}" class="btn btn-outline-primary btn-sm px-3" style="font-size: 13px; font-weight: 600;">
+            <input type="submit" name="save" value="{{ 'Lưu và thêm mới' if current_lang != 'en' else 'Save and add another' }}" class="btn btn-outline-secondary btn-sm px-3" style="font-size: 13px; font-weight: 600;">
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

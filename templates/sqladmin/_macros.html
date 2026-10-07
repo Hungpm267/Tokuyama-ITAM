@@ -1,0 +1,127 @@
+{% macro menu_category(menu, request, category_index) %}
+{% set current_lang = current_lang or get_current_lang(request) %}
+{% set ns = namespace(is_active=false) %}
+{% for sub_menu in menu.children %}
+  {% if sub_menu.is_active(request) %}
+    {% set ns.is_active = true %}
+  {% endif %}
+{% endfor %}
+
+{% set category_icons = {
+  'Hệ thống & Phân quyền': 'fa-solid fa-shield-halved',
+  'Danh mục Dùng chung': 'fa-solid fa-shapes',
+  'Nhân sự': 'fa-solid fa-users',
+  'Tài sản': 'fa-solid fa-laptop',
+  'License': 'fa-solid fa-key',
+  'Thẻ ra vào': 'fa-solid fa-id-card',
+  'Hợp đồng': 'fa-solid fa-file-contract',
+  'Danh bạ thoại': 'fa-solid fa-phone',
+  'Truy vết': 'fa-solid fa-list-check'
+} %}
+
+<li class="nav-item mb-1">
+  <a class="nav-link category-toggle d-flex align-items-center justify-content-start {% if not ns.is_active %}collapsed{% endif %}" 
+     data-bs-toggle="collapse" 
+     href="#cat-collapse-{{ category_index }}" 
+     role="button" 
+     aria-expanded="{% if ns.is_active %}true{% else %}false{% endif %}"
+     aria-controls="cat-collapse-{{ category_index }}">
+    <span class="nav-link-icon me-2 flex-shrink-0" style="width: 20px; text-align: center; color: {% if ns.is_active %}#4D5CB0{% else %}#64748b{% endif %}; font-size: 13px;">
+      <i class="{{ category_icons.get(menu.display_name, 'fa-solid fa-folder') }}"></i>
+    </span>
+    <span class="nav-link-title flex-grow-1 text-truncate" style="font-size: 13px; font-weight: {% if ns.is_active %}700{% else %}600{% endif %}; color: {% if ns.is_active %}#4D5CB0{% else %}#334155{% endif %};">
+      {{ t(menu.display_name, current_lang) }}
+    </span>
+    <i class="fa-solid fa-chevron-right chevron-icon flex-shrink-0 ms-auto" style="font-size: 10px; color: #94a3b8;"></i>
+  </a>
+  <div class="collapse {% if ns.is_active %}show{% endif %}" id="cat-collapse-{{ category_index }}">
+    <div class="nav-sub-items py-1">
+      {% for sub_menu in menu.children %}
+      {% if sub_menu.is_visible(request) and sub_menu.is_accessible(request) %}
+      <a class="nav-link sub-nav-link d-flex align-items-center justify-content-start {% if sub_menu.is_active(request) %}active{% endif %}"
+         href="{{ sub_menu.url(request) }}">
+        <span class="nav-link-icon me-2 flex-shrink-0" style="width: 16px; text-align: center; font-size: 11.5px;">
+          {% if sub_menu.icon %}<i class="{{ sub_menu.icon }}"></i>{% endif %}
+        </span>
+        <span class="nav-link-title flex-grow-1 text-truncate" style="font-size: 12.5px;">{{ t(sub_menu.display_name, current_lang) }}</span>
+      </a>
+      {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+</li>
+{% endmacro %}
+
+{% macro menu_item(menu, request) %}
+{% set current_lang = current_lang or get_current_lang(request) %}
+{% if menu.is_visible(request) and menu.is_accessible(request) %}
+<li class="nav-item mb-1">
+  <a class="nav-link d-flex align-items-center justify-content-start {% if menu.is_active(request) %}active{% endif %}" href="{{ menu.url(request) }}">
+    <span class="nav-link-icon me-2 flex-shrink-0" style="width: 20px; text-align: center; font-size: 13px;">
+      {% if menu.icon %}<i class="{{ menu.icon }}"></i>{% endif %}
+    </span>
+    <span class="nav-link-title flex-grow-1 text-truncate" style="font-size: 13px; font-weight: 600;">{{ t(menu.display_name, current_lang) }}</span>
+  </a>
+</li>
+{% endif %}
+{% endmacro %}
+
+{% macro display_menu(menu, request) %}
+{% set current_lang = current_lang or get_current_lang(request) %}
+<ul class="navbar-nav list-unstyled mb-0">
+  <!-- Standalone Dashboard / Tổng quan Quản trị link -->
+  <li class="nav-item mb-1">
+    <a class="nav-link d-flex align-items-center justify-content-start {% if request.url.path == '/admin' or request.url.path == '/admin/' %}active{% endif %}"
+       href="{{ request.url_for('admin:index') }}">
+      <span class="nav-link-icon me-2 flex-shrink-0" style="width: 20px; text-align: center; font-size: 13px; color: {% if request.url.path == '/admin' or request.url.path == '/admin/' %}#4D5CB0{% else %}#64748b{% endif %};">
+        <i class="fa-solid fa-gauge-high"></i>
+      </span>
+      <span class="nav-link-title flex-grow-1 text-truncate" style="font-size: 13px; font-weight: 600;">{{ t('Tổng quan Quản trị', current_lang) }}</span>
+    </a>
+  </li>
+
+  <div class="my-2 border-bottom" style="border-color: #f1f5f9 !important;"></div>
+
+  <!-- Category List -->
+  {% for item in menu.items %}
+  {% if item.type_ == "View" %}
+  {{ menu_item(item, request) }}
+  {% elif item.type_ == "Category" %}
+  {{ menu_category(item, request, loop.index) }}
+  {% endif %}
+  {% endfor %}
+</ul>
+{% endmacro %}
+
+{% macro render_field(field, kwargs={}) %}
+<div class="mb-3 form-group row">
+  {{ field.label(class_="form-label col-sm-2 col-form-label") }}
+  <div class="col-sm-10">
+    {% if field.errors %}
+    {{ field(class_="form-control is-invalid") }}
+    {% else %}
+    {{ field() }}
+    {% endif %}
+    {% for error in field.errors %}
+    <div class="invalid-feedback">{{ error }}</div>
+    {% endfor %}
+    {% if field.description %}
+    <small class="text-muted">{{ field.description }}</small>
+    {% endif %}
+  </div>
+</div>
+{% endmacro %}
+
+{% macro render_form_fields(form, form_opts=None) %}
+{% if form.hidden_tag is defined %}
+{{ form.hidden_tag() }}
+{% else %}
+{% for f in form if f.widget.input_type == 'hidden' %}
+{{ f }}
+{% endfor %}
+{% endif %}
+
+{% for f in form if f.widget.input_type != 'hidden' %}
+{{ render_field(f, kwargs) }}
+{% endfor %}
+{% endmacro %}

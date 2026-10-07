@@ -54,10 +54,15 @@ def seed(db: Session) -> None:
                     )
 
     if db.scalar(select(User).where(User.username == "it.admin")) is None:
-        pw = getpass.getpass("Mật khẩu cho tài khoản it.admin: ")
-        pw2 = getpass.getpass("Nhập lại: ")
-        if pw != pw2 or len(pw) < 12:
-            sys.exit("Mật khẩu không khớp hoặc ngắn hơn 12 ký tự.")
+        import os
+        pw = os.environ.get("ITAM_ADMIN_PASSWORD")
+        if not pw:
+            pw = getpass.getpass("Mật khẩu cho tài khoản it.admin: ")
+            pw2 = getpass.getpass("Nhập lại: ")
+            if pw != pw2 or len(pw) < 12:
+                sys.exit("Mật khẩu không khớp hoặc ngắn hơn 12 ký tự.")
+        elif len(pw) < 12:
+            sys.exit("Mật khẩu ngắn hơn 12 ký tự.")
         from argon2 import PasswordHasher
 
         db.add(

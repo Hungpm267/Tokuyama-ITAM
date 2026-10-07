@@ -8,14 +8,26 @@ Quy định bảo mật GEMINI.md:
 
 from __future__ import annotations
 
+import datetime as dt
+from pathlib import Path
 from typing import Any
 from sqladmin import Admin, ModelView
-from sqladmin.authentication import AuthenticationBackend
+from sqladmin.authentication import AuthenticationBackend, login_required
+from starlette.exceptions import HTTPException
 from starlette.requests import Request
-from sqlalchemy import select
+from starlette.responses import RedirectResponse, Response
+from sqlalchemy import Select, func, select
 
 from app.core.audit import audit_login, record_audit
-from app.core.security import create_session_token, verify_password, verify_session_token
+from app.core.security import (
+    SESSION_SECRET,
+    create_session_token,
+    hash_password,
+    verify_password,
+    verify_session_token,
+)
+from wtforms import Form, PasswordField, SelectField
+from wtforms.widgets import PasswordInput
 from app.db import SessionLocal
 from app.enums import AuditAction, RoleCode
 from app.models import (
@@ -49,6 +61,19 @@ COMMON_EXCLUDED_COLUMNS = [
 
 
 class AdminAuth(AuthenticationBackend):
+    def __init__(self, secret_key: str) -> None:
+        super().__init__(secret_key=secret_key)
+        from starlette.middleware import Middleware
+        from starlette.middleware.sessions import SessionMiddleware
+
+        self.middlewares = [
+            Middleware(
+                SessionMiddleware,
+                secret_key=secret_key,
+                session_cookie="admin_session",
+            )
+        ]
+
     async def login(self, request: Request) -> bool:
         form = await request.form()
         username = str(form.get("username", "")).strip()
@@ -63,22 +88,32 @@ class AdminAuth(AuthenticationBackend):
                     User.is_deleted.is_(False),
                 )
             )
-            if user and user.role and user.role.code == RoleCode.ADMIN.value:
-                if verify_password(password, user.password_hash):
-                    audit_login(db, user_id=user.id, success=True, username=username, ip_address=client_ip)
-                    db.commit()
-                    token = create_session_token({
-                        "user_id": user.id,
-                        "role": user.role.code,
-                        "username": user.username,
-                    })
-                    request.session.update({
-                        "token": token,
-                        "user_id": user.id,
-                        "role": user.role.code,
-                        "username": user.username,
-                    })
-                    return True
+            if user:
+                if user.role and user.role.code == RoleCode.ADMIN.value:
+                    if verify_password(password, user.password_hash):
+                        audit_login(db, user_id=user.id, success=True, username=username, ip_address=client_ip)
+                        db.commit()
+                        token = create_session_token({
+                            "user_id": user.id,
+                            "role": user.role.code,
+                            "username": user.username,
+                        })
+                        lang = user.preferred_lang or request.cookies.get("itam_lang") or "vi"
+                        request.session.update({
+                            "token": token,
+                            "user_id": user.id,
+                            "role": user.role.code,
+                            "username": user.username,
+                            "lang": lang,
+                        })
+                        return True
+                    else:
+                        request.state.login_error = "Mật khẩu không chính xác."
+                else:
+                    role_title = user.role.name_ja or user.role.name_en if user.role else "chưa phân quyền"
+                    request.state.login_error = f"Tài khoản '{username}' có vai trò {role_title}, không có quyền truy cập cổng Quản trị (yêu cầu vai trò ADMIN)."
+            else:
+                request.state.login_error = "Tên đăng nhập không tồn tại hoặc đã bị khóa."
 
             audit_login(db, user_id=user.id if user else None, success=False, username=username, ip_address=client_ip)
             db.commit()
@@ -110,12 +145,15 @@ class AdminAuth(AuthenticationBackend):
             if not user or not user.role or user.role.code != RoleCode.ADMIN.value:
                 return False
 
+            if "lang" not in request.session:
+                request.session["lang"] = user.preferred_lang or request.cookies.get("itam_lang") or "vi"
+
         request.session["user_id"] = user_id
         request.session["role"] = RoleCode.ADMIN.value
         return True
 
 
-authentication_backend = AdminAuth(secret_key="tokuyama-sqladmin-auth-secret-key-2026")
+authentication_backend = AdminAuth(secret_key=SESSION_SECRET)
 
 
 # --- Base Model View ---
@@ -125,6 +163,98 @@ class BaseAdminView(ModelView):
     page_size = 25
     page_size_options = [10, 25, 50, 100]
     form_excluded_columns = COMMON_EXCLUDED_COLUMNS
+
+    def list_query(self, request: Request) -> Select:
+        stmt = super().list_query(request)
+        if hasattr(self.model, "is_deleted"):
+            stmt = stmt.where(self.model.is_deleted.is_(False))
+        return stmt
+
+    def count_query(self, request: Request) -> Select:
+        stmt = super().count_query(request)
+        if hasattr(self.model, "is_deleted"):
+            stmt = stmt.where(self.model.is_deleted.is_(False))
+        return stmt
+
+    def form_edit_query(self, request: Request) -> Select:
+        stmt = super().form_edit_query(request)
+        if hasattr(self.model, "is_deleted"):
+            stmt = stmt.where(self.model.is_deleted.is_(False))
+        return stmt
+
+    async def get_object_for_delete(self, value: Any) -> Any:
+        stmt = self._stmt_by_identifier(value)
+        if hasattr(self.model, "is_deleted"):
+            stmt = stmt.where(self.model.is_deleted.is_(False))
+        return await self._get_object_by_pk(stmt)
+
+    async def delete_model(self, request: Request, pk: Any) -> None:
+        user_id = request.session.get("user_id")
+        current_user_id = int(user_id) if user_id is not None else None
+
+        # Chặn tự xóa tài khoản của chính mình đang đăng nhập
+        if self.model is User and current_user_id is not None and str(pk) == str(current_user_id):
+            raise HTTPException(
+                status_code=400,
+                detail="Không thể xóa tài khoản của chính bạn đang đăng nhập.",
+            )
+
+        with SessionLocal() as db:
+            stmt = self._stmt_by_identifier(str(pk))
+            obj = db.scalar(stmt)
+            if not obj:
+                return
+
+            # Chặn xóa vai trò ADMIN hệ thống
+            if self.model is Role and getattr(obj, "code", None) == RoleCode.ADMIN.value:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Không thể xóa vai trò ADMIN hệ thống.",
+                )
+
+            table_name = getattr(self.model, "__tablename__", "unknown")
+            client_ip = request.client.host if request.client else None
+
+            # Lưu snapshot trước khi xóa để đưa vào audit log
+            before_data: dict[str, Any] = {}
+            if hasattr(self.model, "__table__"):
+                for col in self.model.__table__.columns:
+                    val = getattr(obj, col.name, None)
+                    if isinstance(val, (dt.datetime, dt.date)):
+                        val = val.isoformat()
+                    before_data[col.name] = val
+
+            delete_reason = request.query_params.get("delete_reason") or "Xóa từ giao diện quản trị ITAM"
+
+            if hasattr(self.model, "is_deleted"):
+                # Xóa mềm tuân thủ GEMINI.md Quy tắc 6 (bắt buộc deleted_at và delete_reason)
+                obj.is_deleted = True
+                obj.deleted_at = dt.datetime.now(dt.timezone.utc)
+                obj.deleted_by = current_user_id
+                obj.delete_reason = delete_reason
+
+                record_audit(
+                    db=db,
+                    action=AuditAction.DELETE,
+                    table_name=table_name,
+                    record_id=getattr(obj, "id", None),
+                    user_id=current_user_id,
+                    before=before_data,
+                    ip_address=client_ip,
+                )
+                db.commit()
+            else:
+                db.delete(obj)
+                record_audit(
+                    db=db,
+                    action=AuditAction.DELETE,
+                    table_name=table_name,
+                    record_id=getattr(obj, "id", None),
+                    user_id=current_user_id,
+                    before=before_data,
+                    ip_address=client_ip,
+                )
+                db.commit()
 
     async def after_model_change(self, data: dict, model: Any, is_created: bool, request: Request) -> None:
         action = AuditAction.CREATE if is_created else AuditAction.UPDATE
@@ -158,7 +288,46 @@ class UserAdmin(BaseAdminView, model=User):
     category = "Hệ thống & Phân quyền"
     column_list = [User.id, User.username, User.display_name, User.role, User.preferred_lang, User.is_active, User.last_login_at]
     column_searchable_list = [User.username, User.display_name]
-    form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["password_hash"]
+    form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["password_hash", "last_login_at"]
+    form_overrides = {
+        "preferred_lang": SelectField,
+    }
+    form_args = {
+        "preferred_lang": {
+            "choices": [("vi", "Tiếng Việt (vi)"), ("en", "English (en)")],
+            "default": "vi",
+        }
+    }
+
+    async def scaffold_form(self, rules: list[str] | None = None) -> type[Form]:
+        base_form = await super().scaffold_form(rules)
+
+        class UserFormWithPassword(base_form):
+            password = PasswordField(
+                "Mật khẩu",
+                widget=PasswordInput(hide_value=True),
+                render_kw={
+                    "placeholder": "Nhập mật khẩu (để trống nếu không đổi)",
+                    "class": "form-control",
+                    "autocomplete": "new-password",
+                },
+            )
+
+        return UserFormWithPassword
+
+    async def on_model_change(
+        self, data: dict, model: Any, is_created: bool, request: Request
+    ) -> None:
+        raw_password = data.pop("password", None)
+        if is_created:
+            if not raw_password or not str(raw_password).strip():
+                raise ValueError("Vui lòng nhập mật khẩu khi tạo người dùng mới.")
+            data["password_hash"] = hash_password(str(raw_password).strip())
+        else:
+            if raw_password and str(raw_password).strip():
+                data["password_hash"] = hash_password(str(raw_password).strip())
+
+        await super().on_model_change(data, model, is_created, request)
 
 
 class RoleAdmin(BaseAdminView, model=Role):
@@ -167,6 +336,7 @@ class RoleAdmin(BaseAdminView, model=Role):
     icon = "fa-solid fa-user-shield"
     category = "Hệ thống & Phân quyền"
     column_list = [Role.id, Role.code, Role.name_en, Role.name_ja]
+    form_columns = [Role.code, Role.name_en, Role.name_ja]
 
 
 class RolePermissionAdmin(BaseAdminView, model=RolePermission):
@@ -224,7 +394,7 @@ class PersonAdmin(BaseAdminView, model=Person):
     category = "Nhân sự"
     column_list = [Person.id, Person.staff_code, Person.full_name, Person.department, Person.status, Person.email, Person.start_working_date]
     column_searchable_list = [Person.staff_code, Person.full_name, Person.email]
-    form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["secret"]
+    form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["secret", "assignments"]
 
 
 class PersonSecretAdmin(BaseAdminView, model=PersonSecret):
@@ -245,6 +415,7 @@ class AssetAdmin(BaseAdminView, model=Asset):
     category = "Tài sản"
     column_list = [Asset.id, Asset.asset_code, Asset.vendor_code, Asset.serial, Asset.category, Asset.status, Asset.model]
     column_searchable_list = [Asset.asset_code, Asset.serial, Asset.vendor_code, Asset.model]
+    form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["assignments"]
 
 
 class AssignmentAdmin(BaseAdminView, model=Assignment):
@@ -252,6 +423,7 @@ class AssignmentAdmin(BaseAdminView, model=Assignment):
     name_plural = "Lịch sử Cấp phát Tài sản"
     icon = "fa-solid fa-handshake"
     category = "Tài sản"
+    can_delete = False
     column_list = [Assignment.id, Assignment.asset, Assignment.person, Assignment.borrowed_at, Assignment.returned_at]
 
 
@@ -269,7 +441,7 @@ class LicenseAdmin(BaseAdminView, model=License):
     icon = "fa-solid fa-certificate"
     category = "License"
     column_list = [License.id, License.product, License.seats, License.start_date, License.expiry_date]
-    form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["license_key_enc"]
+    form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["license_key_enc", "assignments"]
 
 
 class LicenseAssignmentAdmin(BaseAdminView, model=LicenseAssignment):
@@ -277,6 +449,7 @@ class LicenseAssignmentAdmin(BaseAdminView, model=LicenseAssignment):
     name_plural = "Phân bổ Bản quyền"
     icon = "fa-solid fa-user-check"
     category = "License"
+    can_delete = False
     column_list = [LicenseAssignment.id, LicenseAssignment.license, LicenseAssignment.person_id, LicenseAssignment.asset_id, LicenseAssignment.assigned_at, LicenseAssignment.removed_at]
 
 
@@ -286,6 +459,7 @@ class AccessCardAdmin(BaseAdminView, model=AccessCard):
     icon = "fa-solid fa-address-card"
     category = "Thẻ ra vào"
     column_list = [AccessCard.id, AccessCard.card_no, AccessCard.card_type, AccessCard.status]
+    form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["loans"]
 
 
 class CardLoanAdmin(BaseAdminView, model=CardLoan):
@@ -293,6 +467,7 @@ class CardLoanAdmin(BaseAdminView, model=CardLoan):
     name_plural = "Sổ Mượn-Trả Thẻ"
     icon = "fa-solid fa-clock-rotate-left"
     category = "Thẻ ra vào"
+    can_delete = False
     column_list = [CardLoan.id, CardLoan.card, CardLoan.person_id, CardLoan.external_name, CardLoan.borrowed_at, CardLoan.returned_at]
 
 
@@ -302,6 +477,7 @@ class ContractAdmin(BaseAdminView, model=Contract):
     icon = "fa-solid fa-file-contract"
     category = "Hợp đồng"
     column_list = [Contract.id, Contract.code, Contract.vendor_name, Contract.signed_date, Contract.delivery_status]
+    form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["lines"]
 
 
 class ContractLineAdmin(BaseAdminView, model=ContractLine):
@@ -310,6 +486,7 @@ class ContractLineAdmin(BaseAdminView, model=ContractLine):
     icon = "fa-solid fa-list-check"
     category = "Hợp đồng"
     column_list = [ContractLine.id, ContractLine.contract, ContractLine.item_type, ContractLine.qty_ordered]
+    form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["assets"]
 
 
 class PhoneAdmin(BaseAdminView, model=Phone):
@@ -332,15 +509,98 @@ class AuditLogAdmin(BaseAdminView, model=AuditLog):
     column_searchable_list = [AuditLog.table_name, AuditLog.action]
 
 
+BASE_DIR = Path(__file__).resolve().parent.parent
+TEMPLATES_DIR = BASE_DIR / "templates"
+
+
+class TokuyamaAdmin(Admin):
+    async def login(self, request: Request) -> Response:
+        assert self.authentication_backend is not None
+
+        context = {}
+        if request.method == "GET":
+            return await self.templates.TemplateResponse(request, "sqladmin/login.html")
+
+        ok = await self.authentication_backend.login(request)
+        if not ok:
+            context["error"] = getattr(
+                request.state, "login_error", "Tên đăng nhập hoặc mật khẩu không chính xác."
+            )
+            return await self.templates.TemplateResponse(
+                request, "sqladmin/login.html", context, status_code=400
+            )
+
+        return RedirectResponse(request.url_for("admin:index"), status_code=302)
+
+    @login_required
+    async def index(self, request: Request) -> Response:
+        """Dashboard tổng quan hệ thống ITAM Tokuyama theo triết lý Swiss."""
+        from app.core.i18n import get_current_lang, translate
+
+        current_lang = get_current_lang(request)
+        with SessionLocal() as db:
+            asset_count = db.scalar(
+                select(func.count()).select_from(Asset).where(Asset.is_deleted.is_(False))
+            ) or 0
+            assignment_count = db.scalar(
+                select(func.count()).select_from(Assignment).where(Assignment.returned_at.is_(None))
+            ) or 0
+            license_count = db.scalar(
+                select(func.count()).select_from(License).where(License.is_deleted.is_(False))
+            ) or 0
+            card_count = db.scalar(
+                select(func.count()).select_from(AccessCard).where(AccessCard.is_deleted.is_(False))
+            ) or 0
+            person_count = db.scalar(
+                select(func.count()).select_from(Person).where(Person.is_deleted.is_(False))
+            ) or 0
+            contract_count = db.scalar(
+                select(func.count()).select_from(Contract).where(Contract.is_deleted.is_(False))
+            ) or 0
+            active_card_loans = db.scalar(
+                select(func.count()).select_from(CardLoan).where(CardLoan.returned_at.is_(None))
+            ) or 0
+            recent_logs = db.scalars(
+                select(AuditLog).order_by(AuditLog.id.desc()).limit(8)
+            ).all()
+
+        allocation_rate = int(round((assignment_count / asset_count) * 100)) if asset_count > 0 else 0
+
+        context = {
+            "request": request,
+            "admin": self,
+            "current_lang": current_lang,
+            "title": translate("Tổng quan Quản trị", current_lang),
+            "subtitle": translate("IT Asset Management System", current_lang),
+            "asset_count": asset_count,
+            "assignment_count": assignment_count,
+            "license_count": license_count,
+            "card_count": card_count,
+            "person_count": person_count,
+            "contract_count": contract_count,
+            "active_card_loans": active_card_loans,
+            "allocation_rate": allocation_rate,
+            "recent_logs": recent_logs,
+        }
+        return await self.templates.TemplateResponse(request, "sqladmin/index.html", context)
+
+
 def setup_admin(app, engine):
-    admin = Admin(
+    admin = TokuyamaAdmin(
         app,
         engine,
         title="Tokuyama IT Portal",
-        logo_url="/static/img/logo.png",
+        logo_url="/static/img/logo.svg",
         authentication_backend=authentication_backend,
         base_url="/admin",
+        templates_dir=str(TEMPLATES_DIR),
     )
+
+    from app.core.i18n import get_current_lang, translate
+
+    admin.templates.env.globals["t"] = translate
+    admin.templates.env.filters["t"] = translate
+    admin.templates.env.globals["get_current_lang"] = get_current_lang
 
     # 1. Hệ thống & phân quyền
     admin.add_view(UserAdmin)

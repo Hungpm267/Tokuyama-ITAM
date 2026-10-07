@@ -46,7 +46,9 @@ def engine():
     admin.dispose()
 
     env = {**os.environ, "ITAM_DATABASE_URL": TEST_DB_URL}
-    subprocess.run(["alembic", "upgrade", "head"], check=True, env=env)
+    import sys
+
+    subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], check=True, env=env)
 
     eng = create_engine(TEST_DB_URL)
     yield eng

@@ -6,6 +6,8 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.requests import Request
+from starlette.responses import RedirectResponse, Response
 
 from app.admin import setup_admin
 from app.config import settings
@@ -37,15 +39,64 @@ if static_dir.exists():
 # 3. Mount Routers
 app.include_router(auth_router)
 
+
+@app.get("/admin/set-lang")
+@app.get("/set-lang")
+async def set_language(
+    request: Request, lang: str = "vi", next: str = "/admin"
+) -> Response:
+    """Chuyển đổi ngôn ngữ hiển thị giữa Tiếng Việt và Tiếng Anh."""
+    from sqlalchemy import select
+    from app.core.i18n import DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES
+    from app.db import SessionLocal
+    from app.models import User
+
+    chosen_lang = lang if lang in SUPPORTED_LANGUAGES else DEFAULT_LANGUAGE
+    user_id = request.session.get("user_id") if hasattr(request, "session") else None
+    if not user_id:
+        token = request.cookies.get("itam_session")
+        if token:
+            from app.core.security import verify_session_token
+
+            payload = verify_session_token(token)
+            if payload:
+                user_id = payload.get("user_id")
+
+    if user_id:
+        try:
+            with SessionLocal() as db:
+                user = db.scalar(select(User).where(User.id == user_id))
+                if user:
+                    user.preferred_lang = chosen_lang
+                    db.commit()
+        except Exception:
+            pass
+
+    if hasattr(request, "session"):
+        request.session["lang"] = chosen_lang
+
+    redirect_url = (
+        next
+        if (next and next.startswith("/") and not next.startswith("//"))
+        else "/admin"
+    )
+    response = RedirectResponse(url=redirect_url, status_code=303)
+    response.set_cookie(
+        key="itam_lang",
+        value=chosen_lang,
+        max_age=30 * 24 * 3600,
+        httponly=False,
+        samesite="lax",
+    )
+    return response
+
+
 # 4. Gắn kết hệ thống SQLAdmin
-setup_admin(app, engine)
+admin = setup_admin(app, engine)
+app.state.admin = admin
 
 
 @app.get("/")
-def root():
-    """Endpoint kiểm tra trạng thái hoạt động của hệ thống."""
-    return {
-        "app": "Tokuyama Vietnam ITAM",
-        "version": "2.0.0",
-        "status": "operational",
-    }
+def root() -> RedirectResponse:
+    """Chuyển hướng người dùng từ trang chủ về giao diện Quản trị /admin."""
+    return RedirectResponse(url="/admin")

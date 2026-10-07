@@ -23,13 +23,17 @@
   --toku-text-muted: #64748b;
   --toku-text-light: #94a3b8;
   
-  /* Brand Accents */
-  --toku-blue: #005bac;
-  --toku-blue-hover: #004b8d;
-  --toku-blue-subtle: #eff6ff;
+  /* Brand Accents (From official Tokuyama Logo) */
+  --toku-primary: #4D5CB0;          /* Tokuyama Blue (RGB 77, 92, 176) */
+  --toku-primary-hover: #3E4D9D;
+  --toku-blue: #4D5CB0;
+  --toku-blue-hover: #3E4D9D;
+  --toku-blue-subtle: #EEF2FF;
   
-  --toku-primary: #006847;          /* Forest Emerald */
-  --toku-primary-hover: #005439;
+  --toku-orange: #FF561D;           /* Tokuyama Sun Orange (RGB 255, 86, 29) */
+  --toku-orange-hover: #E64812;
+  --toku-orange-subtle: #FFF1EB;
+  --toku-slate: #595B61;            /* Tokuyama Slate Gray (RGB 89, 91, 97) */
   
   --toku-secondary: #f1f5f9;
   --toku-secondary-border: #cbd5e1;
@@ -530,37 +534,37 @@ body {
 .toku-badge.in_stock, .toku-badge.active, .toku-badge.success {
   background: #ecfdf5;
   color: #065f46;
-  border: 1px solid #a7f3d0;
+  border: none;
 }
 
 .toku-badge.loaned, .toku-badge.warning {
   background: #fffbeb;
   color: #92400e;
-  border: 1px solid #fde68a;
+  border: none;
 }
 
 .toku-badge.lost, .toku-badge.resigned, .toku-badge.danger {
   background: #fef2f2;
   color: #991b1b;
-  border: 1px solid #fecaca;
+  border: none;
 }
 
 .toku-badge.role {
   background: #f1f5f9;
   color: #334155;
-  border: 1px solid #cbd5e1;
+  border: none;
 }
 
 .toku-badge.neutral {
   background: #f8fafc;
   color: #64748b;
-  border: 1px solid #e2e8f0;
+  border: none;
 }
 
 .toku-badge.info {
   background: #f0f9ff;
   color: #0369a1;
-  border: 1px solid #bae6fd;
+  border: none;
 }
 
 .toku-empty-banner {

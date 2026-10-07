@@ -1,0 +1,118 @@
+{% extends "sqladmin/base.html" %}
+{% from 'sqladmin/_macros.html' import display_menu %}
+
+{% block body %}
+{% set current_lang = current_lang or get_current_lang(request) %}
+<div class="page d-flex flex-row min-vh-100" style="background-color: var(--toku-canvas);">
+  
+  <!-- Swiss Sidebar (Pure White Surface, 1px Hairline Border, Zero Jitter) -->
+  <aside class="navbar navbar-vertical d-flex flex-column flex-shrink-0" style="width: 260px; min-width: 260px; max-width: 260px; height: 100vh; position: sticky; top: 0; background-color: #ffffff; border-right: 1px solid var(--toku-border); z-index: 1000; overflow: hidden;">
+    <div class="d-flex flex-column h-100 w-100 p-0" style="overflow: hidden;">
+      
+      <!-- Brand Masthead (Clean Swiss Alignment) -->
+      <div class="py-3 px-3 w-100 border-bottom bg-white" style="border-color: var(--toku-border) !important;">
+        <a href="{{ url_for('admin:index') }}" class="d-block text-decoration-none">
+          {% if admin.logo_url %}
+          <img src="{{ admin.logo_url }}" alt="Tokuyama" style="height: 34px; width: auto; max-width: 100%; object-fit: contain; display: block;" />
+          <div class="mt-1" style="font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: #64748b; text-transform: uppercase;">
+            {{ t('IT Asset Management', current_lang) }}
+          </div>
+          {% else %}
+          <div style="font-size: 16px; font-weight: 800; color: #0f172a;">{{ admin.title }}</div>
+          {% endif %}
+        </a>
+      </div>
+
+      <!-- Navigation Menu (Tree hierarchy, sleek scrolling) -->
+      <div class="w-100 flex-grow-1 px-2 py-3" id="navbar-menu" data-sqladmin-menu="{{ admin.base_url }}" style="overflow-y: auto; overflow-x: hidden;">
+        {{ display_menu(admin._menu, request) }}
+      </div>
+
+      <!-- Operator Status & Logout Strip -->
+      <div class="w-100 mt-auto border-top p-3 bg-white" style="border-color: var(--toku-border) !important;">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <div class="d-flex align-items-center gap-2">
+            <div style="width: 28px; height: 28px; border-radius: 4px; background: #EEF2FF; color: #4D5CB0; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 11.5px; border: 1px solid #C7D2FE;">
+              IT
+            </div>
+            <div class="d-flex flex-column">
+              <span style="font-size: 12.5px; font-weight: 700; color: #0f172a; line-height: 1.2;">{{ request.session.get("username", "it.admin") }}</span>
+              <span style="font-size: 10px; font-weight: 600; color: #4D5CB0; letter-spacing: 0.04em;">{{ t('ADMINISTRATOR', current_lang) }}</span>
+            </div>
+          </div>
+          <div class="d-inline-flex align-items-center" title="Online" style="color: #15803d; font-size: 11px; font-weight: 600;">
+            <span style="width: 6px; height: 6px; border-radius: 50%; background-color: #16a34a; display: inline-block; margin-right: 5px;"></span>
+            <span>Online</span>
+          </div>
+        </div>
+
+        {% if admin.authentication_backend %}
+        <a href="{{ request.url_for('admin:logout') }}" class="btn btn-outline-secondary w-100 py-1 d-flex align-items-center justify-content-center gap-2" style="font-size: 12.5px; font-weight: 600;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+          <span>{{ t('Đăng xuất', current_lang) }}</span>
+        </a>
+        {% endif %}
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- Main Content Wrapper -->
+  <div class="page-wrapper flex-grow-1 d-flex flex-column min-vh-100" style="min-width: 0; background-color: var(--toku-canvas);">
+    
+    <!-- Top Utility Bar (Bilingual Switcher & System Posture) - Fixed Sticky Top -->
+    <header class="w-100 bg-white border-bottom px-4 py-2 d-flex align-items-center justify-content-between d-print-none flex-shrink-0" style="position: sticky; top: 0; z-index: 1020; background-color: #ffffff !important; border-color: var(--toku-border) !important; height: 44px; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);">
+      <div class="d-flex align-items-center gap-2">
+        <span style="font-size: 11.5px; font-weight: 700; color: #4D5CB0; letter-spacing: 0.04em;">TOKUYAMA VIETNAM</span>
+        <span class="text-muted" style="font-size: 10px;">/</span>
+        <span class="text-secondary" style="font-size: 12px; font-weight: 500;">{{ t('IT Asset Management System', current_lang) }}</span>
+      </div>
+
+      <!-- Swiss Segmented Language Switcher -->
+      <div class="d-flex align-items-center gap-2">
+        <span class="text-muted me-1" style="font-size: 11px; font-weight: 500;"><i class="fa-solid fa-globe me-1"></i>Ngôn ngữ / Language:</span>
+        <div class="d-inline-flex align-items-center rounded border" style="background-color: #f1f5f9; border-color: var(--toku-border) !important; padding: 2px;">
+          <a href="/admin/set-lang?lang=vi&next={{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}"
+             class="btn btn-sm px-2 py-0 border-0 rounded text-decoration-none {% if current_lang == 'vi' %}bg-white text-dark shadow-sm fw-bold{% else %}text-muted fw-medium{% endif %}"
+             style="font-size: 11px; line-height: 1.6;">
+            Tiếng Việt
+          </a>
+          <a href="/admin/set-lang?lang=en&next={{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}"
+             class="btn btn-sm px-2 py-0 border-0 rounded text-decoration-none {% if current_lang == 'en' %}bg-white text-dark shadow-sm fw-bold{% else %}text-muted fw-medium{% endif %}"
+             style="font-size: 11px; line-height: 1.6;">
+            English
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <div class="container-fluid px-4 py-3 flex-grow-1" style="max-width: 1440px;">
+      
+      <!-- Content Header (Left-aligned, crisp) -->
+      <div class="page-header d-print-none mb-3">
+        {% block content_header %}
+        <div class="row align-items-center">
+          <div class="col">
+            {% if subtitle %}
+            <div class="page-pretitle">{{ t(subtitle, current_lang) }}</div>
+            {% endif %}
+            <h2 class="page-title">{{ t(title, current_lang) }}</h2>
+          </div>
+        </div>
+        {% endblock %}
+      </div>
+
+      <!-- Main Body Container -->
+      <div class="page-body">
+        {% block content %}
+        {% endblock %}
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

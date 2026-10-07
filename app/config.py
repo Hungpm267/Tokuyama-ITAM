@@ -1,6 +1,7 @@
-"""Cấu hình đọc từ biến môi trường. Không hardcode gì ở đây."""
-
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class Settings:

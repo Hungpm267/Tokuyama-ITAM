@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  
+  <!-- Typography: Inter (Sans-serif display and body) & JetBrains Mono (Tabular numerals) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Core SQLAdmin Stylesheets -->
+  <link rel="stylesheet" href="{{ url_for('admin:statics', path='css/tabler.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('admin:statics', path='css/tabler-icons.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('admin:statics', path='css/fontawesome.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('admin:statics', path='css/select2.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('admin:statics', path='css/flatpickr.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('admin:statics', path='css/main.css') }}">
+
+  {% if admin.favicon_url %}
+  <link rel="icon" href="{{ admin.favicon_url }}">
+  {% endif %}
+
+  <!-- Swiss Anchor Architectural Tokens (Khớp chính xác mã màu Logo Tokuyama) -->
+  <style>
+    :root {
+      /* Bảng màu chuẩn từ file logo.png của Tokuyama */
+      --toku-primary: #4D5CB0;          /* Tokuyama Blue (RGB: 77, 92, 176) */
+      --toku-primary-hover: #3E4D9D;
+      --toku-primary-subtle: #EEF2FF;
+      --toku-orange: #FF561D;           /* Tokuyama Sun Orange (RGB: 255, 86, 29) */
+      --toku-orange-hover: #E64812;
+      --toku-orange-subtle: #FFF1EB;
+      --toku-slate: #595B61;            /* Tokuyama Slate Gray (RGB: 89, 91, 97) */
+      --toku-canvas: #f8fafc;           /* Swiss neutral light ground */
+      --toku-surface: #ffffff;          /* Pure white card/table surface */
+      --toku-border: #e2e8f0;           /* 1px hairline rule */
+      --toku-border-strong: #cbd5e1;
+      --toku-text: #0f172a;
+      --toku-text-muted: #64748b;
+      --toku-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      --tblr-font-sans-serif: var(--toku-font-sans);
+      --tblr-body-font-family: var(--toku-font-sans);
+      --tblr-body-bg: var(--toku-canvas);
+      --tblr-body-color: var(--toku-text);
+      --tblr-primary: var(--toku-primary);
+      --tblr-border-color: var(--toku-border);
+    }
+
+    /* Strict Typography Discipline: Đồng bộ toàn bộ font chữ theo font thanh Left Bar ("Tổng quan quản trị") */
+    html, body, button, input, select, textarea, .card, table, th, td, h1, h2, h3, h4, h5, h6, .page-title, .nav-link, .btn, .num-tabular, .badge-code, .serial-code {
+      font-family: var(--toku-font-sans) !important;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      background-color: var(--toku-canvas) !important;
+      color: var(--toku-text) !important;
+      line-height: 1.5;
+    }
+
+    /* Tabular Numerals: Sử dụng cùng font sans-serif mượt mà, căn chỉnh độ rộng số bằng OpenType tnum */
+    .num-tabular {
+      font-variant-numeric: tabular-nums !important;
+      font-feature-settings: "tnum" 1 !important;
+    }
+
+    /* Giữ font monospace chuẩn chỉ cho các khối mã thuần túy */
+    pre, kbd, samp {
+      font-family: 'JetBrains Mono', SFMono-Regular, Consolas, monospace !important;
+    }
+
+    /* 1px Hairline Structural Cards - Zero Decorative Hover Motions */
+    .card {
+      background-color: #ffffff !important;
+      border: 1px solid var(--toku-border) !important;
+      border-radius: 8px !important;
+      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03) !important;
+      transition: none !important;
+    }
+    .card:hover {
+      transform: none !important;
+      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03) !important;
+    }
+
+    .card-header {
+      background-color: #ffffff !important;
+      border-bottom: 1px solid var(--toku-border) !important;
+      padding: 14px 20px !important;
+      font-weight: 700 !important;
+      color: var(--toku-text) !important;
+    }
+
+    .card-title {
+      font-size: 15px !important;
+      font-weight: 700 !important;
+      color: var(--toku-text) !important;
+      margin: 0 !important;
+      letter-spacing: -0.01em !important;
+    }
+
+    /* =========================================================================
+       SWISS VERTICAL SIDEBAR (Pure White Surface, 1px Hairline, Zero Gimmicks)
+       ========================================================================= */
+    .navbar-vertical {
+      background-color: #ffffff !important;
+      border-right: 1px solid var(--toku-border) !important;
+      box-shadow: none !important;
+      width: 260px !important;
+      min-width: 260px !important;
+      max-width: 260px !important;
+      height: 100vh !important;
+      max-height: 100vh !important;
+      position: sticky !important;
+      top: 0 !important;
+      overflow: hidden !important;
+    }
+
+    /* OBLITERATE Tabler's rogue pseudo-elements (thick left borders & dropdown triangles) */
+    .navbar-vertical .nav-item:after,
+    .navbar-vertical .nav-link:after,
+    .navbar-vertical .nav-item.active:after,
+    .navbar-vertical .dropdown-toggle:after {
+      content: none !important;
+      display: none !important;
+      border: none !important;
+      width: 0 !important;
+      height: 0 !important;
+    }
+
+    /* Scrollable menu container with sleek hairline scrollbar */
+    #navbar-menu {
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
+      padding: 10px 8px !important;
+    }
+    #navbar-menu::-webkit-scrollbar {
+      width: 4px;
+    }
+    #navbar-menu::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    #navbar-menu::-webkit-scrollbar-thumb {
+      background-color: #cbd5e1;
+      border-radius: 4px;
+    }
+
+    /* Reset all Tabler navbar justify-content centering to strict left alignment */
+    .navbar-vertical .navbar-nav,
+    .navbar-vertical .nav-item,
+    .navbar-vertical .nav-link,
+    .navbar-vertical .category-toggle,
+    .navbar-vertical .sub-nav-link {
+      justify-content: flex-start !important;
+      text-align: left !important;
+      width: 100% !important;
+      box-sizing: border-box !important;
+    }
+
+    /* Category Collapsible Header (Clean, Flat Row) */
+    .navbar-vertical .category-toggle {
+      font-size: 13px !important;
+      font-weight: 600 !important;
+      color: #334155 !important;
+      padding: 8px 12px !important;
+      border-radius: 6px !important;
+      margin: 1px 0 !important;
+      border: none !important;
+      background-color: transparent !important;
+      box-shadow: none !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: flex-start !important;
+      text-align: left !important;
+      cursor: pointer !important;
+      text-decoration: none !important;
+      width: 100% !important;
+      box-sizing: border-box !important;
+      transition: background-color 0.15s ease, color 0.15s ease !important;
+    }
+    .navbar-vertical .category-toggle:hover {
+      background-color: #f1f5f9 !important;
+      color: #0f172a !important;
+    }
+    .navbar-vertical .category-toggle .nav-link-icon {
+      width: 20px !important;
+      min-width: 20px !important;
+      max-width: 20px !important;
+      text-align: center !important;
+      margin-right: 8px !important;
+      flex-shrink: 0 !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+    }
+    .navbar-vertical .category-toggle .nav-link-title {
+      flex-grow: 1 !important;
+      text-align: left !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+    }
+    .navbar-vertical .category-toggle .chevron-icon {
+      transition: transform 0.2s ease !important;
+      transform: rotate(90deg);
+      flex-shrink: 0 !important;
+      margin-left: auto !important;
+    }
+    .navbar-vertical .category-toggle.collapsed .chevron-icon {
+      transform: rotate(0deg) !important;
+    }
+
+    /* Sub-menu leaf links (Clean tree indentation - strict vertical alignment) */
+    .navbar-vertical .sub-nav-link {
+      font-size: 12.5px !important;
+      font-weight: 500 !important;
+      color: #475569 !important;
+      padding: 6px 12px 6px 36px !important;
+      border-radius: 6px !important;
+      margin: 1px 0 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: flex-start !important;
+      text-align: left !important;
+      border: none !important;
+      border-left: none !important;
+      background-color: transparent !important;
+      text-decoration: none !important;
+      width: 100% !important;
+      box-sizing: border-box !important;
+      transition: background-color 0.15s ease, color 0.15s ease !important;
+    }
+    .navbar-vertical .sub-nav-link:hover {
+      background-color: #f1f5f9 !important;
+      color: #0f172a !important;
+    }
+    .navbar-vertical .sub-nav-link .nav-link-icon {
+      width: 16px !important;
+      min-width: 16px !important;
+      max-width: 16px !important;
+      text-align: center !important;
+      margin-right: 8px !important;
+      flex-shrink: 0 !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      color: #94a3b8 !important;
+    }
+    .navbar-vertical .sub-nav-link .nav-link-title {
+      flex-grow: 1 !important;
+      text-align: left !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+    }
+
+    /* ACTIVE tab indicator: Subtle flat brand pill (STRICTLY NO BORDER-LEFT) */
+    .navbar-vertical .sub-nav-link.active {
+      background-color: var(--toku-primary-subtle) !important; /* #EEF2FF */
+      color: var(--toku-primary) !important;                   /* #4D5CB0 */
+      font-weight: 600 !important;
+      border: none !important;
+      border-left: none !important;
+    }
+    .navbar-vertical .sub-nav-link.active .nav-link-icon {
+      color: var(--toku-primary) !important;
+    }
+
+    /* Standalone top-level links (e.g. Dashboard) */
+    .navbar-vertical .navbar-nav > .nav-item > .nav-link:not(.category-toggle) {
+      font-size: 13px !important;
+      font-weight: 600 !important;
+      color: #334155 !important;
+      padding: 8px 12px !important;
+      border-radius: 6px !important;
+      margin: 1px 0 !important;
+      border: none !important;
+      border-left: none !important;
+      background-color: transparent !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: flex-start !important;
+      text-align: left !important;
+      text-decoration: none !important;
+      width: 100% !important;
+      box-sizing: border-box !important;
+      transition: background-color 0.15s ease, color 0.15s ease !important;
+    }
+    .navbar-vertical .navbar-nav > .nav-item > .nav-link:not(.category-toggle):hover {
+      background-color: #f1f5f9 !important;
+      color: #0f172a !important;
+    }
+    .navbar-vertical .navbar-nav > .nav-item > .nav-link:not(.category-toggle) .nav-link-icon {
+      width: 20px !important;
+      min-width: 20px !important;
+      max-width: 20px !important;
+      text-align: center !important;
+      margin-right: 8px !important;
+      flex-shrink: 0 !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+    }
+    .navbar-vertical .navbar-nav > .nav-item > .nav-link:not(.category-toggle) .nav-link-title {
+      flex-grow: 1 !important;
+      text-align: left !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+    }
+    .navbar-vertical .navbar-nav > .nav-item > .nav-link:not(.category-toggle).active {
+      background-color: var(--toku-primary-subtle) !important;
+      color: var(--toku-primary) !important;
+      font-weight: 600 !important;
+      border: none !important;
+      border-left: none !important;
+    }
+    .navbar-vertical .navbar-nav > .nav-item > .nav-link:not(.category-toggle).active .nav-link-icon {
+      color: var(--toku-primary) !important;
+    }
+
+    /* Page Header */
+    .page-header {
+      padding: 16px 0 14px 0 !important;
+      border-bottom: 1px solid var(--toku-border) !important;
+      margin-bottom: 20px !important;
+    }
+    .page-title {
+      font-size: 22px !important;
+      font-weight: 700 !important;
+      color: var(--toku-text) !important;
+      letter-spacing: -0.02em !important;
+      margin: 0 !important;
+    }
+    .page-pretitle {
+      font-size: 11px !important;
+      font-weight: 700 !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.06em !important;
+      color: var(--toku-text-muted) !important;
+      margin-bottom: 4px !important;
+    }
+
+    /* High-Density Data Tables */
+    .table {
+      border: 1px solid var(--toku-border) !important;
+      background-color: #ffffff !important;
+      font-size: 13.5px !important;
+      margin-bottom: 0 !important;
+    }
+    .table thead th {
+      background-color: #f8fafc !important;
+      color: #475569 !important;
+      font-weight: 700 !important;
+      font-size: 11.5px !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.05em !important;
+      border-bottom: 1px solid var(--toku-border-strong) !important;
+      padding: 11px 16px !important;
+    }
+    .table tbody td {
+      border-bottom: 1px solid var(--toku-border) !important;
+      padding: 11px 16px !important;
+      vertical-align: middle !important;
+      color: #1e293b !important;
+    }
+    .table tbody tr:hover td {
+      background-color: #f8fafc !important;
+    }
+
+    /* Swiss Action Controls */
+    .btn-primary {
+      background-color: var(--toku-primary) !important;
+      border-color: var(--toku-primary) !important;
+      color: #ffffff !important;
+      font-weight: 600 !important;
+      border-radius: 6px !important;
+      padding: 7px 16px !important;
+      font-size: 13.5px !important;
+      transition: none !important;
+    }
+    .btn-primary:hover, .btn-primary:focus {
+      background-color: var(--toku-primary-hover) !important;
+      border-color: var(--toku-primary-hover) !important;
+      color: #ffffff !important;
+      transform: none !important;
+    }
+    .btn-secondary, .btn-light, .btn-outline-secondary {
+      background-color: #ffffff !important;
+      border-color: var(--toku-border-strong) !important;
+      color: #334155 !important;
+      font-weight: 500 !important;
+      border-radius: 6px !important;
+      font-size: 13.5px !important;
+      transition: none !important;
+    }
+    .btn-secondary:hover, .btn-outline-secondary:hover {
+      background-color: #f1f5f9 !important;
+      color: #0f172a !important;
+      border-color: #94a3b8 !important;
+      transform: none !important;
+    }
+
+    /* Precision Form Controls */
+    .form-control, .form-select {
+      border: 1px solid var(--toku-border-strong) !important;
+      border-radius: 6px !important;
+      padding: 8px 12px !important;
+      font-size: 13.5px !important;
+      color: #0f172a !important;
+      background-color: #ffffff !important;
+    }
+    .form-control:focus, .form-select:focus {
+      border-color: var(--toku-primary) !important;
+      box-shadow: 0 0 0 2px rgba(77, 92, 176, 0.2) !important;
+    }
+    .form-label {
+      font-weight: 600 !important;
+      font-size: 12.5px !important;
+      color: #334155 !important;
+      margin-bottom: 6px !important;
+    }
+
+    /* Badges - Clean Modern Swiss (Border-free, soft tinted backgrounds, zero artificial frames) */
+    .badge {
+      font-weight: 600 !important;
+      font-size: 11px !important;
+      padding: 3px 7px !important;
+      border-radius: 4px !important;
+      letter-spacing: 0.02em !important;
+      border: none !important;
+      box-shadow: none !important;
+    }
+    .badge.bg-primary {
+      background-color: var(--toku-primary-subtle) !important;
+      color: var(--toku-primary) !important;
+      border: none !important;
+    }
+    .badge.bg-success {
+      background-color: #ecfdf5 !important;
+      color: #047857 !important;
+      border: none !important;
+    }
+    .badge.bg-secondary {
+      background-color: #f1f5f9 !important;
+      color: #475569 !important;
+      border: none !important;
+    }
+    .badge.bg-danger {
+      background-color: #fef2f2 !important;
+      color: #b91c1c !important;
+      border: none !important;
+    }
+    .badge.bg-warning {
+      background-color: var(--toku-orange-subtle) !important;
+      color: var(--toku-orange) !important;
+      border: none !important;
+    }
+    .badge.bg-info {
+      background-color: #eff6ff !important;
+      color: var(--toku-primary) !important;
+      border: none !important;
+    }
+
+    /* Modern Swiss KPI Cards (1px Hairline, Zero Cliché Colored Stripes) */
+    .toku-kpi-card {
+      border: 1px solid var(--toku-border) !important;
+      background-color: #ffffff !important;
+      border-radius: 8px !important;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+    }
+    .toku-kpi-card:hover {
+      border-color: #cbd5e1 !important;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04) !important;
+    }
+    .toku-kpi-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      background-color: #f8fafc;
+      color: #64748b;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      transition: background-color 0.15s ease, color 0.15s ease;
+    }
+    .toku-kpi-card:hover .toku-kpi-icon {
+      background-color: #f1f5f9;
+      color: #334155;
+    }
+    .toku-kpi-card:hover .toku-kpi-link {
+      color: var(--toku-primary) !important;
+    }
+
+    /* Hairline Pagination */
+    .page-item .page-link {
+      border: 1px solid var(--toku-border) !important;
+      color: #334155 !important;
+      font-size: 13px !important;
+      padding: 6px 12px !important;
+      background-color: #ffffff !important;
+    }
+    .page-item.active .page-link {
+      background-color: var(--toku-primary) !important;
+      border-color: var(--toku-primary) !important;
+      color: #ffffff !important;
+    }
+
+    /* Strict Disablement of Animation/Jitter Slop */
+    * {
+      transition: none !important;
+      animation-duration: 0.001s !important;
+    }
+  </style>
+
+  {% block head %}
+  {% endblock %}
+  <title>{{ admin.title }} - Tokuyama Vietnam ITAM</title>
+</head>
+
+<body>
+  {% block body %}
+  <main>
+    {% block main %}
+    {% endblock %}
+  </main>
+  {% endblock %}
+  <script type="text/javascript" src="{{ url_for('admin:statics', path='js/jquery.min.js') }}"></script>
+  <script type="text/javascript" src="{{ url_for('admin:statics', path='js/tabler.min.js') }}"></script>
+  <script type="text/javascript" src="{{ url_for('admin:statics', path='js/popper.min.js') }}"></script>
+  <script type="text/javascript" src="{{ url_for('admin:statics', path='js/bootstrap.min.js') }}"></script>
+  <script type="text/javascript" src="{{ url_for('admin:statics', path='js/select2.full.min.js') }}"></script>
+  <script type="text/javascript" src="{{ url_for('admin:statics', path='js/flatpickr.min.js') }}"></script>
+  <script type="text/javascript" src="{{ url_for('admin:statics', path='js/main.js') }}"></script>
+  {% block tail %}
+  {% endblock %}
+</body>
+
+</html>

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.audit import audit_login, record_audit, sanitize_dict
@@ -24,19 +25,34 @@ from app.core.security import (
 from app.enums import AuditAction, Module, PermissionAction, RoleCode, DEFAULT_ROLE_PERMISSIONS
 from app.db import get_db
 from app.main import app
-from app.models import Role, RolePermission, User, UserPermissionOverride
-from contextlib import contextmanager
+from app.models import AuditLog, Role, RolePermission, User, UserPermissionOverride
 
 
 @pytest.fixture(autouse=True)
 def override_db(db: Session, monkeypatch):
     """Đảm bảo TestClient dùng chung transaction với fixture db trong test."""
-    @contextmanager
-    def _mock_session():
-        yield db
+    class _MockSessionMaker:
+        class_ = Session
 
+        def __call__(self, *args, **kwargs):
+            return self
+
+        def __enter__(self):
+            return db
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            pass
+
+    mock_maker = _MockSessionMaker()
     app.dependency_overrides[get_db] = lambda: db
-    monkeypatch.setattr("app.admin.SessionLocal", _mock_session)
+    monkeypatch.setattr("app.admin.SessionLocal", mock_maker)
+
+    admin = getattr(app.state, "admin", None)
+    if admin:
+        monkeypatch.setattr(admin, "session_maker", mock_maker)
+        for view in admin._views:
+            monkeypatch.setattr(view, "session_maker", mock_maker)
+
     yield
     app.dependency_overrides.clear()
 
@@ -345,3 +361,123 @@ def test_sqladmin_only_accessible_by_admin(db: Session, rbac_roles_and_users):
     res_ga = client_ga.get("/admin/", follow_redirects=False)
     assert res_ga.status_code in (302, 307)
     assert "/admin/login" in res_ga.headers.get("location", "")
+
+
+def test_sqladmin_soft_delete_and_protections(db: Session, rbac_roles_and_users):
+    admin = rbac_roles_and_users["admin"]
+    exec_user = rbac_roles_and_users["exec"]
+
+    client = TestClient(app)
+    admin_token = create_session_token({"user_id": admin.id, "role": "ADMIN", "username": admin.username})
+    client.cookies.set("itam_session", admin_token)
+
+    # 1. Thử tự xóa tài khoản admin đang đăng nhập -> Bị chặn 400
+    res_self = client.delete(f"/admin/user/delete?pks={admin.id}")
+    assert res_self.status_code == 400
+    assert "chính bạn" in res_self.text
+
+    # 2. Xóa tài khoản exec_user -> Thành công, chuyển thành xóa mềm
+    res_del = client.delete(f"/admin/user/delete?pks={exec_user.id}&delete_reason=Nghi+viec")
+    assert res_del.status_code == 200
+
+    # Kiểm tra DB: exec_user phải có is_deleted = True, deleted_at, deleted_by, delete_reason
+    db.refresh(exec_user)
+    assert exec_user.is_deleted is True
+    assert exec_user.deleted_at is not None
+    assert exec_user.deleted_by == admin.id
+    assert exec_user.delete_reason == "Nghi viec"
+
+    # Kiểm tra Audit Log: phải có log DELETE cho bảng users
+    audit_del = db.scalar(
+        select(AuditLog).where(
+            AuditLog.table_name == "users",
+            AuditLog.record_id == exec_user.id,
+            AuditLog.action == AuditAction.DELETE,
+        )
+    )
+    assert audit_del is not None
+    assert audit_del.user_id == admin.id
+
+    # 3. Danh sách /admin/user/list không được hiển thị exec_user đã xóa
+    res_list = client.get("/admin/user/list")
+    assert res_list.status_code == 200
+    assert exec_user.username not in res_list.text
+
+    # 4. Kiểm tra các bảng lịch sử không cho phép xóa (can_delete = False)
+    from app.admin import AssignmentAdmin, LicenseAssignmentAdmin, CardLoanAdmin, AuditLogAdmin
+    assert AssignmentAdmin.can_delete is False
+    assert LicenseAssignmentAdmin.can_delete is False
+    assert CardLoanAdmin.can_delete is False
+    assert AuditLogAdmin.can_delete is False
+
+
+def test_sqladmin_user_create_with_password(db: Session, rbac_roles_and_users):
+    admin = rbac_roles_and_users["admin"]
+    client = TestClient(app)
+    admin_token = create_session_token({"user_id": admin.id, "role": "ADMIN", "username": admin.username})
+    client.cookies.set("itam_session", admin_token)
+
+    # 1. Mở trang tạo user -> Có ô password, không có last_login_at
+    res_get = client.get("/admin/user/create")
+    assert res_get.status_code == 200
+    assert "password" in res_get.text
+    assert "last_login_at" not in res_get.text
+
+    # 2. Tạo user không nhập password -> Bị chặn báo lỗi
+    res_empty_pwd = client.post("/admin/user/create", data={
+        "role": str(admin.role_id),
+        "username": "tomo_new",
+        "display_name": "Tomo New",
+        "preferred_lang": "en",
+        "is_active": "true",
+        "password": "",
+    })
+    assert res_empty_pwd.status_code in (200, 400)
+    assert "mật khẩu" in res_empty_pwd.text.lower() or "password" in res_empty_pwd.text.lower()
+
+    # 3. Tạo user có mật khẩu hợp lệ -> Thành công, băm Argon2id
+    res_create = client.post("/admin/user/create", data={
+        "role": str(admin.role_id),
+        "username": "tomo_new",
+        "display_name": "Tomo New",
+        "preferred_lang": "en",
+        "is_active": "true",
+        "password": "SecretPassword123!",
+    }, follow_redirects=False)
+    assert res_create.status_code in (200, 302)
+
+    new_user = db.scalar(select(User).where(User.username == "tomo_new"))
+    assert new_user is not None
+    assert new_user.display_name == "Tomo New"
+    assert verify_password("SecretPassword123!", new_user.password_hash) is True
+
+    # 4. Sửa user mà để trống password -> Giữ nguyên mật khẩu cũ
+    res_edit_same = client.post(f"/admin/user/edit/{new_user.id}", data={
+        "role": str(admin.role_id),
+        "username": "tomo_new",
+        "display_name": "Tomo New Updated",
+        "preferred_lang": "vi",
+        "is_active": "true",
+        "password": "",
+    }, follow_redirects=False)
+    assert res_edit_same.status_code in (200, 302)
+
+    db.refresh(new_user)
+    assert new_user.display_name == "Tomo New Updated"
+    assert verify_password("SecretPassword123!", new_user.password_hash) is True
+
+    # 5. Sửa user với mật khẩu mới -> Băm mật khẩu mới
+    res_edit_new_pwd = client.post(f"/admin/user/edit/{new_user.id}", data={
+        "role": str(admin.role_id),
+        "username": "tomo_new",
+        "display_name": "Tomo New Updated",
+        "preferred_lang": "vi",
+        "is_active": "true",
+        "password": "NewSecretPassword456!",
+    }, follow_redirects=False)
+    assert res_edit_new_pwd.status_code in (200, 302)
+
+    db.refresh(new_user)
+    assert verify_password("NewSecretPassword456!", new_user.password_hash) is True
+
+
