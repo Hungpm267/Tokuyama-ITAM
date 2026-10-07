@@ -1,0 +1,173 @@
+{% extends "portal/base.html" %}
+
+{% block title %}Tổng quan Quản trị Tài sản{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <!-- Welcome Header Banner -->
+    <div class="bg-white border border-slate-200 rounded-xl p-6 sm:p-8 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+            <div class="inline-flex items-center space-x-2 px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-100 text-slate-700 mb-3">
+                <i class="fa-solid fa-building-user text-slate-500"></i>
+                <span>Cổng thông tin Quản lý Tài sản IT Tokuyama</span>
+            </div>
+            <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+                Xin chào, {{ user.display_name }}
+            </h1>
+            <p class="mt-1 text-sm text-slate-500">
+                Vai trò hiện tại: <strong class="text-slate-800">{{ user.role.name_en }}</strong>. Dưới đây là tổng hợp tình trạng tài sản và cảnh báo trong toàn công ty.
+            </p>
+        </div>
+        <div class="flex items-center space-x-3">
+            <a href="/phones" class="inline-flex items-center px-4 py-2 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 shadow-xs transition">
+                <i class="fa-solid fa-phone mr-2 text-slate-400"></i>Phone List
+            </a>
+            <a href="/assets" class="inline-flex items-center px-4 py-2 rounded-lg text-sm font-semibold text-white bg-red-600 hover:bg-red-700 shadow-sm transition">
+                <i class="fa-solid fa-magnifying-glass mr-2"></i>Tra cứu Thiết bị
+            </a>
+        </div>
+    </div>
+
+    <!-- KPI Metric Cards Grid -->
+    <div>
+        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Chỉ số tài sản thiết bị</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            <!-- Total Assets -->
+            <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:border-slate-300 transition">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Tổng số thiết bị</span>
+                    <div class="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center text-sm">
+                        <i class="fa-solid fa-laptop"></i>
+                    </div>
+                </div>
+                <div class="mt-4 flex items-baseline justify-between">
+                    <span class="text-3xl font-black text-slate-900 tracking-tight">{{ stats.total_assets or 0 }}</span>
+                    <span class="text-xs font-medium text-slate-500">Máy tính, màn hình, phụ kiện</span>
+                </div>
+            </div>
+
+            <!-- In Use -->
+            <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:border-slate-300 transition">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Đang sử dụng</span>
+                    <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center text-sm">
+                        <i class="fa-solid fa-user-check"></i>
+                    </div>
+                </div>
+                <div class="mt-4 flex items-baseline justify-between">
+                    <span class="text-3xl font-black text-emerald-700 tracking-tight">{{ stats.in_use_assets or 0 }}</span>
+                    <span class="text-xs font-medium text-emerald-600">Đã cấp phát nhân viên</span>
+                </div>
+            </div>
+
+            <!-- In Stock -->
+            <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:border-slate-300 transition">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Trong kho sẵn sàng</span>
+                    <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center text-sm">
+                        <i class="fa-solid fa-boxes-stacked"></i>
+                    </div>
+                </div>
+                <div class="mt-4 flex items-baseline justify-between">
+                    <span class="text-3xl font-black text-blue-700 tracking-tight">{{ stats.in_stock_assets or 0 }}</span>
+                    <span class="text-xs font-medium text-blue-600">Sẵn sàng cấp mới</span>
+                </div>
+            </div>
+
+            <!-- In Repair / Warning -->
+            <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:border-slate-300 transition">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Đang sửa / Bảo hành</span>
+                    <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center text-sm">
+                        <i class="fa-solid fa-screwdriver-wrench"></i>
+                    </div>
+                </div>
+                <div class="mt-4 flex items-baseline justify-between">
+                    <span class="text-3xl font-black text-amber-700 tracking-tight">{{ stats.repair_assets or 0 }}</span>
+                    <span class="text-xs font-medium text-amber-600">Chờ hoàn tất xử lý</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section: 2 Columns (License Expiring & Card Loans) -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- License Expiring in 60 Days -->
+        <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-certificate text-slate-400"></i>
+                    <h3 class="text-base font-bold text-slate-900">License sắp hết hạn (60 ngày)</h3>
+                </div>
+                <span class="px-2 py-0.5 rounded text-xs font-bold {% if expiring_licenses %}bg-amber-100 text-amber-800{% else %}bg-slate-100 text-slate-600{% endif %}">
+                    {{ expiring_licenses|length }} phần mềm
+                </span>
+            </div>
+
+            <div class="mt-4">
+                {% if expiring_licenses %}
+                <ul class="divide-y divide-slate-100">
+                    {% for lic in expiring_licenses %}
+                    <li class="py-3 flex items-center justify-between text-sm">
+                        <div>
+                            <span class="font-semibold text-slate-800">{{ lic.product_name }}</span>
+                            <span class="text-xs text-slate-500 block">Số lượng: {{ lic.seats }} seats</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-xs font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded">
+                                Hết hạn: {{ lic.expiry_date }}
+                            </span>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="py-8 text-center text-sm text-slate-400">
+                    <i class="fa-solid fa-circle-check text-emerald-500 text-2xl mb-2 block"></i>
+                    Không có license nào sắp hết hạn trong 60 ngày tới.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Active Access Card Loans -->
+        <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-id-card text-slate-400"></i>
+                    <h3 class="text-base font-bold text-slate-900">Thẻ ra vào đang cho mượn</h3>
+                </div>
+                <span class="px-2 py-0.5 rounded text-xs font-bold {% if active_card_loans %}bg-blue-100 text-blue-800{% else %}bg-slate-100 text-slate-600{% endif %}">
+                    {{ active_card_loans|length }} thẻ
+                </span>
+            </div>
+
+            <div class="mt-4">
+                {% if active_card_loans %}
+                <ul class="divide-y divide-slate-100">
+                    {% for loan in active_card_loans %}
+                    <li class="py-3 flex items-center justify-between text-sm">
+                        <div>
+                            <span class="font-semibold text-slate-800">Thẻ {{ loan.card_no }}</span>
+                            <span class="text-xs text-slate-500 block">Mượn bởi: {{ loan.borrower_name }}</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-xs font-medium text-slate-600 block">Ngày mượn: {{ loan.borrowed_at }}</span>
+                            {% if loan.is_overdue %}
+                            <span class="text-[11px] font-bold text-red-700 bg-red-50 px-1.5 py-0.5 rounded mt-0.5 inline-block">Quá hạn hẹn trả</span>
+                            {% endif %}
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="py-8 text-center text-sm text-slate-400">
+                    <i class="fa-solid fa-circle-check text-emerald-500 text-2xl mb-2 block"></i>
+                    Tất cả thẻ mượn đã được hoàn trả đầy đủ.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

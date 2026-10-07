@@ -14,6 +14,7 @@ from app.config import settings
 from app.core.security import SESSION_SECRET
 from app.db import engine
 from app.routers.auth import router as auth_router
+from app.routers.portal import router as portal_router
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -38,6 +39,7 @@ if static_dir.exists():
 
 # 3. Mount Routers
 app.include_router(auth_router)
+app.include_router(portal_router)
 
 
 @app.get("/admin/set-lang")
@@ -95,8 +97,3 @@ async def set_language(
 admin = setup_admin(app, engine)
 app.state.admin = admin
 
-
-@app.get("/")
-def root() -> RedirectResponse:
-    """Chuyển hướng người dùng từ trang chủ về giao diện Quản trị /admin."""
-    return RedirectResponse(url="/admin")
