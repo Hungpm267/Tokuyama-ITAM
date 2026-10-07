@@ -497,3 +497,69 @@ def test_sqladmin_relation_list_views(db: Session, rbac_roles_and_users):
         assert res.status_code == 200
 
 
+def test_card_borrowed_workflow_and_sync(db: Session, rbac_roles_and_users):
+    from app.enums import CardStatus
+    from app.models import AccessCard, CardLoan
+
+    admin = rbac_roles_and_users["admin"]
+    client = TestClient(app)
+    admin_token = create_session_token({"user_id": admin.id, "role": "ADMIN", "username": admin.username})
+    client.cookies.set("itam_session", admin_token)
+
+    # 1. Chặn tạo thẻ với status BORROWED
+    res_fail = client.post("/admin/access-card/create", data={
+        "card_no": "TEST_CARD_SYNC_01",
+        "card_type": "GUEST",
+        "status": "BORROWED",
+    })
+    assert res_fail.status_code == 400
+    assert "BORROWED" in res_fail.text
+
+    # 2. Tạo thẻ hợp lệ với IN_STOCK
+    res_ok = client.post("/admin/access-card/create", data={
+        "card_no": "TEST_CARD_SYNC_01",
+        "card_type": "GUEST",
+        "status": "IN_STOCK",
+    }, follow_redirects=True)
+    assert res_ok.status_code == 200
+
+    card = db.scalar(select(AccessCard).where(AccessCard.card_no == "TEST_CARD_SYNC_01"))
+    assert card is not None
+    assert card.status == CardStatus.IN_STOCK
+    assert card.current_borrower is None
+
+    # 3. Tạo phiếu mượn thẻ -> Card tự động chuyển sang BORROWED
+    res_loan = client.post("/admin/card-loan/create", data={
+        "card": str(card.id),
+        "external_name": "Nguyen Van Khach",
+        "external_company": "Nha thau Son",
+        "borrowed_at": "2026-10-07",
+    }, follow_redirects=True)
+    assert res_loan.status_code == 200
+
+    db.refresh(card)
+    assert card.status == CardStatus.BORROWED
+    assert "Nguyen Van Khach" in card.current_borrower
+
+    # 4. Kiểm tra trang danh sách thẻ hiển thị cột Người đang giữ thẻ
+    res_list = client.get("/admin/access-card/list")
+    assert res_list.status_code == 200
+    assert "Nguyen Van Khach" in res_list.text
+
+    # 5. Trả thẻ -> Card tự động về IN_STOCK
+    loan = db.scalar(select(CardLoan).where(CardLoan.card_id == card.id, CardLoan.returned_at.is_(None)))
+    assert loan is not None
+    res_return = client.post(f"/admin/card-loan/edit/{loan.id}", data={
+        "card": str(card.id),
+        "external_name": "Nguyen Van Khach",
+        "external_company": "Nha thau Son",
+        "borrowed_at": "2026-10-07",
+        "returned_at": "2026-10-07",
+    }, follow_redirects=True)
+    assert res_return.status_code == 200
+
+    db.refresh(card)
+    assert card.status == CardStatus.IN_STOCK
+    assert card.current_borrower is None
+
+

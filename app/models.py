@@ -418,6 +418,16 @@ class Asset(BizBase):
         code = self.asset_code or self.vendor_code or self.serial or f"Asset #{self.id}"
         return f"{code} ({self.model})" if self.model else str(code)
 
+    @property
+    def current_holder(self) -> str | None:
+        try:
+            for asgn in self.assignments:
+                if asgn.returned_at is None and asgn.person:
+                    return f"{asgn.person.full_name} ({asgn.person.staff_code})"
+        except Exception:
+            return None
+        return None
+
 
 class AssetTagLink(LinkBase):
     __tablename__ = "asset_tag_links"
@@ -605,6 +615,21 @@ class AccessCard(BizBase):
             else str(self.card_type)
         )
         return f"{self.card_no} ({card_type_val})"
+
+    @property
+    def current_borrower(self) -> str | None:
+        try:
+            for loan in self.loans:
+                if loan.returned_at is None:
+                    if loan.person:
+                        return f"{loan.person.full_name} ({loan.person.staff_code})"
+                    if loan.external_name:
+                        if loan.external_company:
+                            return f"{loan.external_name} [{loan.external_company}]"
+                        return loan.external_name
+        except Exception:
+            return None
+        return None
 
 
 class AccessCardLocation(LinkBase):

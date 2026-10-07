@@ -17,6 +17,7 @@ from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
 from sqlalchemy import Select, func, select
+from sqlalchemy.orm import selectinload
 
 from app.core.audit import audit_login, record_audit
 from app.core.security import (
@@ -29,7 +30,7 @@ from app.core.security import (
 from wtforms import Form, PasswordField, SelectField
 from wtforms.widgets import PasswordInput
 from app.db import SessionLocal
-from app.enums import AuditAction, RoleCode
+from app.enums import AssetStatus, AuditAction, CardStatus, RoleCode
 from app.models import (
     AccessCard,
     Asset,
@@ -514,9 +515,35 @@ class AssetAdmin(BaseAdminView, model=Asset):
     name_plural = "Danh sách Thiết bị"
     icon = "fa-solid fa-laptop"
     category = "Tài sản"
-    column_list = [Asset.id, Asset.asset_code, Asset.vendor_code, Asset.serial, Asset.category, Asset.status, Asset.model]
+    column_list = [
+        Asset.id,
+        Asset.asset_code,
+        Asset.vendor_code,
+        Asset.serial,
+        Asset.category,
+        Asset.status,
+        "current_holder",
+        Asset.model,
+    ]
+    column_labels = {
+        "current_holder": "Người đang sử dụng",
+        "asset_code": "Mã GA",
+        "vendor_code": "Mã KDDI",
+        "serial": "Số Serial",
+        "status": "Trạng thái",
+        "model": "Model thiết bị",
+    }
+    column_formatters = {
+        "current_holder": lambda m, a: m.current_holder or "-",
+    }
     column_searchable_list = [Asset.asset_code, Asset.serial, Asset.vendor_code, Asset.model]
     form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["assignments"]
+
+    def list_query(self, request: Request) -> Select:
+        stmt = super().list_query(request)
+        return stmt.options(
+            selectinload(Asset.assignments).selectinload(Assignment.person)
+        )
 
 
 class AssignmentAdmin(BaseAdminView, model=Assignment):
@@ -526,6 +553,31 @@ class AssignmentAdmin(BaseAdminView, model=Assignment):
     category = "Tài sản"
     can_delete = False
     column_list = [Assignment.id, Assignment.asset, Assignment.person, Assignment.borrowed_at, Assignment.returned_at]
+
+    async def after_model_change(
+        self, data: dict, model: Any, is_created: bool, request: Request
+    ) -> None:
+        await super().after_model_change(data, model, is_created, request)
+        asset_id = getattr(model, "asset_id", None)
+        if asset_id:
+            try:
+                with SessionLocal() as db:
+                    asset = db.get(Asset, asset_id)
+                    if asset:
+                        active_asgn = db.scalar(
+                            select(Assignment).where(
+                                Assignment.asset_id == asset.id,
+                                Assignment.returned_at.is_(None),
+                                Assignment.is_deleted.is_(False),
+                            )
+                        )
+                        if active_asgn:
+                            asset.status = AssetStatus.IN_USE
+                        elif asset.status == AssetStatus.IN_USE:
+                            asset.status = AssetStatus.IN_STOCK
+                        db.commit()
+            except Exception:
+                pass
 
 
 class LicenseProductAdmin(BaseAdminView, model=LicenseProduct):
@@ -576,8 +628,76 @@ class AccessCardAdmin(BaseAdminView, model=AccessCard):
     name_plural = "Danh sách Thẻ từ"
     icon = "fa-solid fa-address-card"
     category = "Thẻ ra vào"
-    column_list = [AccessCard.id, AccessCard.card_no, AccessCard.card_type, AccessCard.status]
+    column_list = [
+        AccessCard.id,
+        AccessCard.card_no,
+        AccessCard.card_type,
+        AccessCard.status,
+        "current_borrower",
+        AccessCard.note,
+    ]
+    column_labels = {
+        "current_borrower": "Người đang giữ thẻ",
+        "card_no": "Số thẻ",
+        "card_type": "Loại thẻ",
+        "status": "Trạng thái",
+        "note": "Ghi chú",
+    }
+    column_formatters = {
+        "current_borrower": lambda m, a: m.current_borrower or "-",
+    }
     form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["loans"]
+
+    def list_query(self, request: Request) -> Select:
+        stmt = super().list_query(request)
+        return stmt.options(
+            selectinload(AccessCard.loans).selectinload(CardLoan.person)
+        )
+
+    async def on_model_change(
+        self, data: dict, model: Any, is_created: bool, request: Request
+    ) -> None:
+        await super().on_model_change(data, model, is_created, request)
+        status_val = data.get("status")
+        if status_val in (CardStatus.BORROWED, CardStatus.BORROWED.value, "BORROWED"):
+            if is_created:
+                raise ValueError(
+                    "Không thể đặt trạng thái 'BORROWED' khi tạo mới thẻ vật lý. "
+                    "Thẻ mới nhập kho phải là 'IN_STOCK'. "
+                    "Để cho mượn thẻ, vui lòng ghi nhận tại mục 'Sổ Mượn-Trả Thẻ'."
+                )
+            else:
+                card_id = getattr(model, "id", None)
+                if card_id:
+                    with SessionLocal() as db:
+                        has_open = db.scalar(
+                            select(CardLoan).where(
+                                CardLoan.card_id == card_id,
+                                CardLoan.returned_at.is_(None),
+                                CardLoan.is_deleted.is_(False),
+                            )
+                        )
+                        if not has_open:
+                            raise ValueError(
+                                "Không thể chuyển trạng thái thẻ sang 'BORROWED' khi chưa có phiếu mượn. "
+                                "Vui lòng ghi nhận người mượn tại mục 'Sổ Mượn-Trả Thẻ'."
+                            )
+        elif not is_created and status_val in (CardStatus.IN_STOCK, CardStatus.IN_STOCK.value, "IN_STOCK"):
+            card_id = getattr(model, "id", None)
+            if card_id:
+                with SessionLocal() as db:
+                    has_open = db.scalar(
+                        select(CardLoan).where(
+                            CardLoan.card_id == card_id,
+                            CardLoan.returned_at.is_(None),
+                            CardLoan.is_deleted.is_(False),
+                        )
+                    )
+                    if has_open:
+                        raise ValueError(
+                            "Thẻ này đang có người mượn chưa trả trong 'Sổ Mượn-Trả Thẻ'. "
+                            "Vui lòng vào 'Sổ Mượn-Trả Thẻ' cập nhật Ngày trả (returned_at) để hoàn tất thủ tục trả thẻ."
+                        )
 
 
 class CardLoanAdmin(BaseAdminView, model=CardLoan):
@@ -586,7 +706,57 @@ class CardLoanAdmin(BaseAdminView, model=CardLoan):
     icon = "fa-solid fa-clock-rotate-left"
     category = "Thẻ ra vào"
     can_delete = False
-    column_list = [CardLoan.id, CardLoan.card, CardLoan.person, CardLoan.external_name, CardLoan.borrowed_at, CardLoan.returned_at]
+    column_list = [
+        CardLoan.id,
+        CardLoan.card,
+        CardLoan.person,
+        CardLoan.external_name,
+        CardLoan.borrowed_at,
+        CardLoan.returned_at,
+    ]
+
+    async def on_model_change(
+        self, data: dict, model: Any, is_created: bool, request: Request
+    ) -> None:
+        await super().on_model_change(data, model, is_created, request)
+        card_val = data.get("card")
+        if card_val is not None:
+            cid = getattr(card_val, "id", None)
+            if cid is None and str(card_val).isdigit():
+                cid = int(card_val)
+            if cid and is_created and data.get("returned_at") is None:
+                with SessionLocal() as db:
+                    card = db.get(AccessCard, cid)
+                    if card and card.status in (CardStatus.LOST, CardStatus.DAMAGED):
+                        raise ValueError(
+                            f"Thẻ '{card.card_no}' đang ở trạng thái {card.status.value}, không thể cho mượn."
+                        )
+
+    async def after_model_change(
+        self, data: dict, model: Any, is_created: bool, request: Request
+    ) -> None:
+        await super().after_model_change(data, model, is_created, request)
+        card_id = getattr(model, "card_id", None)
+        if card_id:
+            try:
+                with SessionLocal() as db:
+                    card = db.get(AccessCard, card_id)
+                    if card:
+                        active_loan = db.scalar(
+                            select(CardLoan).where(
+                                CardLoan.card_id == card.id,
+                                CardLoan.returned_at.is_(None),
+                                CardLoan.is_deleted.is_(False),
+                            )
+                        )
+                        if active_loan:
+                            card.status = CardStatus.BORROWED
+                        elif card.status == CardStatus.BORROWED:
+                            card.status = CardStatus.IN_STOCK
+                        db.commit()
+            except Exception:
+                pass
+
 
 
 class ContractAdmin(BaseAdminView, model=Contract):
