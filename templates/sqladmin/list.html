@@ -153,6 +153,12 @@
               <input class="form-check-input m-0 align-middle select-box" type="checkbox" aria-label="Select item">
             </td>
             <td class="text-end">
+              {% if model_view.identity == 'contract-line' %}
+              <a href="/admin/contract-line/{{ get_object_identifier(row) }}/receive" data-bs-toggle="tooltip"
+                data-bs-placement="top" title="{{ 'Batch Receive' if current_lang == 'en' else 'Nhập kho theo lô' }}" class="btn btn-sm btn-outline-success py-0 px-1 me-2" style="font-size: 11px;">
+                <i class="fa-solid fa-boxes-packing me-1"></i>{{ 'Nhận hàng' if current_lang != 'en' else 'Receive' }}
+              </a>
+              {% endif %}
               {% if model_view.can_view_details %}
               <a href="{{ model_view._build_url_for('admin:details', request, row) }}" data-bs-toggle="tooltip"
                 data-bs-placement="top" title="{{ 'View' if current_lang == 'en' else 'Xem chi tiết' }}" class="text-secondary me-2">

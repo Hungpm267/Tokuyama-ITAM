@@ -1398,11 +1398,13 @@ class ContractLineAdmin(BaseAdminView, model=ContractLine):
             if m.qty_delivered >= m.qty_ordered
             else (
                 Markup(
-                    f'<span class="badge bg-warning text-dark"><i class="fa-solid fa-clock me-1"></i>Giao một phần ({m.qty_delivered}/{m.qty_ordered})</span>'
+                    f'<span class="badge bg-warning text-dark me-2"><i class="fa-solid fa-clock me-1"></i>Giao một phần ({m.qty_delivered}/{m.qty_ordered})</span>'
+                    f'<a href="/admin/contract-line/{m.id}/receive" class="btn btn-sm btn-outline-success py-0 px-2 fw-semibold" style="font-size: 11px;"><i class="fa-solid fa-boxes-packing me-1"></i>Nhận hàng</a>'
                 )
                 if m.qty_delivered > 0
                 else Markup(
-                    '<span class="badge bg-light text-secondary border"><i class="fa-regular fa-clock me-1"></i>Chưa nhận</span>'
+                    f'<span class="badge bg-light text-secondary border me-2"><i class="fa-regular fa-clock me-1"></i>Chưa nhận</span>'
+                    f'<a href="/admin/contract-line/{m.id}/receive" class="btn btn-sm btn-outline-success py-0 px-2 fw-semibold" style="font-size: 11px;"><i class="fa-solid fa-boxes-packing me-1"></i>Nhận hàng</a>'
                 )
             )
         ),
@@ -1421,11 +1423,13 @@ class ContractLineAdmin(BaseAdminView, model=ContractLine):
             if m.qty_delivered >= m.qty_ordered
             else (
                 Markup(
-                    f'<span class="badge bg-warning text-dark"><i class="fa-solid fa-clock me-1"></i>Giao một phần ({m.qty_delivered}/{m.qty_ordered})</span>'
+                    f'<span class="badge bg-warning text-dark me-2"><i class="fa-solid fa-clock me-1"></i>Giao một phần ({m.qty_delivered}/{m.qty_ordered})</span>'
+                    f'<a href="/admin/contract-line/{m.id}/receive" class="btn btn-sm btn-success text-white py-0 px-2 fw-semibold" style="font-size: 12px;"><i class="fa-solid fa-boxes-packing me-1"></i>Nhập kho theo lô</a>'
                 )
                 if m.qty_delivered > 0
                 else Markup(
-                    '<span class="badge bg-light text-secondary border"><i class="fa-regular fa-clock me-1"></i>Chưa nhận</span>'
+                    f'<span class="badge bg-light text-secondary border me-2"><i class="fa-regular fa-clock me-1"></i>Chưa nhận</span>'
+                    f'<a href="/admin/contract-line/{m.id}/receive" class="btn btn-sm btn-success text-white py-0 px-2 fw-semibold" style="font-size: 12px;"><i class="fa-solid fa-boxes-packing me-1"></i>Nhập kho theo lô</a>'
                 )
             )
         ),
@@ -1551,6 +1555,13 @@ class AuditLogAdmin(BaseAdminView, model=AuditLog):
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 TEMPLATES_DIR = BASE_DIR / "templates"
+
+_admin_instance: TokuyamaAdmin | None = None
+
+
+def get_admin() -> TokuyamaAdmin | None:
+    """Trả về instance của TokuyamaAdmin đã khởi tạo."""
+    return _admin_instance
 
 
 class TokuyamaAdmin(Admin):
@@ -1709,5 +1720,8 @@ def setup_admin(app, engine):
 
     # 9. Truy vết
     admin.add_view(AuditLogAdmin)
+
+    global _admin_instance
+    _admin_instance = admin
 
     return admin

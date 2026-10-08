@@ -14,6 +14,7 @@ from app.config import settings
 from app.core.security import SESSION_SECRET
 from app.db import engine
 from app.routers.auth import router as auth_router
+from app.routers.batch_receive import router as batch_receive_router
 from app.routers.portal import router as portal_router
 from app.routers.role_matrix import router as role_matrix_router
 from app.routers.secrets import router as secrets_router
@@ -44,6 +45,7 @@ app.include_router(auth_router)
 app.include_router(portal_router)
 app.include_router(role_matrix_router)
 app.include_router(secrets_router)
+app.include_router(batch_receive_router)
 
 
 @app.get("/admin/set-lang")

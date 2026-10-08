@@ -1,0 +1,742 @@
+{% extends "sqladmin/layout.html" %}
+{% block content %}
+{% set current_lang = current_lang or get_current_lang(request) %}
+
+<div class="col-12">
+  <div class="card shadow-sm border" style="border-color: var(--toku-border) !important; border-radius: 8px;">
+
+    <!-- 1. Header Section -->
+    <div class="card-header bg-white py-3 px-4 d-flex flex-wrap align-items-center justify-content-between gap-3" style="border-bottom: 1px solid var(--toku-border) !important;">
+      <div>
+        <div class="d-flex align-items-center gap-2">
+          <span style="width: 36px; height: 36px; border-radius: 6px; background-color: #ecfdf5; color: #059669; display: inline-flex; align-items: center; justify-content: center; font-size: 18px;">
+            <i class="fa-solid fa-boxes-packing"></i>
+          </span>
+          <div>
+            <h3 class="card-title fw-bold text-dark m-0" style="font-size: 18px;">
+              {{ 'Nhập kho thiết bị theo lô' if current_lang != 'en' else 'Batch Receive Assets' }}
+            </h3>
+            <div class="text-muted small" style="font-size: 12.5px;">
+              <span class="text-secondary fw-semibold">{{ 'Hợp đồng' if current_lang != 'en' else 'Contract' }}:</span> {{ contract.code }}
+              {% if contract.vendor_name %}({{ contract.vendor_name }}){% endif %}
+              <span class="mx-1 text-muted">•</span>
+              <span class="text-secondary fw-semibold">{{ 'Hạng mục' if current_lang != 'en' else 'Item' }}:</span> {{ contract_line.item_type }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex align-items-center gap-2">
+        <a href="/admin/contract-line/details/{{ contract_line.id }}" class="btn btn-outline-secondary btn-sm" style="font-size: 13px;">
+          <i class="fa-solid fa-arrow-left me-1"></i> {{ 'Quay lại Hạng mục' if current_lang != 'en' else 'Back to Item' }}
+        </a>
+      </div>
+    </div>
+
+    <!-- 2. Summary Progress Bar Card -->
+    <div class="p-3 bg-light border-bottom" style="border-color: var(--toku-border) !important;">
+      <div class="row g-3 align-items-center">
+        <div class="col-md-3">
+          <div class="p-2 bg-white rounded border shadow-none">
+            <div class="text-muted small" style="font-size: 11.5px; text-transform: uppercase; font-weight: 600;">
+              {{ 'Số lượng đặt mua' if current_lang != 'en' else 'Quantity Ordered' }}
+            </div>
+            <div class="fs-4 fw-bold text-dark">{{ contract_line.qty_ordered }} <span class="text-muted fs-6 fw-normal">{{ 'máy' if current_lang != 'en' else 'units' }}</span></div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="p-2 bg-white rounded border shadow-none">
+            <div class="text-muted small" style="font-size: 11.5px; text-transform: uppercase; font-weight: 600;">
+              {{ 'Đã nhận trước đó' if current_lang != 'en' else 'Delivered' }}
+            </div>
+            <div class="fs-4 fw-bold text-primary">{{ contract_line.qty_delivered }} <span class="text-muted fs-6 fw-normal">{{ 'máy' if current_lang != 'en' else 'units' }}</span></div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="p-2 bg-white rounded border shadow-none">
+            <div class="text-muted small" style="font-size: 11.5px; text-transform: uppercase; font-weight: 600;">
+              {{ 'Còn cần nhận' if current_lang != 'en' else 'Remaining' }}
+            </div>
+            <div class="fs-4 fw-bold text-success">{{ contract_line.qty_remaining }} <span class="text-muted fs-6 fw-normal">{{ 'máy' if current_lang != 'en' else 'units' }}</span></div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="p-2 bg-white rounded border shadow-none">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <span class="text-muted small fw-semibold" style="font-size: 11.5px;">{{ 'Tiến độ hoàn thành' if current_lang != 'en' else 'Progress' }}</span>
+              {% set pct = (contract_line.qty_delivered / contract_line.qty_ordered * 100) | round(0) | int if contract_line.qty_ordered > 0 else 0 %}
+              <span class="badge bg-primary text-white" style="font-size: 11px;">{{ pct }}%</span>
+            </div>
+            <div class="progress" style="height: 10px;">
+              <div class="progress-bar {% if pct >= 100 %}bg-success{% else %}bg-primary{% endif %}" role="progressbar" style="width: {{ pct }}%;" aria-valuenow="{{ pct }}" aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% if contract_line.spec %}
+      <div class="mt-2 text-muted small px-1" style="font-size: 12px;">
+        <i class="fa-solid fa-circle-info text-secondary me-1"></i><strong>{{ 'Thông số HĐ:' if current_lang != 'en' else 'Spec:' }}</strong> {{ contract_line.spec }}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Alert Container -->
+    <div id="alertContainer" class="px-4 pt-3 d-none"></div>
+
+    <!-- 3. Form Body -->
+    <div class="card-body p-4 bg-white">
+      <form id="batchReceiveForm" onsubmit="submitBatchReceive(event)">
+        
+        <!-- Section A: Thông tin chung cho toàn bộ lô máy -->
+        <div class="mb-4 p-3 rounded" style="background-color: #f8fafc; border: 1px solid var(--toku-border);">
+          <div class="d-flex align-items-center gap-2 mb-3">
+            <i class="fa-solid fa-sliders text-primary"></i>
+            <h5 class="fw-bold m-0 text-dark" style="font-size: 14.5px;">
+              {{ '1. THÔNG TIN CHUNG CHO LÔ THIẾT BỊ' if current_lang != 'en' else '1. COMMON ASSET SPECIFICATIONS' }}
+            </h5>
+            <span class="text-muted small" style="font-size: 12px;">({{ 'Áp dụng đồng thời cho tất cả các máy trong đợt nhận này' if current_lang != 'en' else 'Applied to all assets in this batch' }})</span>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-md-3">
+              <label class="form-label fw-semibold text-secondary small mb-1">
+                {{ 'Loại tài sản' if current_lang != 'en' else 'Asset Category' }} <span class="text-danger">*</span>
+              </label>
+              <select id="batchCategoryId" class="form-select form-select-sm" required style="font-size: 13px;">
+                {% for cat in categories %}
+                <option value="{{ cat.id }}" {% if cat.id == suggested_category_id %}selected{% endif %}>
+                  {{ cat.name_en }}{% if cat.name_ja %} ({{ cat.name_ja }}){% endif %}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="col-md-3">
+              <label class="form-label fw-semibold text-secondary small mb-1">
+                {{ 'Model / Tên dòng máy' if current_lang != 'en' else 'Model Name' }}
+              </label>
+              <input type="text" id="batchModel" class="form-control form-control-sm" value="{{ suggested_model }}" placeholder="vd: Dell Latitude 5440" style="font-size: 13px;">
+            </div>
+
+            <div class="col-md-2">
+              <label class="form-label fw-semibold text-secondary small mb-1">
+                {{ 'Dạng thiết bị (Form Factor)' if current_lang != 'en' else 'Form Factor' }}
+              </label>
+              <input type="text" id="batchFormFactor" class="form-control form-control-sm" value="{{ suggested_form_factor }}" placeholder="vd: Laptop / Desktop" style="font-size: 13px;">
+            </div>
+
+            <div class="col-md-2">
+              <label class="form-label fw-semibold text-secondary small mb-1">
+                {{ 'Trạng thái nhập kho' if current_lang != 'en' else 'Initial Status' }}
+              </label>
+              <div>
+                <span class="badge bg-success-subtle text-success border border-success-subtle py-2 px-3 fw-bold" style="font-size: 12px;">
+                  <i class="fa-solid fa-boxes-stacked me-1"></i> IN_STOCK ({{ 'Trong kho' if current_lang != 'en' else 'In Stock' }})
+                </span>
+              </div>
+            </div>
+
+            <div class="col-md-2">
+              <label class="form-label fw-semibold text-secondary small mb-1">
+                {{ 'Ghi chú chung' if current_lang != 'en' else 'Batch Note' }}
+              </label>
+              <input type="text" id="batchNote" class="form-control form-control-sm" placeholder="vd: Giao đợt 1 HĐ KDDI" style="font-size: 13px;">
+            </div>
+          </div>
+        </div>
+
+        <!-- Section B: Chi tiết danh sách thiết bị -->
+        <div class="mb-4">
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+            <div class="d-flex align-items-center gap-2">
+              <i class="fa-solid fa-list-ol text-success"></i>
+              <h5 class="fw-bold m-0 text-dark" style="font-size: 14.5px;">
+                {{ '2. DANH SÁCH THIẾT BỊ NHẬN HÀNG' if current_lang != 'en' else '2. ASSET SERIALS & IDENTIFIERS' }}
+              </h5>
+            </div>
+
+            <!-- Tab Navigation Switches -->
+            <ul class="nav nav-pills" id="inputModeTabs" role="tablist" style="font-size: 12.5px;">
+              <li class="nav-item" role="presentation">
+                <button class="nav-link active py-1 px-3 fw-semibold" id="grid-tab" data-bs-toggle="pill" data-bs-target="#grid-pane" type="button" role="tab">
+                  <i class="fa-solid fa-table me-1"></i> {{ 'Bảng nhập nhanh (Grid)' if current_lang != 'en' else 'Fast Grid Entry' }}
+                </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link py-1 px-3 fw-semibold" id="paste-tab" data-bs-toggle="pill" data-bs-target="#paste-pane" type="button" role="tab">
+                  <i class="fa-solid fa-paste me-1"></i> {{ 'Dán danh sách (Paste Text)' if current_lang != 'en' else 'Paste Multi-line' }}
+                </button>
+              </li>
+            </ul>
+          </div>
+
+          <div class="tab-content border rounded p-3" style="border-color: var(--toku-border) !important;" id="inputModeContent">
+            
+            <!-- Tab 1: Grid Mode -->
+            <div class="tab-pane fade show active" id="grid-pane" role="tabpanel">
+              <!-- Toolbar tự sinh mã & thao tác dòng -->
+              <div class="p-2 mb-3 bg-light rounded d-flex flex-wrap align-items-center justify-content-between gap-2" style="border: 1px dashed #cbd5e1;">
+                
+                <!-- Bộ sinh mã GA tự động -->
+                <div class="d-flex align-items-center gap-1.5 flex-wrap">
+                  <span class="text-secondary small fw-bold me-1" style="font-size: 12px;">
+                    <i class="fa-solid fa-wand-magic-sparkles text-primary me-1"></i>{{ 'Sinh mã GA tự động:' if current_lang != 'en' else 'Auto-Gen GA Code:' }}
+                  </span>
+                  <input type="text" id="autoGaPrefix" class="form-control form-control-sm text-center font-monospace" style="width: 100px; font-size: 12px;" value="{{ next_asset_code_prefix }}" title="Tiền tố mã GA">
+                  <span class="text-muted small">-</span>
+                  <input type="number" id="autoGaStart" class="form-control form-control-sm text-center font-monospace" style="width: 75px; font-size: 12px;" value="{{ next_asset_code_num }}" min="1" title="Số bắt đầu">
+                  <button type="button" class="btn btn-outline-primary btn-sm py-1 px-2 fw-semibold" style="font-size: 11.5px;" onclick="applyAutoGaCodes()">
+                    <i class="fa-solid fa-arrow-down-1-9 me-1"></i>{{ 'Điền cột Mã GA' if current_lang != 'en' else 'Fill GA Codes' }}
+                  </button>
+                </div>
+
+                <!-- Thao tác thêm/xóa dòng -->
+                <div class="d-flex align-items-center gap-1.5 flex-wrap">
+                  <button type="button" class="btn btn-outline-success btn-sm py-1 px-2.5 fw-semibold" style="font-size: 12px;" onclick="addRow()">
+                    <i class="fa-solid fa-plus me-1"></i>{{ 'Thêm 1 dòng' if current_lang != 'en' else 'Add Row' }}
+                  </button>
+                  {% if qty_remaining > 0 %}
+                  <button type="button" class="btn btn-outline-secondary btn-sm py-1 px-2.5 fw-semibold" style="font-size: 12px;" onclick="addRemainingRows({{ qty_remaining }})">
+                    <i class="fa-solid fa-layer-group me-1"></i>{{ 'Thêm đủ' if current_lang != 'en' else 'Add' }} {{ qty_remaining }} {{ 'dòng' if current_lang != 'en' else 'rows' }}
+                  </button>
+                  {% endif %}
+                  <button type="button" class="btn btn-outline-danger btn-sm py-1 px-2" style="font-size: 12px;" onclick="clearAllRows()" title="Xóa tất cả các dòng">
+                    <i class="fa-solid fa-trash-can"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Hướng dẫn thao tác nhanh -->
+              <div class="text-muted small mb-2 d-flex align-items-center gap-2" style="font-size: 11.5px;">
+                <i class="fa-solid fa-keyboard text-secondary"></i>
+                <span>{{ 'Mẹo: Nhấn Enter tại ô Serial để tự động chuyển sang dòng tiếp theo (hoặc tạo dòng mới). Hỗ trợ súng quét mã vạch (Barcode Scanner).' if current_lang != 'en' else 'Tip: Press Enter in the Serial box to advance or auto-create a new row. Fully barcode scanner friendly.' }}</span>
+              </div>
+
+              <!-- Table Grid -->
+              <div class="table-responsive">
+                <table class="table table-bordered table-sm align-middle mb-0" id="assetsGridTable" style="font-size: 12.5px;">
+                  <thead class="table-light">
+                    <tr>
+                      <th class="text-center" style="width: 40px;">#</th>
+                      <th style="min-width: 170px;">
+                        {{ 'Số Serial' if current_lang != 'en' else 'Serial Number' }} <span class="text-danger">*</span>
+                      </th>
+                      <th style="min-width: 140px;">
+                        {{ 'Mã tem GA' if current_lang != 'en' else 'GA Asset Code' }}
+                      </th>
+                      <th style="min-width: 140px;">
+                        {{ 'Mã KDDI / Vendor' if current_lang != 'en' else 'Vendor Code' }}
+                      </th>
+                      <th style="min-width: 130px;">
+                        MAC LAN (Ethernet)
+                      </th>
+                      <th style="min-width: 130px;">
+                        MAC Wifi
+                      </th>
+                      <th style="min-width: 150px;">
+                        {{ 'Ghi chú riêng' if current_lang != 'en' else 'Note' }}
+                      </th>
+                      <th class="text-center" style="width: 50px;">
+                        {{ 'Xóa' if current_lang != 'en' else 'Del' }}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody id="assetsGridBody">
+                    <!-- Dynamic Rows rendered via JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Tab 2: Paste Text Mode -->
+            <div class="tab-pane fade" id="paste-pane" role="tabpanel">
+              <div class="row g-3">
+                <div class="col-md-7">
+                  <label class="form-label fw-semibold text-secondary small mb-1">
+                    {{ 'Dán danh sách Serial (Mỗi dòng một Serial)' if current_lang != 'en' else 'Paste Serial Numbers (One per line)' }} <span class="text-danger">*</span>
+                  </label>
+                  <textarea id="pasteSerialsTextarea" class="form-control font-monospace" rows="9" style="font-size: 13px;" placeholder="8HG9X41&#10;8HG9X42&#10;8HG9X43&#10;8HG9X44&#10;8HG9X45"></textarea>
+                  <div class="form-text text-muted small" style="font-size: 11.5px;">
+                    {{ 'Copy một cột Serial từ Excel hoặc email của Vendor và dán vào đây.' if current_lang != 'en' else 'Copy a column of serials from Excel or Vendor email and paste here.' }}
+                  </div>
+                </div>
+
+                <div class="col-md-5">
+                  <div class="p-3 bg-light rounded border h-100 d-flex flex-column justify-content-between">
+                    <div>
+                      <h6 class="fw-bold text-dark mb-2" style="font-size: 13px;">
+                        <i class="fa-solid fa-gear text-primary me-1"></i>{{ 'Tự động gán mã tem khi chuyển đổi' if current_lang != 'en' else 'Auto-Assignment Options' }}
+                      </h6>
+                      
+                      <!-- GA code auto assign -->
+                      <div class="mb-3">
+                        <label class="form-label text-muted small mb-1">{{ 'Mã GA bắt đầu:' if current_lang != 'en' else 'Starting GA Code:' }}</label>
+                        <div class="input-group input-group-sm">
+                          <input type="text" id="pasteGaPrefix" class="form-control font-monospace" value="{{ next_asset_code_prefix }}" placeholder="TVC-EM">
+                          <input type="number" id="pasteGaStart" class="form-control font-monospace" value="{{ next_asset_code_num }}" min="1">
+                        </div>
+                      </div>
+
+                      <!-- Vendor code auto assign -->
+                      <div class="mb-3">
+                        <label class="form-label text-muted small mb-1">{{ 'Mã Vendor bắt đầu (tùy chọn):' if current_lang != 'en' else 'Starting Vendor Code (Optional):' }}</label>
+                        <div class="input-group input-group-sm">
+                          <input type="text" id="pasteVendorPrefix" class="form-control font-monospace" value="TKY-PC" placeholder="TKY-PC">
+                          <input type="number" id="pasteVendorStart" class="form-control font-monospace" value="1" min="1">
+                        </div>
+                      </div>
+                    </div>
+
+                    <button type="button" class="btn btn-primary btn-sm w-100 py-2 fw-semibold" onclick="convertPastedTextToGrid()">
+                      <i class="fa-solid fa-bolt me-1"></i>{{ '⚡ Chuyển đổi & Đưa vào Bảng kiểm tra' if current_lang != 'en' else '⚡ Parse & Load into Grid' }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Section C: Footer Actions -->
+        <div class="pt-3 border-top d-flex flex-wrap align-items-center justify-content-between gap-3" style="border-color: var(--toku-border) !important;">
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-light text-dark border px-3 py-2" style="font-size: 13px;">
+              {{ 'Tổng số máy sẽ nhập kho:' if current_lang != 'en' else 'Total Assets to Receive:' }} 
+              <strong id="totalItemsCount" class="text-primary fs-6">0</strong> {{ 'máy' if current_lang != 'en' else 'units' }}
+            </span>
+            <span id="remainingHintBadge" class="text-muted small" style="font-size: 12px;"></span>
+          </div>
+
+          <div class="d-flex align-items-center gap-2">
+            <a href="/admin/contract-line/details/{{ contract_line.id }}" class="btn btn-outline-secondary px-3" style="font-size: 13px;">
+              {{ 'Hủy bỏ' if current_lang != 'en' else 'Cancel' }}
+            </a>
+            <button type="submit" id="submitBtn" class="btn btn-success px-4 fw-bold shadow-sm" style="font-size: 13.5px;">
+              <i class="fa-solid fa-boxes-packing me-1.5"></i>{{ 'Xác nhận Nhập kho' if current_lang != 'en' else 'Confirm Batch Receive' }}
+            </button>
+          </div>
+        </div>
+
+      </form>
+    </div>
+
+  </div>
+</div>
+
+<!-- Modal Thông Báo Thành Công -->
+<div class="modal fade" id="successModal" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-success text-white py-3">
+        <h5 class="modal-title fw-bold" id="successModalLabel">
+          <i class="fa-solid fa-circle-check me-2"></i>{{ 'Nhập kho thành công!' if current_lang != 'en' else 'Batch Receive Successful!' }}
+        </h5>
+      </div>
+      <div class="modal-body p-4 text-center">
+        <div style="font-size: 48px; color: #16a34a; margin-bottom: 12px;">
+          <i class="fa-solid fa-boxes-stacked"></i>
+        </div>
+        <p id="successModalMessage" class="fs-6 text-dark mb-3 fw-semibold"></p>
+        <p class="text-muted small">
+          {{ 'Toàn bộ thiết bị đã được lưu vào hệ thống và ghi nhận lịch sử tiếp nhận trong Audit Trail.' if current_lang != 'en' else 'All assets have been created in the database and logged in the Audit Trail.' }}
+        </p>
+      </div>
+      <div class="modal-footer bg-light py-2 px-3 d-flex justify-content-center gap-2">
+        <a id="successLineBtn" href="/admin/contract-line/details/{{ contract_line.id }}" class="btn btn-primary px-3 btn-sm">
+          <i class="fa-solid fa-list-check me-1"></i>{{ 'Xem chi tiết Hạng mục HĐ' if current_lang != 'en' else 'View Contract Item' }}
+        </a>
+        <a href="/admin/asset/list" class="btn btn-outline-secondary px-3 btn-sm">
+          <i class="fa-solid fa-laptop me-1"></i>{{ 'Danh sách Thiết bị' if current_lang != 'en' else 'Asset List' }}
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let rowCounter = 0;
+const expectedRemaining = {{ qty_remaining }};
+
+// Khởi tạo bảng khi tải trang
+document.addEventListener("DOMContentLoaded", function() {
+  const initialCount = Math.max(1, Math.min(expectedRemaining, 5));
+  for (let i = 0; i < initialCount; i++) {
+    addRow();
+  }
+  updateCounter();
+  
+  // Tự động focus vào ô Serial đầu tiên
+  const firstSerial = document.querySelector("#assetsGridBody tr:first-child input.col-serial");
+  if (firstSerial) {
+    firstSerial.focus();
+  }
+});
+
+// Thêm 1 dòng mới vào bảng
+function addRow(data = {}) {
+  rowCounter++;
+  const tbody = document.getElementById("assetsGridBody");
+  const tr = document.createElement("tr");
+  tr.id = "row-" + rowCounter;
+  tr.className = "asset-input-row";
+
+  tr.innerHTML = `
+    <td class="text-center text-muted fw-bold align-middle row-stt">${tbody.children.length + 1}</td>
+    <td>
+      <input type="text" class="form-control form-control-sm font-monospace col-serial" 
+             value="${escapeHtml(data.serial || '')}" 
+             placeholder="vd: 8HG9X41" 
+             required
+             onkeydown="handleSerialKeyDown(event, this)"
+             onpaste="handleSerialPaste(event, this)"
+             oninput="updateCounter()">
+    </td>
+    <td>
+      <input type="text" class="form-control form-control-sm font-monospace col-asset-code" 
+             value="${escapeHtml(data.asset_code || '')}" 
+             placeholder="vd: TVC-EM0070"
+             oninput="updateCounter()">
+    </td>
+    <td>
+      <input type="text" class="form-control form-control-sm font-monospace col-vendor-code" 
+             value="${escapeHtml(data.vendor_code || '')}" 
+             placeholder="vd: TKY-PC0021"
+             oninput="updateCounter()">
+    </td>
+    <td>
+      <input type="text" class="form-control form-control-sm font-monospace col-mac-eth" 
+             value="${escapeHtml(data.mac_ethernet || '')}" 
+             placeholder="00:1A:2B:3C:4D:5E">
+    </td>
+    <td>
+      <input type="text" class="form-control form-control-sm font-monospace col-mac-wifi" 
+             value="${escapeHtml(data.mac_wifi || '')}" 
+             placeholder="00:1A:2B:3C:4D:5F">
+    </td>
+    <td>
+      <input type="text" class="form-control form-control-sm col-note" 
+             value="${escapeHtml(data.note || '')}" 
+             placeholder="Ghi chú máy...">
+    </td>
+    <td class="text-center align-middle">
+      <button type="button" class="btn btn-outline-danger btn-sm p-1 border-0" onclick="removeRow('${tr.id}')" title="Xóa dòng này">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </td>
+  `;
+
+  tbody.appendChild(tr);
+  reindexRows();
+  updateCounter();
+  return tr;
+}
+
+// Xóa 1 dòng
+function removeRow(rowId) {
+  const row = document.getElementById(rowId);
+  if (row) {
+    row.remove();
+    reindexRows();
+    updateCounter();
+  }
+}
+
+// Xóa tất cả các dòng
+function clearAllRows() {
+  if (confirm("Bạn có chắc chắn muốn xóa tất cả các dòng thiết bị đang nhập?")) {
+    document.getElementById("assetsGridBody").innerHTML = "";
+    addRow();
+    updateCounter();
+  }
+}
+
+// Thêm đủ số dòng còn lại
+function addRemainingRows(count) {
+  const currentCount = document.querySelectorAll("#assetsGridBody tr").length;
+  const toAdd = Math.max(1, count - currentCount);
+  for (let i = 0; i < toAdd; i++) {
+    addRow();
+  }
+}
+
+// Đánh lại số thứ tự STT cho bảng
+function reindexRows() {
+  const rows = document.querySelectorAll("#assetsGridBody tr");
+  rows.forEach((row, index) => {
+    const stt = row.querySelector(".row-stt");
+    if (stt) stt.textContent = index + 1;
+  });
+}
+
+// Cập nhật số lượng đếm
+function updateCounter() {
+  const rows = document.querySelectorAll("#assetsGridBody tr");
+  let validCount = 0;
+  rows.forEach(r => {
+    const serial = r.querySelector(".col-serial")?.value.trim();
+    const ga = r.querySelector(".col-asset-code")?.value.trim();
+    const vendor = r.querySelector(".col-vendor-code")?.value.trim();
+    if (serial || ga || vendor) validCount++;
+  });
+
+  const countElem = document.getElementById("totalItemsCount");
+  if (countElem) countElem.textContent = validCount;
+
+  const hintElem = document.getElementById("remainingHintBadge");
+  if (hintElem) {
+    if (validCount === expectedRemaining) {
+      hintElem.innerHTML = `<span class="badge bg-success-subtle text-success border border-success-subtle ms-2"><i class="fa-solid fa-check me-1"></i>Đủ số lượng cần nhận (${validCount}/${expectedRemaining})</span>`;
+    } else if (validCount > expectedRemaining) {
+      hintElem.innerHTML = `<span class="badge bg-warning-subtle text-dark border border-warning-subtle ms-2"><i class="fa-solid fa-triangle-exclamation me-1"></i>Vượt số lượng đặt (${validCount}/${expectedRemaining})</span>`;
+    } else {
+      hintElem.innerHTML = `<span class="text-muted ms-2">(Còn thiếu ${expectedRemaining - validCount} máy để đủ đợt đặt mua)</span>`;
+    }
+  }
+}
+
+// Xử lý phím Enter khi quét Barcode hoặc gõ Serial
+function handleSerialKeyDown(event, inputElem) {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    const currentRow = inputElem.closest("tr");
+    const nextRow = currentRow.nextElementSibling;
+    if (nextRow) {
+      const nextSerial = nextRow.querySelector(".col-serial");
+      if (nextSerial) nextSerial.focus();
+    } else {
+      // Đang ở dòng cuối cùng -> tự động tạo thêm dòng mới và nhảy vào
+      const newTr = addRow();
+      const newSerial = newTr.querySelector(".col-serial");
+      if (newSerial) newSerial.focus();
+    }
+  }
+}
+
+// Xử lý khi Paste cả danh sách vào ô Serial của bảng
+function handleSerialPaste(event, inputElem) {
+  const pasteData = (event.clipboardData || window.clipboardData).getData('text');
+  if (!pasteData || !pasteData.includes("\n")) {
+    return; // Dán văn bản 1 dòng bình thường
+  }
+  event.preventDefault();
+
+  const lines = pasteData.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+  if (lines.length === 0) return;
+
+  const currentRow = inputElem.closest("tr");
+  inputElem.value = lines[0];
+
+  let targetRow = currentRow;
+  for (let i = 1; i < lines.length; i++) {
+    let nextRow = targetRow.nextElementSibling;
+    if (!nextRow) {
+      nextRow = addRow({ serial: lines[i] });
+    } else {
+      const sInput = nextRow.querySelector(".col-serial");
+      if (sInput) sInput.value = lines[i];
+    }
+    targetRow = nextRow;
+  }
+  updateCounter();
+}
+
+// Điền tự động cột Mã GA trong Tab 1
+function applyAutoGaCodes() {
+  const prefix = document.getElementById("autoGaPrefix").value.trim() || "TVC-EM";
+  let startNum = parseInt(document.getElementById("autoGaStart").value, 10) || 1;
+  const rows = document.querySelectorAll("#assetsGridBody tr");
+
+  rows.forEach(r => {
+    const gaInput = r.querySelector(".col-asset-code");
+    if (gaInput) {
+      const numStr = String(startNum).padStart(4, '0');
+      gaInput.value = `${prefix}${numStr}`;
+      startNum++;
+    }
+  });
+  updateCounter();
+}
+
+// Chuyển đổi dữ liệu từ Tab 2 (Paste Textarea) sang Grid Tab 1
+function convertPastedTextToGrid() {
+  const rawText = document.getElementById("pasteSerialsTextarea").value;
+  const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+
+  if (lines.length === 0) {
+    showAlert("Vui lòng dán danh sách số Serial vào ô văn bản trước khi chuyển đổi.", "warning");
+    return;
+  }
+
+  const gaPrefix = document.getElementById("pasteGaPrefix").value.trim();
+  let gaStart = parseInt(document.getElementById("pasteGaStart").value, 10) || 1;
+
+  const vendorPrefix = document.getElementById("pasteVendorPrefix").value.trim();
+  let vendorStart = parseInt(document.getElementById("pasteVendorStart").value, 10) || 1;
+
+  // Xóa bảng hiện tại và tạo mới từ danh sách dán
+  const tbody = document.getElementById("assetsGridBody");
+  tbody.innerHTML = "";
+
+  lines.forEach((serial, idx) => {
+    const gaCode = gaPrefix ? `${gaPrefix}${String(gaStart + idx).padStart(4, '0')}` : '';
+    const vendorCode = vendorPrefix ? `${vendorPrefix}${String(vendorStart + idx).padStart(4, '0')}` : '';
+
+    addRow({
+      serial: serial,
+      asset_code: gaCode,
+      vendor_code: vendorCode
+    });
+  });
+
+  // Chuyển sang Tab Grid để người dùng xem lại
+  const gridTabBtn = document.getElementById("grid-tab");
+  const tabInstance = new bootstrap.Tab(gridTabBtn);
+  tabInstance.show();
+
+  showAlert(`Đã chuyển đổi thành công ${lines.length} thiết bị vào Bảng kiểm tra. Hãy rà soát lại thông tin trước khi Xác nhận.`, "info");
+}
+
+// Hiển thị thông báo
+function showAlert(message, type = "danger") {
+  const container = document.getElementById("alertContainer");
+  container.className = "px-4 pt-3";
+  container.innerHTML = `
+    <div class="alert alert-${type} alert-dismissible fade show shadow-sm" role="alert">
+      <i class="fa-solid ${type === 'danger' ? 'fa-triangle-exclamation' : 'fa-circle-info'} me-2"></i>
+      ${escapeHtml(message)}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+  `;
+  container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// Xử lý gửi Form tạo thiết bị theo lô
+async function submitBatchReceive(event) {
+  event.preventDefault();
+
+  const categoryId = document.getElementById("batchCategoryId").value;
+  const model = document.getElementById("batchModel").value.trim();
+  const formFactor = document.getElementById("batchFormFactor").value.trim();
+  const note = document.getElementById("batchNote").value.trim();
+
+  // Thu thập danh sách thiết bị từ bảng Grid
+  const rows = document.querySelectorAll("#assetsGridBody tr");
+  const items = [];
+  const serialSet = new Set();
+  const gaSet = new Set();
+  const vendorSet = new Set();
+
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    const serial = r.querySelector(".col-serial")?.value.trim() || null;
+    const ga = r.querySelector(".col-asset-code")?.value.trim() || null;
+    const vendor = r.querySelector(".col-vendor-code")?.value.trim() || null;
+    const macEth = r.querySelector(".col-mac-eth")?.value.trim() || null;
+    const macWifi = r.querySelector(".col-mac-wifi")?.value.trim() || null;
+    const rowNote = r.querySelector(".col-note")?.value.trim() || null;
+
+    // Bỏ qua dòng trống hoàn toàn
+    if (!serial && !ga && !vendor) {
+      continue;
+    }
+
+    // Kiểm tra trùng lặp nội bộ phía Client
+    if (serial) {
+      const sLow = serial.toLowerCase();
+      if (serialSet.has(sLow)) {
+        showAlert(`Dòng ${i + 1}: Số Serial '${serial}' bị lặp lại trong danh sách đang nhập!`, "danger");
+        return;
+      }
+      serialSet.add(sLow);
+    }
+
+    if (ga) {
+      const gaLow = ga.toLowerCase();
+      if (gaSet.has(gaLow)) {
+        showAlert(`Dòng ${i + 1}: Mã GA '${ga}' bị lặp lại trong danh sách đang nhập!`, "danger");
+        return;
+      }
+      gaSet.add(gaLow);
+    }
+
+    if (vendor) {
+      const vLow = vendor.toLowerCase();
+      if (vendorSet.has(vLow)) {
+        showAlert(`Dòng ${i + 1}: Mã Vendor '${vendor}' bị lặp lại trong danh sách đang nhập!`, "danger");
+        return;
+      }
+      vendorSet.add(vLow);
+    }
+
+    items.push({
+      serial: serial,
+      asset_code: ga,
+      vendor_code: vendor,
+      mac_ethernet: macEth,
+      mac_wifi: macWifi,
+      note: rowNote
+    });
+  }
+
+  if (items.length === 0) {
+    showAlert("Vui lòng nhập ít nhất 1 thiết bị để tiếp nhận vào kho.", "danger");
+    return;
+  }
+
+  // Nút submit trạng thái loading
+  const submitBtn = document.getElementById("submitBtn");
+  const originalHtml = submitBtn.innerHTML;
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Đang xử lý nhập kho...`;
+
+  try {
+    const response = await fetch(window.location.pathname, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        category_id: parseInt(categoryId, 10),
+        model: model,
+        form_factor: formFactor,
+        note: note,
+        items: items
+      })
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      const errDetail = result.detail || "Đã xảy ra lỗi khi tạo thiết bị.";
+      showAlert(errDetail, "danger");
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalHtml;
+      return;
+    }
+
+    // Thành công -> Hiện Modal chúc mừng
+    document.getElementById("successModalMessage").textContent = result.message || `Đã nhập kho thành công ${items.length} thiết bị!`;
+    const successModal = new bootstrap.Modal(document.getElementById("successModal"));
+    successModal.show();
+
+  } catch (error) {
+    showAlert("Lỗi kết nối máy chủ: " + error.message, "danger");
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = originalHtml;
+  }
+}
+
+// Utility escape HTML
+function escapeHtml(text) {
+  if (!text) return "";
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+</script>
+
+{% endblock %}
