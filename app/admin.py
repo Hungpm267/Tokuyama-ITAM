@@ -331,6 +331,7 @@ class BaseAdminView(ModelView):
                     before_data[col.name] = val
 
             delete_reason = request.query_params.get("delete_reason") or "Xóa từ giao diện quản trị ITAM"
+            before_data["delete_reason"] = delete_reason
 
             if hasattr(self.model, "is_deleted"):
                 # Xóa mềm tuân thủ GEMINI.md Quy tắc 6 (bắt buộc deleted_at và delete_reason)
@@ -346,6 +347,7 @@ class BaseAdminView(ModelView):
                     record_id=getattr(obj, "id", None),
                     user_id=current_user_id,
                     before=before_data,
+                    extra={"delete_reason": delete_reason},
                     ip_address=client_ip,
                 )
                 db.commit()
@@ -358,6 +360,7 @@ class BaseAdminView(ModelView):
                     record_id=getattr(obj, "id", None),
                     user_id=current_user_id,
                     before=before_data,
+                    extra={"delete_reason": delete_reason},
                     ip_address=client_ip,
                 )
                 db.commit()
@@ -801,8 +804,78 @@ class AuditLogAdmin(BaseAdminView, model=AuditLog):
     can_create = False
     can_edit = False
     can_delete = False
-    column_list = [AuditLog.id, AuditLog.created_at, AuditLog.user_id, AuditLog.action, AuditLog.table_name, AuditLog.record_id, AuditLog.ip_address]
-    column_searchable_list = [AuditLog.table_name, AuditLog.action]
+    column_list = [
+        AuditLog.id,
+        AuditLog.created_at,
+        AuditLog.user,
+        AuditLog.action,
+        AuditLog.table_name,
+        AuditLog.record_id,
+        "summary",
+        AuditLog.ip_address,
+    ]
+    column_details_list = [
+        AuditLog.id,
+        AuditLog.created_at,
+        AuditLog.user,
+        AuditLog.action,
+        AuditLog.table_name,
+        AuditLog.record_id,
+        "summary",
+        AuditLog.ip_address,
+        AuditLog.before_after,
+    ]
+    column_labels = {
+        "id": "ID",
+        "created_at": "Thời gian",
+        "user": "Người thực hiện",
+        "action": "Hành động",
+        "table_name": "Bảng",
+        "record_id": "Mã bản ghi",
+        "summary": "Chi tiết / Lý do",
+        "ip_address": "Địa chỉ IP",
+        "before_after": "Dữ liệu trước & sau",
+    }
+    column_sortable_list = [
+        AuditLog.id,
+        AuditLog.created_at,
+        AuditLog.action,
+        AuditLog.table_name,
+        AuditLog.record_id,
+    ]
+    column_default_sort = [(AuditLog.created_at, True)]
+    column_searchable_list = [
+        AuditLog.table_name,
+        AuditLog.action,
+        AuditLog.ip_address,
+    ]
+    column_formatters = {
+        "summary": lambda m, a: m.summary or "-",
+    }
+    column_formatters_detail = {
+        "summary": lambda m, a: m.summary or "-",
+    }
+
+    def list_query(self, request: Request) -> Select:
+        stmt = super().list_query(request)
+        stmt = stmt.options(selectinload(AuditLog.user))
+        act = request.query_params.get("action")
+        if act:
+            stmt = stmt.where(AuditLog.action == act)
+        tbl = request.query_params.get("table")
+        if tbl:
+            stmt = stmt.where(AuditLog.table_name == tbl)
+        return stmt
+
+    def count_query(self, request: Request) -> Select:
+        stmt = super().count_query(request)
+        act = request.query_params.get("action")
+        if act:
+            stmt = stmt.where(AuditLog.action == act)
+        tbl = request.query_params.get("table")
+        if tbl:
+            stmt = stmt.where(AuditLog.table_name == tbl)
+        return stmt
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent

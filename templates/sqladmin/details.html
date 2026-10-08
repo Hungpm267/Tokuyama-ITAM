@@ -13,7 +13,7 @@
     </div>
     <div class="card-body p-0 bg-white">
       <div class="table-responsive">
-        <table class="table card-table table-vcenter text-nowrap table-hover" style="font-size: 13.5px;">
+        <table class="table card-table table-vcenter table-hover" style="font-size: 13.5px;">
           <thead>
             <tr style="background-color: #f8fafc; border-bottom: 1px solid var(--toku-border) !important;">
               <th class="w-25" style="font-size: 12px; font-weight: 700; color: #475569; letter-spacing: 0.04em;">
@@ -28,19 +28,268 @@
             {% for name in model_view._details_prop_names %}
             {% set label = model_view._column_labels.get(name, name) %}
             <tr>
-              <td class="fw-semibold text-secondary">{{ t(label, current_lang) }}</td>
+              <td class="fw-semibold text-secondary align-top text-nowrap" style="width: 220px;">{{ t(label, current_lang) }}</td>
               {% set value, formatted_value = model_view.get_detail_value(model, name) %}
               {% if name in model_view._relation_names %}
-              {% if is_list( value ) %}
-              <td>
-                {% for elem, formatted_elem in zip(value, formatted_value) %}
-                <a href="{{ model_view._build_url_for('admin:details', request, elem) }}" class="text-decoration-none">({{ formatted_elem }})</a>
-                {% endfor %}
-              </td>
-              {% else %}
-              <td><a href="{{ model_view._url_for_details_with_prop(request, model, name) }}" class="text-decoration-none">{{ formatted_value }}</a>
-              </td>
-              {% endif %}
+                {% if is_list( value ) %}
+                <td>
+                  {% for elem, formatted_elem in zip(value, formatted_value) %}
+                  <a href="{{ model_view._build_url_for('admin:details', request, elem) }}" class="text-decoration-none">({{ formatted_elem }})</a>
+                  {% endfor %}
+                </td>
+                {% else %}
+                <td>
+                  {% if value is not none %}
+                  <a href="{{ model_view._url_for_details_with_prop(request, model, name) }}" class="text-decoration-none">{{ formatted_value }}</a>
+                  {% else %}
+                  <span class="text-muted">-</span>
+                  {% endif %}
+                </td>
+                {% endif %}
+              {% elif name == 'action' and model_view.identity == 'audit-log' %}
+                <td>
+                  {% set act_str = (value.value if value and value.value is defined else (value | string)) %}
+                  {% if act_str == 'DELETE' %}
+                  <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1"><i class="fa-solid fa-trash-can me-1"></i>DELETE</span>
+                  {% elif act_str == 'CREATE' %}
+                  <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fa-solid fa-plus me-1"></i>CREATE</span>
+                  {% elif act_str == 'UPDATE' %}
+                  <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1"><i class="fa-solid fa-pen-to-square me-1"></i>UPDATE</span>
+                  {% elif act_str == 'LOGIN' %}
+                  <span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1"><i class="fa-solid fa-right-to-bracket me-1"></i>LOGIN</span>
+                  {% elif act_str == 'LOGIN_FAIL' %}
+                  <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1"><i class="fa-solid fa-triangle-exclamation me-1"></i>LOGIN_FAIL</span>
+                  {% elif act_str == 'REVEAL' %}
+                  <span class="badge bg-dark-subtle text-dark border border-dark-subtle px-2 py-1"><i class="fa-solid fa-eye me-1"></i>REVEAL</span>
+                  {% else %}
+                  <span class="badge bg-secondary-subtle text-secondary border px-2 py-1">{{ formatted_value }}</span>
+                  {% endif %}
+                </td>
+              {% elif name == 'summary' and model_view.identity == 'audit-log' %}
+                <td>
+                  {% if formatted_value and ('Lý do xóa:' in formatted_value or 'Delete reason:' in formatted_value) %}
+                  <span class="fw-bold text-danger"><i class="fa-solid fa-triangle-exclamation me-1"></i>{{ formatted_value }}</span>
+                  {% elif formatted_value and formatted_value != '-' %}
+                  <span class="fw-semibold text-dark">{{ formatted_value }}</span>
+                  {% else %}
+                  <span class="text-muted">-</span>
+                  {% endif %}
+                </td>
+              {% elif name == 'before_after' or (value is mapping and value) %}
+                <td style="white-space: normal;">
+                  {% if value is mapping and value %}
+                    {% set delete_reason = (value.get('extra', {}).get('delete_reason') if value.get('extra') else None) or (value.get('before', {}).get('delete_reason') if value.get('before') else None) or (value.get('extra', {}).get('reason') if value.get('extra') else None) %}
+                    {% if delete_reason %}
+                    <div class="alert alert-danger py-2 px-3 mb-3 d-flex align-items-center rounded-2 border-danger-subtle shadow-sm" style="font-size: 13.5px;">
+                      <i class="fa-solid fa-triangle-exclamation text-danger me-2 fs-5"></i>
+                      <div>
+                        <strong>{{ 'Lý do xóa:' if current_lang != 'en' else 'Delete Reason:' }}</strong>
+                        <span class="ms-1 fw-bold text-danger">{{ delete_reason }}</span>
+                      </div>
+                    </div>
+                    {% endif %}
+
+                    {% if value.get('extra') %}
+                      {% set extra_items = [] %}
+                      {% for k, v in value.get('extra').items() %}
+                        {% if k not in ['delete_reason', 'reason'] %}
+                          {% set _ = extra_items.append((k, v)) %}
+                        {% endif %}
+                      {% endfor %}
+                      {% if extra_items %}
+                      <div class="mb-3 p-2 bg-light rounded border">
+                        <div class="fw-semibold text-secondary small mb-1">{{ 'Thông tin bổ sung' if current_lang != 'en' else 'Additional Info' }}:</div>
+                        <div class="d-flex flex-wrap gap-2">
+                          {% for k, v in extra_items %}
+                          <span class="badge bg-white text-dark border px-2 py-1" style="font-size: 12px;">
+                            <span class="text-muted">{{ k }}:</span> <strong class="ms-1">{{ v }}</strong>
+                          </span>
+                          {% endfor %}
+                        </div>
+                      </div>
+                      {% endif %}
+                    {% endif %}
+
+                    {% set before_dict = value.get('before') or {} %}
+                    {% set after_dict = value.get('after') or {} %}
+
+                    {% if before_dict and after_dict %}
+                      {% set all_keys = [] %}
+                      {% for k in before_dict %}{% if k not in all_keys %}{% set _ = all_keys.append(k) %}{% endif %}{% endfor %}
+                      {% for k in after_dict %}{% if k not in all_keys %}{% set _ = all_keys.append(k) %}{% endif %}{% endfor %}
+
+                      {% set diff_keys = [] %}
+                      {% set same_keys = [] %}
+                      {% for k in all_keys %}
+                        {% if before_dict.get(k) != after_dict.get(k) %}
+                          {% set _ = diff_keys.append(k) %}
+                        {% else %}
+                          {% set _ = same_keys.append(k) %}
+                        {% endif %}
+                      {% endfor %}
+
+                      {% if diff_keys %}
+                      <div class="table-responsive rounded border mb-2 shadow-sm">
+                        <table class="table table-sm table-bordered m-0" style="font-size: 12.5px;">
+                          <thead class="table-light">
+                            <tr>
+                              <th style="width: 25%;">{{ 'Trường dữ liệu' if current_lang != 'en' else 'Field' }}</th>
+                              <th style="width: 37.5%;" class="text-danger"><i class="fa-solid fa-minus me-1"></i>{{ 'Trước thay đổi' if current_lang != 'en' else 'Before' }}</th>
+                              <th style="width: 37.5%;" class="text-success"><i class="fa-solid fa-plus me-1"></i>{{ 'Sau thay đổi' if current_lang != 'en' else 'After' }}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {% for k in diff_keys %}
+                            <tr>
+                              <td class="fw-semibold text-secondary font-monospace">{{ k }}</td>
+                              <td class="bg-danger-subtle bg-opacity-25">
+                                {% if before_dict.get(k) is none %}
+                                  <span class="text-muted fst-italic">None</span>
+                                {% elif before_dict.get(k) == '[REDACTED]' %}
+                                  <span class="badge bg-secondary">••••••</span>
+                                {% else %}
+                                  <del class="text-danger">{{ before_dict.get(k) }}</del>
+                                {% endif %}
+                              </td>
+                              <td class="bg-success-subtle bg-opacity-25">
+                                {% if after_dict.get(k) is none %}
+                                  <span class="text-muted fst-italic">None</span>
+                                {% elif after_dict.get(k) == '[REDACTED]' %}
+                                  <span class="badge bg-secondary">••••••</span>
+                                {% else %}
+                                  <strong class="text-success">{{ after_dict.get(k) }}</strong>
+                                {% endif %}
+                              </td>
+                            </tr>
+                            {% endfor %}
+                          </tbody>
+                        </table>
+                      </div>
+                      {% endif %}
+
+                      {% if same_keys %}
+                      <details class="mb-2">
+                        <summary class="text-muted small" style="cursor: pointer; user-select: none;">
+                          <i class="fa-solid fa-chevron-right me-1 small"></i>{{ 'Các trường không đổi' if current_lang != 'en' else 'Unchanged fields' }} ({{ same_keys | length }})
+                        </summary>
+                        <div class="table-responsive rounded border mt-1">
+                          <table class="table table-sm table-bordered m-0" style="font-size: 12px;">
+                            <thead class="table-light">
+                              <tr>
+                                <th style="width: 30%;">{{ 'Trường' if current_lang != 'en' else 'Field' }}</th>
+                                <th>{{ 'Giá trị' if current_lang != 'en' else 'Value' }}</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {% for k in same_keys %}
+                              <tr>
+                                <td class="text-secondary font-monospace">{{ k }}</td>
+                                <td>{{ before_dict.get(k) }}</td>
+                              </tr>
+                              {% endfor %}
+                            </tbody>
+                          </table>
+                        </div>
+                      </details>
+                      {% endif %}
+
+                    {% elif before_dict %}
+                      <div class="table-responsive rounded border mb-2 shadow-sm">
+                        <table class="table table-sm table-bordered m-0" style="font-size: 12.5px;">
+                          <thead class="table-light">
+                            <tr>
+                              <th style="width: 30%;">{{ 'Trường dữ liệu' if current_lang != 'en' else 'Field' }}</th>
+                              <th>{{ 'Dữ liệu trước khi xóa' if current_lang != 'en' else 'Value before deletion' }}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {% for k, v in before_dict.items() %}
+                            <tr>
+                              <td class="fw-semibold text-secondary font-monospace">{{ k }}</td>
+                              <td>
+                                {% if v is none %}
+                                  <span class="text-muted fst-italic">None</span>
+                                {% elif v == '[REDACTED]' %}
+                                  <span class="badge bg-secondary">•••••• (Đã ẩn)</span>
+                                {% elif v is sameas true %}
+                                  <span class="badge bg-success-subtle text-success border border-success-subtle">True</span>
+                                {% elif v is sameas false %}
+                                  <span class="badge bg-secondary-subtle text-secondary border">False</span>
+                                {% elif k == 'delete_reason' and v %}
+                                  <span class="badge bg-danger text-white">{{ v }}</span>
+                                {% else %}
+                                  {{ v }}
+                                {% endif %}
+                              </td>
+                            </tr>
+                            {% endfor %}
+                          </tbody>
+                        </table>
+                      </div>
+
+                    {% elif after_dict %}
+                      <div class="table-responsive rounded border mb-2 shadow-sm">
+                        <table class="table table-sm table-bordered m-0" style="font-size: 12.5px;">
+                          <thead class="table-light">
+                            <tr>
+                              <th style="width: 30%;">{{ 'Trường dữ liệu' if current_lang != 'en' else 'Field' }}</th>
+                              <th>{{ 'Giá trị thiết lập' if current_lang != 'en' else 'Configured value' }}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {% for k, v in after_dict.items() %}
+                            <tr>
+                              <td class="fw-semibold text-secondary font-monospace">{{ k }}</td>
+                              <td>
+                                {% if v is none %}
+                                  <span class="text-muted fst-italic">None</span>
+                                {% elif v == '[REDACTED]' %}
+                                  <span class="badge bg-secondary">•••••• (Đã ẩn)</span>
+                                {% elif v is sameas true %}
+                                  <span class="badge bg-success-subtle text-success border border-success-subtle">True</span>
+                                {% elif v is sameas false %}
+                                  <span class="badge bg-secondary-subtle text-secondary border">False</span>
+                                {% else %}
+                                  {{ v }}
+                                {% endif %}
+                              </td>
+                            </tr>
+                            {% endfor %}
+                          </tbody>
+                        </table>
+                      </div>
+
+                    {% elif not value.get('extra') %}
+                      <div class="table-responsive rounded border mb-2 shadow-sm">
+                        <table class="table table-sm table-bordered m-0" style="font-size: 12.5px;">
+                          <thead class="table-light">
+                            <tr>
+                              <th style="width: 30%;">{{ 'Khóa' if current_lang != 'en' else 'Key' }}</th>
+                              <th>{{ 'Giá trị' if current_lang != 'en' else 'Value' }}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {% for k, v in value.items() %}
+                            <tr>
+                              <td class="fw-semibold text-secondary font-monospace">{{ k }}</td>
+                              <td>{{ v }}</td>
+                            </tr>
+                            {% endfor %}
+                          </tbody>
+                        </table>
+                      </div>
+                    {% endif %}
+
+                    <details class="mt-2">
+                      <summary class="text-muted small" style="cursor: pointer; user-select: none;">
+                        <i class="fa-solid fa-code me-1"></i> {{ 'Xem dữ liệu JSON kỹ thuật' if current_lang != 'en' else 'View raw technical JSON' }}
+                      </summary>
+                      <pre class="bg-light p-2 mt-2 rounded border small mb-0 text-wrap font-monospace" style="max-height: 250px; overflow-y: auto; font-size: 11.5px; line-height: 1.4;"><code>{{ value | tojson(indent=2) }}</code></pre>
+                    </details>
+                  {% else %}
+                    <span class="text-muted fst-italic">{{ 'Không có dữ liệu chi tiết' if current_lang != 'en' else 'No detail data' }}</span>
+                  {% endif %}
+                </td>
               {% else %}
               <td>{{ formatted_value }}</td>
               {% endif %}

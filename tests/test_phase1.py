@@ -605,3 +605,71 @@ def test_save_redirects_and_admin_password_change(db: Session, rbac_roles_and_us
     assert verify_password("NewGaPassword123!", ga_user.password_hash) is True
 
 
+def test_audit_trail_features_and_delete_reason(db: Session, rbac_roles_and_users):
+    """Kiểm tra toàn diện tính năng Audit Trail:
+    - Xóa bản ghi ghi nhận đúng delete_reason vào audit log và summary
+    - Lọc (filter) theo action, table và sắp xếp (sort) trên danh sách
+    - Xem chi tiết audit log định dạng thân thiện (không raw JSON)
+    """
+    from app.models import AuditLog, User
+    from app.enums import AuditAction
+
+    admin = rbac_roles_and_users["admin"]
+    client = TestClient(app)
+    admin_token = create_session_token({"user_id": admin.id, "role": "ADMIN", "username": admin.username})
+    client.cookies.set("itam_session", admin_token)
+
+    # 1. Tạo một user thử nghiệm để xóa
+    temp_user = User(
+        username="temp_user_for_delete",
+        password_hash=hash_password("TempPass123!"),
+        role_id=admin.role_id,
+        display_name="Temporary User",
+        is_active=True,
+    )
+    db.add(temp_user)
+    db.commit()
+    db.refresh(temp_user)
+
+    # 2. Xóa user với lý do xóa cụ thể
+    del_reason = "Nghi viec va ban giao xong"
+    res_del = client.delete(f"/admin/user/delete?pks={temp_user.id}&delete_reason={del_reason.replace(' ', '+')}")
+    assert res_del.status_code == 200
+
+    # 3. Kiểm tra AuditLog được tạo trong DB
+    audit = db.scalar(
+        select(AuditLog)
+        .where(
+            AuditLog.table_name == "users",
+            AuditLog.record_id == temp_user.id,
+            AuditLog.action == AuditAction.DELETE,
+        )
+        .order_by(AuditLog.id.desc())
+    )
+    assert audit is not None
+    assert audit.before_after is not None
+    assert audit.before_after.get("extra", {}).get("delete_reason") == del_reason
+    assert del_reason in audit.summary
+
+    # 4. Kiểm tra trang danh sách Audit Trail có hiển thị summary lý do xóa và các thanh lọc / sắp xếp
+    res_list = client.get("/admin/audit-log/list")
+    assert res_list.status_code == 200
+    assert del_reason in res_list.text
+
+    # Lọc theo action=DELETE và table=users
+    res_filtered = client.get("/admin/audit-log/list?action=DELETE&table=users&sortBy=created_at&sort=desc")
+    assert res_filtered.status_code == 200
+    assert del_reason in res_filtered.text
+
+    # 5. Kiểm tra trang xem chi tiết Audit Log
+    res_detail = client.get(f"/admin/audit-log/details/{audit.id}")
+    assert res_detail.status_code == 200
+    # Phải có khối cảnh báo lý do xóa
+    assert del_reason in res_detail.text
+    # Phải có bảng cấu trúc hiển thị thông tin thay vì JSON thô
+    assert "temp_user_for_delete" in res_detail.text
+    # Phải có khối JSON kỹ thuật thu gọn
+    assert "technical JSON" in res_detail.text or "kỹ thuật" in res_detail.text
+
+
+

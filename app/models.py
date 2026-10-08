@@ -812,6 +812,8 @@ class AuditLog(Base):
     before_after: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     ip_address: Mapped[str | None] = mapped_column(INET, nullable=True)
 
+    user: Mapped[User | None] = relationship()
+
     __table_args__ = (
         Index("ix_audit_logs_table_record", "table_name", "record_id"),
         Index("ix_audit_logs_created_at", "created_at"),
@@ -820,6 +822,41 @@ class AuditLog(Base):
 
     def __str__(self) -> str:
         return f"Audit #{self.id} ({self.action.value} {self.table_name})"
+
+    @property
+    def summary(self) -> str:
+        if not self.before_after:
+            if self.action == AuditAction.LOGIN:
+                return "Đăng nhập thành công"
+            return "-"
+        extra = self.before_after.get("extra") or {}
+        if "delete_reason" in extra:
+            return f"Lý do xóa: {extra['delete_reason']}"
+        if "reason" in extra:
+            return f"Lý do: {extra['reason']}"
+
+        before = self.before_after.get("before") or {}
+        if before.get("delete_reason"):
+            return f"Lý do xóa: {before['delete_reason']}"
+
+        if self.action == AuditAction.LOGIN:
+            return "Đăng nhập thành công"
+        if self.action == AuditAction.LOGIN_FAIL:
+            return f"Đăng nhập thất bại ({extra.get('username', '')})"
+        if self.action == AuditAction.REVEAL:
+            return f"Xem mật khẩu: {extra.get('field', '')}"
+
+        after = self.before_after.get("after") or {}
+        if self.action == AuditAction.UPDATE and before and after:
+            changed = [k for k in after if k in before and before[k] != after[k]]
+            if changed:
+                return f"Sửa: {', '.join(changed[:3])}"
+        if self.action == AuditAction.CREATE:
+            return "Tạo mới bản ghi"
+        if self.action == AuditAction.DELETE:
+            return "Xóa bản ghi"
+
+        return "-"
 
 
 #: Tên cột không bao giờ được xuất hiện trong audit log, API response,
