@@ -33,10 +33,10 @@
         <div class="d-flex align-items-center justify-content-between mb-2">
           <div class="d-flex align-items-center gap-2">
             <div style="width: 28px; height: 28px; border-radius: 4px; background: #EEF2FF; color: #4D5CB0; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 11.5px; border: 1px solid #C7D2FE;">
-              IT
+              {{ (request.session.get("username", "IT")[:2]) | upper }}
             </div>
-            <div class="d-flex flex-column">
-              <span style="font-size: 12.5px; font-weight: 700; color: #0f172a; line-height: 1.2;">{{ request.session.get("username", "it.admin") }}</span>
+            <div class="d-flex flex-column" style="max-width: 120px;">
+              <span class="text-truncate" style="font-size: 12.5px; font-weight: 700; color: #0f172a; line-height: 1.2;" title="{{ request.session.get('display_name', '') }}">{{ request.session.get("username", "it.admin") }}</span>
               <span style="font-size: 10px; font-weight: 600; color: #4D5CB0; letter-spacing: 0.04em;">{{ t('ADMINISTRATOR', current_lang) }}</span>
             </div>
           </div>

@@ -151,8 +151,10 @@ class AdminAuth(AuthenticationBackend):
             if "lang" not in request.session:
                 request.session["lang"] = user.preferred_lang or request.cookies.get("itam_lang") or "vi"
 
-        request.session["user_id"] = user_id
-        request.session["role"] = RoleCode.ADMIN.value
+            request.session["user_id"] = user.id
+            request.session["username"] = user.username
+            request.session["display_name"] = user.display_name or user.username
+            request.session["role"] = RoleCode.ADMIN.value
         return True
 
 
