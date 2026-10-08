@@ -28,9 +28,12 @@
             {{ 'Hủy' if current_lang != 'en' else 'Cancel' }}
           </a>
           <div class="btn-group gap-2">
-            <input type="submit" name="save" value="{{ 'Lưu' if current_lang != 'en' else 'Save' }}" class="btn btn-primary btn-sm px-3" style="font-size: 13px; font-weight: 600;">
-            <input type="submit" name="save" value="{{ 'Lưu và tiếp tục sửa' if current_lang != 'en' else 'Save and continue editing' }}" class="btn btn-outline-primary btn-sm px-3" style="font-size: 13px; font-weight: 600;">
-            <input type="submit" name="save" value="{{ 'Lưu và thêm mới' if current_lang != 'en' else 'Save and add another' }}" class="btn btn-outline-secondary btn-sm px-3" style="font-size: 13px; font-weight: 600;">
+            <button type="submit" name="save" value="Save" class="btn btn-primary btn-sm px-3" style="font-size: 13px; font-weight: 600;">
+              <i class="fa-solid fa-check me-1"></i> {{ 'Lưu' if current_lang != 'en' else 'Save' }}
+            </button>
+            <button type="submit" name="save" value="Save and add another" class="btn btn-outline-secondary btn-sm px-3" style="font-size: 13px; font-weight: 600;">
+              <i class="fa-solid fa-plus me-1"></i> {{ 'Lưu và thêm mới' if current_lang != 'en' else 'Save and add another' }}
+            </button>
           </div>
         </div>
       </form>

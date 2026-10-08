@@ -563,3 +563,45 @@ def test_card_borrowed_workflow_and_sync(db: Session, rbac_roles_and_users):
     assert card.current_borrower is None
 
 
+def test_save_redirects_and_admin_password_change(db: Session, rbac_roles_and_users):
+    admin = rbac_roles_and_users["admin"]
+    client = TestClient(app)
+    admin_token = create_session_token({"user_id": admin.id, "role": "ADMIN", "username": admin.username})
+    client.cookies.set("itam_session", admin_token)
+
+    # 1. Bấm 'Save' / 'Lưu' trên form create phải redirect về list
+    res_save = client.post("/admin/access-card/create", data={
+        "card_no": "TEST_CARD_SAVE_LIST",
+        "card_type": "STAFF",
+        "status": "IN_STOCK",
+        "save": "Lưu",
+    }, follow_redirects=False)
+    assert res_save.status_code == 302
+    assert "/admin/access-card/list" in res_save.headers.get("location", "")
+
+    # 2. Bấm 'Lưu và thêm mới' trên form create phải redirect về create
+    res_add_another = client.post("/admin/access-card/create", data={
+        "card_no": "TEST_CARD_ADD_ANOTHER",
+        "card_type": "STAFF",
+        "status": "IN_STOCK",
+        "save": "Lưu và thêm mới",
+    }, follow_redirects=False)
+    assert res_add_another.status_code == 302
+    assert "/admin/access-card/create" in res_add_another.headers.get("location", "")
+
+    # 3. Admin đổi mật khẩu cho user khác -> thành công và redirect về /admin/user/list
+    ga_user = rbac_roles_and_users["ga"]
+    res_change_pwd = client.post(f"/admin/user/edit/{ga_user.id}", data={
+        "role": str(ga_user.role_id),
+        "username": ga_user.username,
+        "display_name": ga_user.display_name,
+        "password": "NewGaPassword123!",
+        "save": "Lưu thay đổi",
+    }, follow_redirects=False)
+    assert res_change_pwd.status_code == 302
+    assert "/admin/user/list" in res_change_pwd.headers.get("location", "")
+
+    db.refresh(ga_user)
+    assert verify_password("NewGaPassword123!", ga_user.password_hash) is True
+
+

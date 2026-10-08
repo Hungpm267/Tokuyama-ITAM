@@ -13,6 +13,8 @@ from pathlib import Path
 from typing import Any
 from sqladmin import Admin, ModelView
 from sqladmin.authentication import AuthenticationBackend, login_required
+from sqladmin.helpers import get_object_identifier
+from starlette.datastructures import FormData, URL
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
@@ -407,6 +409,7 @@ class UserAdmin(BaseAdminView, model=User):
         class UserFormWithPassword(base_form):
             password = PasswordField(
                 "Mật khẩu",
+                description="Admin có thể đặt lại mật khẩu mới cho tài khoản tại đây. Để trống nếu giữ nguyên mật khẩu cũ.",
                 widget=PasswordInput(hide_value=True),
                 render_kw={
                     "placeholder": "Nhập mật khẩu (để trống nếu không đổi)",
@@ -427,7 +430,10 @@ class UserAdmin(BaseAdminView, model=User):
             data["password_hash"] = hash_password(str(raw_password).strip())
         else:
             if raw_password and str(raw_password).strip():
-                data["password_hash"] = hash_password(str(raw_password).strip())
+                pwd_clean = str(raw_password).strip()
+                if len(pwd_clean) < 6:
+                    raise ValueError("Mật khẩu mới phải có độ dài tối thiểu 6 ký tự.")
+                data["password_hash"] = hash_password(pwd_clean)
 
         await super().on_model_change(data, model, is_created, request)
 
@@ -802,6 +808,24 @@ TEMPLATES_DIR = BASE_DIR / "templates"
 
 
 class TokuyamaAdmin(Admin):
+    def get_save_redirect_url(
+        self, request: Request, form: FormData, model_view: ModelView, obj: Any
+    ) -> str | URL:
+        """Điều hướng sau khi Lưu trên form create/edit:
+        - 'Lưu và thêm mới' ('Save and add another'): chuyển đến form tạo mới (admin:create).
+        - 'Lưu và tiếp tục sửa' ('Save and continue editing'): ở lại trang sửa (admin:edit).
+        - 'Lưu' / 'Lưu thay đổi' ('Save') hoặc bất kỳ trường hợp nào khác: BẮT BUỘC quay về danh sách (admin:list).
+        """
+        identity = request.path_params["identity"]
+        save_action = str(form.get("save", "")).strip().lower()
+
+        if "add another" in save_action or "thêm mới" in save_action:
+            return request.url_for("admin:create", identity=identity)
+        elif "continue editing" in save_action or "tiếp tục sửa" in save_action:
+            identifier = get_object_identifier(obj)
+            return request.url_for("admin:edit", identity=identity, pk=identifier)
+        return request.url_for("admin:list", identity=identity)
+
     async def login(self, request: Request) -> Response:
         assert self.authentication_backend is not None
 
