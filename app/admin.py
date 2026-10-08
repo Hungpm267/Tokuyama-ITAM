@@ -20,7 +20,7 @@ from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
 from sqlalchemy import Select, func, select
 from sqlalchemy.orm import selectinload
-from markupsafe import Markup
+from markupsafe import Markup, escape
 
 
 from app.core.audit import audit_login, record_audit
@@ -677,12 +677,15 @@ class AssetAdmin(BaseAdminView, model=Asset):
         Asset.vendor_code,
         Asset.serial,
         Asset.category,
-        Asset.status,
+        "status_badge",
         "current_holder",
         Asset.model,
+        "actions_quick",
     ]
     column_labels = {
+        "status_badge": "Trạng thái",
         "current_holder": "Người đang sử dụng",
+        "actions_quick": "Thao tác nhanh",
         "asset_code": "Mã GA",
         "vendor_code": "Mã KDDI",
         "serial": "Số Serial",
@@ -690,7 +693,45 @@ class AssetAdmin(BaseAdminView, model=Asset):
         "model": "Model thiết bị",
     }
     column_formatters = {
-        "current_holder": lambda m, a: m.current_holder or "-",
+        "status_badge": lambda m, a: (
+            Markup('<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fa-solid fa-box-archive me-1"></i>Trong kho</span>')
+            if m.status == AssetStatus.IN_STOCK
+            else (
+                Markup('<span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1"><i class="fa-solid fa-user-check me-1"></i>Đang sử dụng</span>')
+                if m.status == AssetStatus.IN_USE
+                else (
+                    Markup('<span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1"><i class="fa-solid fa-wrench me-1"></i>Đang sửa chữa</span>')
+                    if m.status == AssetStatus.REPAIR
+                    else (
+                        Markup('<span class="badge bg-secondary text-white px-2 py-1"><i class="fa-solid fa-trash-can me-1"></i>Đã thanh lý</span>')
+                        if m.status == AssetStatus.DISPOSED
+                        else Markup(f'<span class="badge bg-danger text-white px-2 py-1">{escape(m.status.value if m.status else "-")}</span>')
+                    )
+                )
+            )
+        ),
+        "current_holder": lambda m, a: (
+            Markup(f'<span class="fw-semibold text-dark"><i class="fa-solid fa-user me-1 text-primary"></i>{escape(m.current_holder)}</span>')
+            if m.current_holder
+            else Markup('<span class="text-muted">-</span>')
+        ),
+        "actions_quick": lambda m, a: (
+            Markup(
+                f'<button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 fw-semibold" '
+                f'onclick="openAssignModal({m.id}, \'{escape(m.asset_code or m.serial or "")}\', \'{escape(m.model or "")}\')" style="font-size: 11.5px;">'
+                f'<i class="fa-solid fa-handshake me-1"></i>Bàn giao</button>'
+            )
+            if m.status == AssetStatus.IN_STOCK
+            else (
+                Markup(
+                    f'<button type="button" class="btn btn-sm btn-outline-warning text-dark py-0 px-2 fw-bold" '
+                    f'onclick="openReturnModal({m.id}, \'{escape(m.asset_code or m.serial or "")}\', \'{escape(m.current_holder or "")}\')" style="font-size: 11.5px;">'
+                    f'<i class="fa-solid fa-arrow-rotate-left me-1"></i>Thu hồi</button>'
+                )
+                if m.status == AssetStatus.IN_USE
+                else Markup('<span class="text-muted small">-</span>')
+            )
+        ),
     }
     column_searchable_list = [Asset.asset_code, Asset.serial, Asset.vendor_code, Asset.model]
     form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["assignments"]
@@ -700,6 +741,15 @@ class AssetAdmin(BaseAdminView, model=Asset):
         return stmt.options(
             selectinload(Asset.assignments).selectinload(Assignment.person)
         )
+
+    async def get_object_for_details(self, value: Any) -> Any:
+        stmt = self._stmt_by_identifier(value)
+        stmt = stmt.options(
+            selectinload(Asset.category),
+            selectinload(Asset.contract_line),
+            selectinload(Asset.assignments).selectinload(Assignment.person),
+        )
+        return await self._run_query(stmt)
 
 
 class AssignmentAdmin(BaseAdminView, model=Assignment):
@@ -715,6 +765,7 @@ class AssignmentAdmin(BaseAdminView, model=Assignment):
         "status_badge",
         Assignment.borrowed_at,
         Assignment.returned_at,
+        "actions_quick",
     ]
     column_details_list = [
         Assignment.id,
@@ -732,6 +783,7 @@ class AssignmentAdmin(BaseAdminView, model=Assignment):
         "borrowed_at": "Thời điểm cấp phát",
         "returned_at": "Thời điểm thu hồi",
         "note": "Ghi chú cấp phát",
+        "actions_quick": "Thao tác",
     }
     column_formatters = {
         "status_badge": lambda m, a: (
@@ -739,7 +791,17 @@ class AssignmentAdmin(BaseAdminView, model=Assignment):
             if m.returned_at
             else Markup('<span class="badge bg-success text-white"><i class="fa-solid fa-circle-check me-1"></i>Đang sử dụng</span>')
         ),
+        "actions_quick": lambda m, a: (
+            Markup(
+                f'<button type="button" class="btn btn-sm btn-outline-warning text-dark py-0 px-2 fw-bold" '
+                f'onclick="openReturnModal({m.asset_id}, \'{escape(m.asset.asset_code or m.asset.serial or "" if m.asset else "")}\', \'{escape(m.person.full_name if m.person else "")}\')" style="font-size: 11.5px;">'
+                f'<i class="fa-solid fa-arrow-rotate-left me-1"></i>Thu hồi</button>'
+            )
+            if not m.returned_at
+            else Markup('<span class="text-muted small">-</span>')
+        ),
     }
+
     column_formatters_detail = {
         "status_badge": lambda m, a: (
             Markup('<span class="badge bg-secondary text-white"><i class="fa-solid fa-ban me-1"></i>Đã thu hồi</span>')
