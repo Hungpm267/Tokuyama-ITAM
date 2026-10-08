@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.enums import AssetStatus, AuditAction
-from app.models import Asset, Assignment, AuditLog
+from app.models import AuditLog
 from app.services.assignment_service import (
     assign_asset,
     get_active_assignment,

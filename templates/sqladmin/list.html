@@ -265,8 +265,12 @@
   url=model_view._url_for_action(request, custom_action) %}
   {% include 'sqladmin/modals/list_action_confirmation.html' %}
   {% endwith %}
+  {% endif %}
+  {% endfor %}
+
   {% if model_view.identity == 'asset' %}
   {% include 'sqladmin/asset_actions_modal.html' %}
   {% endif %}
 </div>
 {% endblock %}
+

@@ -7,10 +7,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.enums import AssetStatus, AuditAction
-from app.models import Asset, AssetTag, AuditLog
+from app.models import AssetTag, AuditLog
 from app.services.asset_service import (
     create_asset,
-    get_asset,
     get_asset_tags,
     set_asset_tags,
     soft_delete_asset,

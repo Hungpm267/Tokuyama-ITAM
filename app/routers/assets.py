@@ -13,7 +13,7 @@ from app.core.permissions import has_permission
 from app.core.security import verify_session_token
 from app.db import get_db
 from app.enums import AssetStatus, Module, PermissionAction, PersonStatus
-from app.models import Asset, Person, User
+from app.models import Person, User
 from app.services.assignment_service import (
     assign_asset,
     get_asset_assignment_history,
