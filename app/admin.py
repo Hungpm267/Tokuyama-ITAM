@@ -585,10 +585,45 @@ class PersonSecretAdmin(BaseAdminView, model=PersonSecret):
     name_plural = "Kho Mật khẩu Nhân sự"
     icon = "fa-solid fa-user-lock"
     category = "Nhân sự"
+    list_template = "sqladmin/person_secrets.html"
     can_create = False
     can_edit = False
     can_delete = False
+    can_export = False
     column_list = [PersonSecret.person_id]
+
+    def get_secrets_payload(self) -> list[dict[str, Any]]:
+        """Trả về danh sách nhân sự và trạng thái mật khẩu (tuyệt đối không chứa dữ liệu mã hoá *_enc)."""
+        from sqlalchemy.orm import selectinload
+
+        with SessionLocal() as db:
+            persons = db.scalars(
+                select(Person)
+                .options(selectinload(Person.department), selectinload(Person.secret))
+                .where(Person.is_deleted.is_(False))
+                .order_by(Person.staff_code)
+            ).all()
+
+            result: list[dict[str, Any]] = []
+            for p in persons:
+                sec = p.secret
+                result.append(
+                    {
+                        "id": p.id,
+                        "staff_code": p.staff_code,
+                        "full_name": p.full_name,
+                        "department": p.department.name_en if p.department else "-",
+                        "department_ja": p.department.name_ja if p.department else "-",
+                        "email": p.email or "-",
+                        "status": p.status.value if hasattr(p.status, "value") else str(p.status),
+                        "has_pc_password": bool(sec and sec.pc_password_enc is not None),
+                        "pc_password_note": sec.pc_password_note if sec else "",
+                        "has_email_password": bool(sec and sec.email_password_enc is not None),
+                        "email_password_note": sec.email_password_note if sec else "",
+                        "updated_at": sec.updated_at.strftime("%d/%m/%Y %H:%M") if sec and sec.updated_at else "",
+                    }
+                )
+            return result
 
 
 class AssetAdmin(BaseAdminView, model=Asset):

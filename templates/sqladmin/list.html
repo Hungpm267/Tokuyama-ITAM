@@ -30,6 +30,14 @@
         </div>
         {% endif %}
         {% endif %}
+        {% if model_view.identity == 'person' %}
+        <div class="ms-2 d-inline-block">
+          <a href="/admin/person-secret/list" class="btn btn-outline-success d-inline-flex align-items-center gap-1" style="font-size: 13px; font-weight: 600;">
+            <i class="fa-solid fa-user-lock"></i>
+            <span>{{ 'Kho Mật khẩu Nhân sự' if current_lang != 'en' else 'Password Vault' }}</span>
+          </a>
+        </div>
+        {% endif %}
         {% if model_view.can_create %}
         <div class="ms-3 d-inline-block">
           <a href="{{ url_for('admin:create', identity=model_view.identity) }}" class="btn btn-primary d-inline-flex align-items-center gap-1" style="font-size: 13px; font-weight: 600;">
