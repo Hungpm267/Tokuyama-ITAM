@@ -34,11 +34,11 @@
 - `set_asset_tags(db: Session, asset_id: int, tag_ids: list[int], user_id: int | None, ip_address: str | None) -> None`
 - `get_asset(db: Session, asset_id: int) -> Asset | None`
 
-- [ ] **Step 1: Write failing test in `tests/test_phase2_assets.py`**
-- [ ] **Step 2: Run pytest to verify test fails**
-- [ ] **Step 3: Implement `app/services/asset_service.py`**
-- [ ] **Step 4: Run pytest to verify test passes**
-- [ ] **Step 5: Commit changes**
+- [x] **Step 1: Write failing test in `tests/test_phase2_assets.py`**
+- [x] **Step 2: Run pytest to verify test fails**
+- [x] **Step 3: Implement `app/services/asset_service.py`**
+- [x] **Step 4: Run pytest to verify test passes**
+- [x] **Step 5: Commit changes**
 
 ---
 
@@ -54,11 +54,11 @@
 - `get_active_assignment(db: Session, asset_id: int) -> Assignment | None`
 - `get_asset_assignment_history(db: Session, asset_id: int) -> list[Assignment]`
 
-- [ ] **Step 1: Write failing test in `tests/test_phase2_assignments.py`**
-- [ ] **Step 2: Run pytest to verify test fails**
-- [ ] **Step 3: Implement `app/services/assignment_service.py`**
-- [ ] **Step 4: Run pytest to verify test passes**
-- [ ] **Step 5: Commit changes**
+- [x] **Step 1: Write failing test in `tests/test_phase2_assignments.py`**
+- [x] **Step 2: Run pytest to verify test fails**
+- [x] **Step 3: Implement `app/services/assignment_service.py`**
+- [x] **Step 4: Run pytest to verify test passes**
+- [x] **Step 5: Commit changes**
 
 ---
 
@@ -75,11 +75,11 @@
 - `GET /admin/assets/{asset_id}/history`: Lấy lịch sử bàn giao của máy.
 - `GET /admin/api/persons/search`: Tìm kiếm nhân viên để autocomplete khi bàn giao.
 
-- [ ] **Step 1: Write failing router test in `tests/test_phase2_router.py`**
-- [ ] **Step 2: Run pytest to verify test fails**
-- [ ] **Step 3: Implement `app/routers/assets.py` và đăng ký router trong `app/main.py`**
-- [ ] **Step 4: Run pytest to verify test passes**
-- [ ] **Step 5: Commit changes**
+- [x] **Step 1: Write failing router test in `tests/test_phase2_router.py`**
+- [x] **Step 2: Run pytest to verify test fails**
+- [x] **Step 3: Implement `app/routers/assets.py` và đăng ký router trong `app/main.py`**
+- [x] **Step 4: Run pytest to verify test passes**
+- [x] **Step 5: Commit changes**
 
 ---
 
@@ -90,11 +90,11 @@
 - Create/Modify: `templates/sqladmin/asset_actions_modal.html`
 - Modify: `templates/sqladmin/details.html` (thêm block lịch sử bàn giao máy)
 
-- [ ] **Step 1: Bổ sung các formatters và action buttons trong `AssetAdmin` (Nút Bàn giao máy khi `IN_STOCK`, Nút Thu hồi máy khi `IN_USE`)**
-- [ ] **Step 2: Thêm Modal bàn giao và thu hồi trực quan có CSRF token**
-- [ ] **Step 3: Bổ sung timeline hiển thị lịch sử bàn giao trong trang chi tiết thiết bị**
-- [ ] **Step 4: Kiểm tra giao diện và đảm bảo CSS chuẩn với thiết kế chung**
-- [ ] **Step 5: Commit changes**
+- [x] **Step 1: Bổ sung các formatters và action buttons trong `AssetAdmin` (Nút Bàn giao máy khi `IN_STOCK`, Nút Thu hồi máy khi `IN_USE`)**
+- [x] **Step 2: Thêm Modal bàn giao và thu hồi trực quan có CSRF token**
+- [x] **Step 3: Bổ sung timeline hiển thị lịch sử bàn giao trong trang chi tiết thiết bị**
+- [x] **Step 4: Kiểm tra giao diện và đảm bảo CSS chuẩn với thiết kế chung**
+- [x] **Step 5: Commit changes**
 
 ---
 
@@ -103,7 +103,7 @@
 **Files:**
 - Run all test suites: `pytest`
 
-- [ ] **Step 1: Chạy toàn bộ pytest kiểm tra 101 test cũ và tất cả test mới của Giai đoạn 2**
-- [ ] **Step 2: Đảm bảo 100% test xanh (PASSED)**
-- [ ] **Step 3: Kiểm tra ruff check code cleanliness**
-- [ ] **Step 4: Commit và chuẩn bị sẵn sàng cho người dùng test thử**
+- [x] **Step 1: Chạy toàn bộ pytest kiểm tra 101 test cũ và tất cả test mới của Giai đoạn 2**
+- [x] **Step 2: Đảm bảo 100% test xanh (PASSED)**
+- [x] **Step 3: Kiểm tra ruff check code cleanliness**
+- [x] **Step 4: Commit và chuẩn bị sẵn sàng cho người dùng test thử**
