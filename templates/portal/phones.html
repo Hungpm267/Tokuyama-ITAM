@@ -1,0 +1,102 @@
+{% extends "portal/base.html" %}
+
+{% block title %}Danh bạ máy nhánh (Phone List){% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Danh bạ máy nhánh (Phone List)</h1>
+            <p class="text-sm text-slate-500 mt-1">Danh sách thiết bị liên lạc nội bộ và số máy nhánh phân bố theo từng khu vực văn phòng / nhà máy.</p>
+        </div>
+    </div>
+
+    <!-- Search -->
+    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-3 items-center justify-between">
+        <form method="GET" action="/phones" class="flex flex-col sm:flex-row gap-3 w-full">
+            <div class="relative flex-1">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-sm"></i>
+                <input type="text" name="q" value="{{ q }}" placeholder="Tìm theo số máy nhánh, tên thiết bị, ghi chú vị trí..."
+                       class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500">
+            </div>
+            <button type="submit" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-sm font-semibold transition">
+                Tìm kiếm
+            </button>
+            {% if q %}
+            <a href="/phones" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold transition text-center">
+                Xóa tìm kiếm
+            </a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Table -->
+    <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200 text-sm text-left">
+                <thead class="bg-slate-50 text-slate-500 font-semibold uppercase text-xs tracking-wider">
+                    <tr>
+                        <th class="py-3.5 px-4">Số máy nhánh (Ext)</th>
+                        <th class="py-3.5 px-4">Tên thiết bị / Vị trí đặt</th>
+                        <th class="py-3.5 px-4">Loại thiết bị</th>
+                        <th class="py-3.5 px-4">Khu vực / Tòa nhà</th>
+                        <th class="py-3.5 px-4">Phòng cụ thể</th>
+                        <th class="py-3.5 px-4">Ghi chú</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-slate-800">
+                    {% for phone in phones %}
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="py-3 px-4 font-mono font-bold text-base text-red-600">
+                            {{ phone.extension_number or '—' }}
+                        </td>
+                        <td class="py-3 px-4 font-semibold text-slate-900">
+                            {{ phone.device_name }}
+                        </td>
+                        <td class="py-3 px-4">
+                            {% if phone.device_type.value == 'DESK_PHONE' %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700">
+                                <i class="fa-solid fa-phone mr-1 text-[10px]"></i>Điện thoại bàn
+                            </span>
+                            {% elif phone.device_type.value == 'CONFERENCE' %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-50 text-purple-700">
+                                <i class="fa-solid fa-users mr-1 text-[10px]"></i>Điện thoại hội nghị
+                            </span>
+                            {% elif phone.device_type.value == 'DECT_WIRELESS' %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-700">
+                                <i class="fa-solid fa-walkie-talkie mr-1 text-[10px]"></i>Không dây DECT
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">
+                                {{ phone.device_type.value }}
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-4 text-slate-600">
+                            {% if phone.location %}
+                                {{ phone.location.building }} {% if phone.location.floor %}- Tầng {{ phone.location.floor }}{% endif %}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-4 text-slate-700 font-medium">
+                            {{ phone.location.room_en if phone.location else '—' }}
+                        </td>
+                        <td class="py-3 px-4 text-xs text-slate-500">
+                            {{ phone.remarks or '—' }}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="py-8 text-center text-slate-400 italic">
+                            Không tìm thấy máy nhánh nào.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -56,13 +56,16 @@
                         <a href="/" class="px-3 py-2 rounded-md text-sm font-medium {% if active_page == 'dashboard' %}text-red-700 bg-red-50 font-semibold{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100{% endif %}">
                             <i class="fa-solid fa-chart-pie mr-1.5 opacity-70"></i>Tổng quan
                         </a>
-                        <a href="/assets" class="px-3 py-2 rounded-md text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100">
+                        <a href="/assets" class="px-3 py-2 rounded-md text-sm font-medium {% if active_page == 'assets' %}text-red-700 bg-red-50 font-semibold{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100{% endif %}">
                             <i class="fa-solid fa-laptop mr-1.5 opacity-70"></i>Tài sản
                         </a>
-                        <a href="/assignments" class="px-3 py-2 rounded-md text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100">
+                        <a href="/assignments" class="px-3 py-2 rounded-md text-sm font-medium {% if active_page == 'assignments' %}text-red-700 bg-red-50 font-semibold{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100{% endif %}">
                             <i class="fa-solid fa-hand-holding-hand mr-1.5 opacity-70"></i>Mượn - Trả
                         </a>
-                        <a href="/phones" class="px-3 py-2 rounded-md text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100">
+                        <a href="/cards" class="px-3 py-2 rounded-md text-sm font-medium {% if active_page == 'cards' %}text-red-700 bg-red-50 font-semibold{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100{% endif %}">
+                            <i class="fa-solid fa-id-card mr-1.5 opacity-70"></i>Thẻ ra vào
+                        </a>
+                        <a href="/phones" class="px-3 py-2 rounded-md text-sm font-medium {% if active_page == 'phones' %}text-red-700 bg-red-50 font-semibold{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100{% endif %}">
                             <i class="fa-solid fa-phone mr-1.5 opacity-70"></i>Phone List
                         </a>
 

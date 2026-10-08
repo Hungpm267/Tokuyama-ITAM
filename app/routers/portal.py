@@ -11,8 +11,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Form, Request, Response, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy import func, or_, select
+from sqlalchemy.orm import Session, selectinload
 
 from app.core.audit import audit_login
 from app.core.security import (
@@ -25,12 +25,14 @@ from app.enums import AssetStatus, RoleCode
 from app.models import (
     AccessCard,
     Asset,
+    Assignment,
     CardLoan,
     License,
     LicenseProduct,
     Person,
     User,
 )
+from app.services.phone_service import list_phones
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
@@ -276,6 +278,176 @@ def portal_home(
             "stats": stats,
             "expiring_licenses": expiring_licenses,
             "active_card_loans": active_card_loans,
+        },
+    )
+
+
+@router.get("/assets", response_class=HTMLResponse)
+def portal_assets(
+    request: Request,
+    q: str | None = None,
+    status_filter: str | None = None,
+    db: Session = Depends(get_db),
+):
+    """Tra cứu danh sách Thiết bị / Tài sản IT (dành cho Ban Giám đốc và Tổng vụ)."""
+    current_user = get_authenticated_user(request, db)
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    query = (
+        select(Asset)
+        .options(
+            selectinload(Asset.category),
+            selectinload(Asset.assignments).selectinload(Assignment.person).selectinload(Person.department),
+        )
+        .where(Asset.is_deleted.is_(False))
+    )
+
+    if q and q.strip():
+        term = f"%{q.strip()}%"
+        query = query.where(
+            or_(
+                Asset.asset_code.ilike(term),
+                Asset.vendor_code.ilike(term),
+                Asset.model.ilike(term),
+                Asset.serial_number.ilike(term),
+            )
+        )
+
+    if status_filter and status_filter.strip():
+        query = query.where(Asset.status == status_filter.strip())
+
+    assets = list(db.scalars(query.order_by(Asset.id.desc()).limit(150)).all())
+    lang = request.cookies.get("itam_lang", "vi")
+
+    return templates.TemplateResponse(
+        request=request,
+        name="portal/assets.html",
+        context={
+            "user": current_user,
+            "current_lang": lang,
+            "active_page": "assets",
+            "assets": assets,
+            "q": q or "",
+            "status_filter": status_filter or "",
+            "AssetStatus": AssetStatus,
+        },
+    )
+
+
+@router.get("/assignments", response_class=HTMLResponse)
+def portal_assignments(
+    request: Request,
+    q: str | None = None,
+    active_only: bool = False,
+    db: Session = Depends(get_db),
+):
+    """Lịch sử và trạng thái Cấp phát / Mượn - Trả thiết bị IT."""
+    current_user = get_authenticated_user(request, db)
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    query = (
+        select(Assignment)
+        .options(
+            selectinload(Assignment.asset).selectinload(Asset.category),
+            selectinload(Assignment.person).selectinload(Person.department),
+        )
+    )
+
+    if active_only:
+        query = query.where(Assignment.returned_at.is_(None))
+
+    if q and q.strip():
+        term = f"%{q.strip()}%"
+        query = query.join(Assignment.person).where(
+            or_(
+                Person.full_name.ilike(term),
+                Person.staff_code.ilike(term),
+            )
+        )
+
+    assignments = list(db.scalars(query.order_by(Assignment.borrowed_at.desc()).limit(150)).all())
+    lang = request.cookies.get("itam_lang", "vi")
+
+    return templates.TemplateResponse(
+        request=request,
+        name="portal/assignments.html",
+        context={
+            "user": current_user,
+            "current_lang": lang,
+            "active_page": "assignments",
+            "assignments": assignments,
+            "q": q or "",
+            "active_only": active_only,
+        },
+    )
+
+
+@router.get("/cards", response_class=HTMLResponse)
+def portal_cards(
+    request: Request,
+    q: str | None = None,
+    db: Session = Depends(get_db),
+):
+    """Danh sách Thẻ ra vào và Nhật ký Mượn thẻ."""
+    current_user = get_authenticated_user(request, db)
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    query = (
+        select(AccessCard)
+        .options(
+            selectinload(AccessCard.loans).selectinload(CardLoan.person),
+        )
+        .where(AccessCard.is_deleted.is_(False))
+    )
+
+    if q and q.strip():
+        term = f"%{q.strip()}%"
+        query = query.where(AccessCard.card_no.ilike(term))
+
+    cards = list(db.scalars(query.order_by(AccessCard.id.asc()).limit(150)).all())
+    today = dt.date.today()
+    lang = request.cookies.get("itam_lang", "vi")
+
+    return templates.TemplateResponse(
+        request=request,
+        name="portal/cards.html",
+        context={
+            "user": current_user,
+            "current_lang": lang,
+            "active_page": "cards",
+            "cards": cards,
+            "today": today,
+            "q": q or "",
+        },
+    )
+
+
+@router.get("/phones", response_class=HTMLResponse)
+def portal_phones(
+    request: Request,
+    q: str | None = None,
+    db: Session = Depends(get_db),
+):
+    """Danh bạ máy nhánh và vị trí phòng ban (Phone List - FR-15)."""
+    current_user = get_authenticated_user(request, db)
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    phones = list_phones(db, active_only=False, search=q)
+    lang = request.cookies.get("itam_lang", "vi")
+
+    return templates.TemplateResponse(
+        request=request,
+        name="portal/phones.html",
+        context={
+            "user": current_user,
+            "current_lang": lang,
+            "active_page": "phones",
+            "phones": phones,
+            "q": q or "",
         },
     )
 

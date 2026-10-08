@@ -95,29 +95,37 @@ class AdminAuth(AuthenticationBackend):
                 )
             )
             if user:
-                if user.role and user.role.code == RoleCode.ADMIN.value:
-                    if verify_password(password, user.password_hash):
-                        audit_login(db, user_id=user.id, success=True, username=username, ip_address=client_ip)
-                        db.commit()
-                        token = create_session_token({
-                            "user_id": user.id,
-                            "role": user.role.code,
-                            "username": user.username,
-                        })
-                        lang = user.preferred_lang or request.cookies.get("itam_lang") or "vi"
-                        request.session.update({
-                            "token": token,
-                            "user_id": user.id,
-                            "role": user.role.code,
-                            "username": user.username,
-                            "lang": lang,
-                        })
-                        return True
+                if verify_password(password, user.password_hash):
+                    user.last_login_at = dt.datetime.now(dt.timezone.utc)
+                    audit_login(db, user_id=user.id, success=True, username=username, ip_address=client_ip)
+                    db.commit()
+
+                    role_code = user.role.code if user.role else RoleCode.ADMIN.value
+                    token = create_session_token({
+                        "user_id": user.id,
+                        "role": role_code,
+                        "username": user.username,
+                    })
+                    lang = user.preferred_lang or request.cookies.get("itam_lang") or "vi"
+                    request.session.update({
+                        "token": token,
+                        "user_id": user.id,
+                        "role": role_code,
+                        "username": user.username,
+                        "lang": lang,
+                    })
+
+                    # Phân luồng điều hướng theo vai trò:
+                    # ADMIN -> /admin (cổng quản trị kỹ thuật)
+                    # GA_MANAGER / EXECUTIVE -> / (Cổng Web Portal nghiệp vụ)
+                    if role_code == RoleCode.ADMIN.value:
+                        request.state.redirect_url = "/admin"
                     else:
-                        request.state.login_error = "Mật khẩu không chính xác."
+                        request.state.redirect_url = "/"
+
+                    return True
                 else:
-                    role_title = user.role.name_ja or user.role.name_en if user.role else "chưa phân quyền"
-                    request.state.login_error = f"Tài khoản '{username}' có vai trò {role_title}, không có quyền truy cập cổng Quản trị (yêu cầu vai trò ADMIN)."
+                    request.state.login_error = "Mật khẩu không chính xác."
             else:
                 request.state.login_error = "Tên đăng nhập không tồn tại hoặc đã bị khóa."
 
@@ -1867,20 +1875,41 @@ class TokuyamaAdmin(Admin):
     async def login(self, request: Request) -> Response:
         assert self.authentication_backend is not None
 
-        context = {}
         if request.method == "GET":
+            # Nếu đã có phiên đăng nhập hợp lệ: chuyển hướng ngay đến trang tương ứng
+            token = request.session.get("token") or request.cookies.get("itam_session")
+            if token:
+                payload = verify_session_token(token)
+                if payload:
+                    role = payload.get("role")
+                    if role == RoleCode.ADMIN.value:
+                        return RedirectResponse(request.url_for("admin:index"), status_code=302)
+                    return RedirectResponse("/", status_code=302)
             return await self.templates.TemplateResponse(request, "sqladmin/login.html")
 
         ok = await self.authentication_backend.login(request)
         if not ok:
-            context["error"] = getattr(
-                request.state, "login_error", "Tên đăng nhập hoặc mật khẩu không chính xác."
-            )
+            context = {
+                "error": getattr(
+                    request.state, "login_error", "Tên đăng nhập hoặc mật khẩu không chính xác."
+                )
+            }
             return await self.templates.TemplateResponse(
                 request, "sqladmin/login.html", context, status_code=400
             )
 
-        return RedirectResponse(request.url_for("admin:index"), status_code=302)
+        redirect_url = getattr(request.state, "redirect_url", None) or request.url_for("admin:index")
+        response = RedirectResponse(redirect_url, status_code=302)
+        sess_token = request.session.get("token")
+        if sess_token:
+            response.set_cookie(
+                key="itam_session",
+                value=sess_token,
+                httponly=True,
+                samesite="lax",
+                max_age=1800,
+            )
+        return response
 
     @login_required
     async def index(self, request: Request) -> Response:
