@@ -582,7 +582,7 @@
               <td class="text-muted small">{{ loop.index }}</td>
               <td>
                 <a href="/admin/asset/details/{{ a.asset.id }}" class="fw-semibold text-primary text-decoration-none">
-                  <i class="fa-solid fa-laptop me-1"></i>{{ a.asset.model or a.asset.category.name_en if a.asset.category else 'Thiết bị #' ~ a.asset.id }}
+                  <i class="fa-solid fa-laptop me-1"></i>{{ a.asset.model or (a.asset.category.name_en if (a.asset and a.asset.category) else ('Thiết bị #' ~ a.asset.id)) }}
                 </a>
               </td>
               <td>

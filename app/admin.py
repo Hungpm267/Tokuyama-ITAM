@@ -623,7 +623,9 @@ class PersonAdmin(BaseAdminView, model=Person):
         stmt = self._stmt_by_identifier(value)
         stmt = stmt.options(
             selectinload(Person.department),
-            selectinload(Person.assignments).selectinload(Assignment.asset),
+            selectinload(Person.assignments)
+            .selectinload(Assignment.asset)
+            .selectinload(Asset.category),
             selectinload(Person.secret),
         )
         for relation in self._details_relations:
