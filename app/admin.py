@@ -457,7 +457,15 @@ class RolePermissionAdmin(BaseAdminView, model=RolePermission):
     name_plural = "Ma trận Quyền Vai trò"
     icon = "fa-solid fa-key"
     category = "Hệ thống & Phân quyền"
+    list_template = "sqladmin/role_permission_matrix.html"
     column_list = [RolePermission.id, RolePermission.role, RolePermission.module, RolePermission.action]
+
+    def get_matrix_payload(self) -> dict[str, Any]:
+        """Trả về cấu trúc dữ liệu ma trận quyền vai trò trực quan."""
+        from app.core.permissions import get_role_permission_matrix
+
+        with SessionLocal() as db:
+            return get_role_permission_matrix(db)
 
 
 class UserPermissionOverrideAdmin(BaseAdminView, model=UserPermissionOverride):

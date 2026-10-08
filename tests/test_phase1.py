@@ -672,4 +672,89 @@ def test_audit_trail_features_and_delete_reason(db: Session, rbac_roles_and_user
     assert "technical JSON" in res_detail.text or "kỹ thuật" in res_detail.text
 
 
+def test_role_permission_matrix_workflow(db: Session, rbac_roles_and_users):
+    """Kiểm tra toàn diện tính năng Ma trận Quyền Vai trò:
+    - Giao diện ma trận trực quan (interactive matrix view)
+    - Chế độ dữ liệu thô (raw mode)
+    - Chặn người dùng không phải Admin gọi API thay đổi ma trận (403)
+    - Admin lưu ma trận thành công và tạo AuditLog
+    - Admin khôi phục quyền mặc định (reset to defaults) thành công
+    """
+    from app.models import AuditLog, Role
+    from app.enums import AuditAction
+    from app.db import get_db
+
+    admin = rbac_roles_and_users["admin"]
+    ga_user = rbac_roles_and_users["ga"]
+    ga_role = rbac_roles_and_users[RoleCode.GA_MANAGER] if RoleCode.GA_MANAGER in rbac_roles_and_users else db.scalar(select(Role).where(Role.code == "GA_MANAGER"))
+    db.commit()
+
+    app.dependency_overrides[get_db] = lambda: db
+    try:
+        client = TestClient(app)
+        admin_token = create_session_token({"user_id": admin.id, "role": "ADMIN", "username": admin.username})
+        ga_token = create_session_token({"user_id": ga_user.id, "role": "GA_MANAGER", "username": ga_user.username})
+
+        # 1. Non-admin không được lưu ma trận (403)
+        client.cookies.set("itam_session", ga_token)
+        res_ga_save = client.post("/admin/role-permission/matrix/save", json={
+            "role_id": ga_role.id,
+            "permissions": [{"module": "persons", "action": "view"}]
+        })
+        assert res_ga_save.status_code == 403
+
+        # 2. Admin truy cập trang Ma trận Quyền Vai trò -> 200 OK với giao diện Matrix
+        client.cookies.set("itam_session", admin_token)
+        res_matrix = client.get("/admin/role-permission/list")
+        assert res_matrix.status_code == 200
+        assert "Ma trận Quyền Vai trò" in res_matrix.text
+        assert "perm-cb" in res_matrix.text
+        assert "GA_MANAGER" in res_matrix.text
+        assert "ADMIN" in res_matrix.text
+
+        # 3. Chế độ dữ liệu thô (mode=raw) -> 200 OK
+        res_raw = client.get("/admin/role-permission/list?mode=raw")
+        assert res_raw.status_code == 200
+        assert "Chế độ dữ liệu thô" in res_raw.text or "Raw mode" in res_raw.text
+
+        # 4. Admin lưu ma trận quyền cho vai trò GA_MANAGER
+        res_save = client.post("/admin/role-permission/matrix/save", json={
+            "role_id": ga_role.id,
+            "permissions": [
+                {"module": "persons", "action": "view"},
+                {"module": "assets", "action": "view"},
+                {"module": "cards", "action": "view"},
+                {"module": "cards", "action": "add"},
+            ]
+        })
+        assert res_save.status_code == 200, f"res_save failed: {res_save.status_code} - {res_save.text}"
+        assert res_save.json().get("success") is True
+        assert res_save.json().get("total") == 4
+
+        # Kiểm tra AuditLog được tạo
+        save_audit = db.scalar(
+            select(AuditLog)
+            .where(
+                AuditLog.table_name == "role_permissions",
+                AuditLog.record_id == ga_role.id,
+                AuditLog.action == AuditAction.UPDATE,
+            )
+            .order_by(AuditLog.id.desc())
+        )
+        assert save_audit is not None
+        assert save_audit.user_id == admin.id
+        assert save_audit.before_after is not None
+
+        # 5. Khôi phục mặc định cho vai trò GA_MANAGER
+        res_reset = client.post("/admin/role-permission/matrix/reset", json={"role_id": ga_role.id})
+        assert res_reset.status_code == 200
+        assert res_reset.json().get("success") is True
+        # GA Manager mặc định có 13 quyền
+        assert res_reset.json().get("total") == 13
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+
+
+
+
 

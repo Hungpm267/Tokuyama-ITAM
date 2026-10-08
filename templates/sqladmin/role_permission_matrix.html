@@ -1,0 +1,507 @@
+{% extends "sqladmin/layout.html" %}
+{% block content %}
+{% set current_lang = current_lang or get_current_lang(request) %}
+{% set is_raw_mode = (request.query_params.get('mode') == 'raw') %}
+
+<div class="col-12">
+  <div class="card shadow-sm border" style="border-color: var(--toku-border) !important; border-radius: 8px;">
+    
+    <!-- Header Section -->
+    <div class="card-header bg-white py-3 px-4 d-flex flex-wrap align-items-center justify-content-between gap-3" style="border-bottom: 1px solid var(--toku-border) !important;">
+      <div>
+        <div class="d-flex align-items-center gap-2">
+          <span style="width: 32px; height: 32px; border-radius: 6px; background-color: #eff6ff; color: #2563eb; display: inline-flex; align-items: center; justify-content: center; font-size: 15px;">
+            <i class="fa-solid fa-key"></i>
+          </span>
+          <h3 class="card-title fw-bold text-dark m-0" style="font-size: 17px;">
+            {{ t('Ma trận Quyền Vai trò', current_lang) if current_lang != 'en' else 'Role-Based Permission Matrix' }}
+          </h3>
+        </div>
+        <p class="text-muted small m-0 mt-1" style="font-size: 12.5px;">
+          {{ 'Quản lý phân quyền trực quan theo Phân hệ và Thao tác cho từng Vai trò trong hệ thống.' if current_lang != 'en' else 'Visually manage role permissions by Module and Action. Changes take effect immediately and are recorded in Audit Trail.' }}
+        </p>
+      </div>
+
+      <!-- Mode Switcher -->
+      <div class="d-flex align-items-center gap-2">
+        <div class="btn-group p-1 bg-light border rounded" role="group" style="font-size: 12.5px;">
+          <a href="{{ request.url.remove_query_params(['mode']) }}" class="btn btn-sm py-1 px-3 {% if not is_raw_mode %}btn-white shadow-sm fw-bold text-primary{% else %}text-secondary{% endif %}" style="font-size: 12px; border-radius: 4px;">
+            <i class="fa-solid fa-table-cells me-1"></i> {{ 'Ma trận trực quan' if current_lang != 'en' else 'Interactive Matrix' }}
+          </a>
+          <a href="{{ request.url.include_query_params(mode='raw') }}" class="btn btn-sm py-1 px-3 {% if is_raw_mode %}btn-white shadow-sm fw-bold text-dark{% else %}text-secondary{% endif %}" style="font-size: 12px; border-radius: 4px;">
+            <i class="fa-solid fa-list me-1"></i> {{ 'Dữ liệu thô (Raw)' if current_lang != 'en' else 'Raw List' }}
+          </a>
+        </div>
+      </div>
+    </div>
+
+    {% if is_raw_mode %}
+    <!-- RAW FLAT LIST MODE (FOR BACKWARD COMPATIBILITY / EXPORT) -->
+    <div class="card-body p-0 bg-white">
+      <div class="p-3 bg-light border-bottom d-flex align-items-center justify-content-between">
+        <span class="text-muted small">
+          <i class="fa-solid fa-circle-info me-1"></i>
+          {{ 'Chế độ dữ liệu thô: Hiển thị danh sách từng bản ghi đơn lẻ trong bảng role_permissions.' if current_lang != 'en' else 'Raw mode: Displays individual records in the role_permissions database table.' }}
+        </span>
+        {% if model_view.can_export %}
+        <div class="dropdown">
+          <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+            <i class="fa-solid fa-file-export me-1"></i> {{ 'Export' if current_lang == 'en' else 'Xuất file' }}
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            {% for export_type in model_view.export_types %}
+            <li><a class="dropdown-item" href="{{ url_for('admin:export', identity=model_view.identity, export_type=export_type) }}">{{ export_type | upper }}</a></li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="table-responsive">
+        <table class="table card-table table-vcenter text-nowrap table-hover" style="font-size: 13.5px;">
+          <thead>
+            <tr style="background-color: #f8fafc; border-bottom: 1px solid var(--toku-border) !important;">
+              <th class="w-1 text-center">{{ 'THAO TÁC' if current_lang != 'en' else 'ACTIONS' }}</th>
+              {% for name in model_view._list_prop_names %}
+              {% set label = model_view._column_labels.get(name, name) %}
+              <th class="fw-bold text-secondary">{{ t(label, current_lang) }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in pagination.rows %}
+            <tr>
+              <td class="text-center">
+                {% if model_view.can_view_details %}
+                <a href="{{ model_view._build_url_for('admin:details', request, row) }}" class="text-primary me-2"><i class="fa-solid fa-eye"></i></a>
+                {% endif %}
+                {% if model_view.can_delete %}
+                <a href="#" data-url="{{ model_view._url_for_delete(request, row) }}" data-bs-toggle="modal" data-bs-target="#modal-delete" class="text-danger"><i class="fa-solid fa-trash-can"></i></a>
+                {% endif %}
+              </td>
+              {% for name in model_view._list_prop_names %}
+              {% set value, formatted_value = model_view.get_list_value(row, name) %}
+              <td>{{ formatted_value }}</td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination Footer -->
+      <div class="card-footer d-flex justify-content-between align-items-center bg-white" style="border-top: 1px solid var(--toku-border) !important;">
+        <span class="text-muted small">{{ 'Tổng số bản ghi:' if current_lang != 'en' else 'Total records:' }} {{ pagination.count }}</span>
+        <div>
+          {% if pagination.has_previous %}
+          <a href="{{ pagination.previous_page.url }}" class="btn btn-outline-secondary btn-sm me-1">{{ 'Trang trước' if current_lang != 'en' else 'Previous' }}</a>
+          {% endif %}
+          <span class="mx-2 small">{{ pagination.page }}</span>
+          {% if pagination.has_next %}
+          <a href="{{ pagination.next_page.url }}" class="btn btn-outline-secondary btn-sm ms-1">{{ 'Trang sau' if current_lang != 'en' else 'Next' }}</a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    {% else %}
+    <!-- MODERN INTERACTIVE MATRIX VIEW -->
+    {% set matrix = model_view.get_matrix_payload() %}
+    <div class="card-body p-4 bg-white">
+      
+      <!-- Feedback Alert Banner -->
+      <div id="matrix-feedback-alert" class="alert d-none align-items-center mb-3 py-2 px-3 rounded-2 shadow-sm" role="alert">
+        <i id="matrix-feedback-icon" class="fa-solid me-2 fs-5"></i>
+        <div id="matrix-feedback-text" class="fw-semibold"></div>
+        <button type="button" class="btn-close ms-auto" onclick="hideFeedbackAlert()" aria-label="Close"></button>
+      </div>
+
+      <!-- Role Tabs Navigation -->
+      <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-3 flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <span class="text-muted fw-bold small text-uppercase letter-spacing-1 me-2">
+            <i class="fa-solid fa-users-gear me-1 text-primary"></i>{{ 'Chọn vai trò:' if current_lang != 'en' else 'Select Role:' }}
+          </span>
+          <ul class="nav nav-pills gap-2 m-0 p-0" id="rolePillTabs" role="tablist">
+            {% for r in matrix.roles %}
+            <li class="nav-item" role="presentation">
+              <button class="nav-link py-2 px-3 border rounded-3 fw-semibold d-flex align-items-center gap-2 {% if loop.first %}active shadow-sm{% else %}bg-light text-dark{% endif %}"
+                      id="pill-tab-{{ r.id }}"
+                      data-bs-toggle="pill"
+                      data-bs-target="#tab-content-{{ r.id }}"
+                      type="button"
+                      role="tab"
+                      onclick="onRoleTabSelected({{ r.id }}, '{{ r.code }}', '{{ r.name_en }}')">
+                {% if r.code == 'ADMIN' %}
+                  <i class="fa-solid fa-shield-halved text-danger"></i>
+                {% elif r.code == 'GA_MANAGER' %}
+                  <i class="fa-solid fa-briefcase text-success"></i>
+                {% elif r.code == 'EXECUTIVE' %}
+                  <i class="fa-solid fa-user-tie text-info"></i>
+                {% else %}
+                  <i class="fa-solid fa-key text-secondary"></i>
+                {% endif %}
+                <span>{{ r.name_en }} ({{ r.code }})</span>
+                <span class="badge rounded-pill bg-white text-dark border ms-1 font-monospace" id="tab-count-{{ r.id }}" style="font-size: 11px;">0</span>
+              </button>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+
+      <!-- Tab Panes for each Role -->
+      <div class="tab-content" id="rolePillTabsContent">
+        {% for r in matrix.roles %}
+        {% set role_perms = matrix.current_permissions.get(r.id, {}) %}
+        <div class="tab-pane fade {% if loop.first %}show active{% endif %}" id="tab-content-{{ r.id }}" role="tabpanel">
+          
+          <!-- Role Context Notice -->
+          {% if r.code == 'ADMIN' %}
+          <div class="alert alert-warning py-2 px-3 mb-3 d-flex align-items-center rounded-2 border-warning-subtle small">
+            <i class="fa-solid fa-triangle-exclamation text-warning-emphasis me-2 fs-5"></i>
+            <div>
+              <strong>{{ 'Lưu ý bảo mật:' if current_lang != 'en' else 'Security Notice:' }}</strong>
+              <span class="ms-1">{{ 'Vai trò Administrator mặc định nắm toàn quyền hệ thống. Hãy cân nhắc kỹ trước khi gỡ bớt quyền của Admin để tránh tự khóa quyền truy cập.' if current_lang != 'en' else 'Administrator role has full access by default. Exercise caution when altering admin permissions to avoid accidental lockout.' }}</span>
+            </div>
+          </div>
+          {% endif %}
+
+          <!-- Matrix Action Toolbar -->
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 p-3 bg-light rounded-3 border mb-3">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <span class="text-secondary fw-semibold small me-1"><i class="fa-solid fa-wand-magic-sparkles me-1 text-primary"></i>{{ 'Thao tác nhanh:' if current_lang != 'en' else 'Quick Actions:' }}</span>
+              <button type="button" class="btn btn-sm btn-outline-secondary bg-white" onclick="selectAllRole({{ r.id }})">
+                <i class="fa-solid fa-check-double text-success me-1"></i> {{ 'Chọn tất cả' if current_lang != 'en' else 'Select All' }}
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-secondary bg-white" onclick="deselectAllRole({{ r.id }})">
+                <i class="fa-solid fa-xmark text-danger me-1"></i> {{ 'Bỏ chọn tất cả' if current_lang != 'en' else 'Deselect All' }}
+              </button>
+              {% if r.code in matrix.default_permissions %}
+              <button type="button" class="btn btn-sm btn-outline-warning bg-white text-dark" onclick="resetRoleDefaults({{ r.id }}, '{{ r.code }}')">
+                <i class="fa-solid fa-rotate-left text-warning me-1"></i> {{ 'Khôi phục mặc định (GEMINI.md)' if current_lang != 'en' else 'Reset Defaults' }}
+              </button>
+              {% endif %}
+            </div>
+
+            <div class="d-flex align-items-center gap-3">
+              <span class="badge bg-white text-dark border px-3 py-2 fw-semibold fs-7 shadow-sm font-monospace" id="stat-counter-{{ r.id }}">
+                {{ 'Đang cấp: ' if current_lang != 'en' else 'Granted: ' }} <span class="text-primary fw-bold fs-6 active-count-num">0</span> / 40 {{ 'quyền' if current_lang != 'en' else 'perms' }}
+              </span>
+              <button type="button" class="btn btn-primary btn-sm px-4 py-2 fw-bold shadow-sm d-flex align-items-center gap-2 btn-save-role" id="btn-save-{{ r.id }}" onclick="saveRoleMatrix({{ r.id }})">
+                <i class="fa-solid fa-floppy-disk"></i>
+                <span>{{ 'Lưu thay đổi ma trận' if current_lang != 'en' else 'Save Changes' }}</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Matrix Grid Table -->
+          <div class="table-responsive rounded-3 border shadow-sm mb-3">
+            <table class="table card-table table-vcenter table-hover m-0" style="font-size: 13px;">
+              <thead>
+                <tr style="background-color: #f8fafc; border-bottom: 2px solid var(--toku-border) !important;">
+                  <th style="width: 36%; font-size: 12px; font-weight: 700; color: #475569; letter-spacing: 0.04em;">
+                    <div class="d-flex align-items-center gap-2">
+                      <i class="fa-solid fa-layer-group text-primary"></i>
+                      <span>{{ 'PHÂN HỆ NGHIỆP VỤ (MODULE)' if current_lang != 'en' else 'BUSINESS MODULE' }}</span>
+                    </div>
+                  </th>
+                  {% for a in matrix.actions %}
+                  <th class="text-center" style="width: 13%; font-size: 12px; font-weight: 700; color: #475569; letter-spacing: 0.04em;">
+                    <div class="d-flex flex-column align-items-center gap-1">
+                      <div class="d-flex align-items-center gap-1 cursor-pointer" onclick="toggleColumn({{ r.id }}, '{{ a.code }}')" title="{{ 'Bấm để bật/tắt toàn bộ cột này' if current_lang != 'en' else 'Click to toggle all in this column' }}">
+                        <i class="{{ a.icon }} me-1"></i>
+                        <span>{{ (a.name_vi | upper) if current_lang != 'en' else (a.name_en | upper) }}</span>
+                      </div>
+                      <input type="checkbox" class="form-check-input col-toggle-cb m-0" data-role="{{ r.id }}" data-action="{{ a.code }}" onchange="onColToggleChanged({{ r.id }}, '{{ a.code }}', this.checked)" title="{{ 'Chọn/Bỏ chọn cột' if current_lang != 'en' else 'Toggle column' }}" style="cursor: pointer; width: 16px; height: 16px;" />
+                    </div>
+                  </th>
+                  {% endfor %}
+                  <th class="text-center" style="width: 10%; font-size: 12px; font-weight: 700; color: #64748b; letter-spacing: 0.04em;">
+                    <div class="d-flex flex-column align-items-center gap-1">
+                      <span>{{ 'TẤT CẢ' if current_lang != 'en' else 'ALL' }}</span>
+                      <small class="text-muted fw-normal" style="font-size: 10px;">(Row)</small>
+                    </div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for m in matrix.modules %}
+                {% set granted_actions = role_perms.get(m.code, []) %}
+                <tr class="align-middle border-bottom">
+                  
+                  <!-- Module Info Column -->
+                  <td class="py-3 px-3">
+                    <div class="d-flex align-items-center gap-3">
+                      <div style="background-color: {{ m.badge_color }}15; color: {{ m.badge_color }}; width: 38px; height: 38px; min-width: 38px; border-radius: 8px; border: 1px solid {{ m.badge_color }}30;" class="d-flex align-items-center justify-content-center fs-5 shadow-sm">
+                        <i class="{{ m.icon }}"></i>
+                      </div>
+                      <div>
+                        <div class="d-flex align-items-center gap-2">
+                          <strong class="text-dark" style="font-size: 14px;">{{ m.name_vi if current_lang != 'en' else m.name_en }}</strong>
+                          <span class="badge bg-light text-secondary border font-monospace" style="font-size: 10.5px;">{{ m.code }}</span>
+                        </div>
+                        <div class="text-muted small mt-1" style="font-size: 11.5px; line-height: 1.3;">
+                          {{ m.desc_vi if current_lang != 'en' else m.desc_en }}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+
+                  <!-- 4 Action Checkboxes -->
+                  {% for a in matrix.actions %}
+                  {% set is_checked = (a.code in granted_actions) %}
+                  <td class="text-center py-3">
+                    <div class="form-check form-check-inline m-0 d-flex justify-content-center">
+                      <input class="form-check-input perm-cb perm-cb-{{ r.id }}"
+                             type="checkbox"
+                             data-role="{{ r.id }}"
+                             data-module="{{ m.code }}"
+                             data-action="{{ a.code }}"
+                             {% if is_checked %}checked{% endif %}
+                             onchange="onCheckboxChanged({{ r.id }}, '{{ m.code }}')"
+                             style="width: 21px; height: 21px; cursor: pointer; border-color: #cbd5e1;" />
+                    </div>
+                  </td>
+                  {% endfor %}
+
+                  <!-- Row All Checkbox -->
+                  <td class="text-center py-3 bg-light bg-opacity-50">
+                    <div class="form-check form-check-inline m-0 d-flex justify-content-center">
+                      <input class="form-check-input row-toggle-cb row-toggle-{{ r.id }}-{{ m.code }}"
+                             type="checkbox"
+                             data-role="{{ r.id }}"
+                             data-module="{{ m.code }}"
+                             onchange="onRowToggleChanged({{ r.id }}, '{{ m.code }}', this.checked)"
+                             title="{{ 'Bật/tắt cả 4 quyền của dòng này' if current_lang != 'en' else 'Toggle all 4 permissions for this module' }}"
+                             style="width: 20px; height: 20px; cursor: pointer;" />
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Bottom Save Toolbar -->
+          <div class="d-flex align-items-center justify-content-between p-3 bg-light rounded-3 border">
+            <div class="text-muted small">
+              <i class="fa-solid fa-shield-check text-success me-1"></i>
+              {{ 'Mỗi lần Lưu thay đổi sẽ tự động được ghi nhận một dòng nhật ký kiểm toán trong Audit Trail.' if current_lang != 'en' else 'Each save operation is automatically recorded in the Audit Trail for governance and compliance.' }}
+            </div>
+            <button type="button" class="btn btn-primary px-4 btn-sm fw-bold shadow-sm d-flex align-items-center gap-2" onclick="saveRoleMatrix({{ r.id }})">
+              <i class="fa-solid fa-floppy-disk"></i>
+              <span>{{ 'Lưu thay đổi' if current_lang != 'en' else 'Save Changes' }}</span>
+            </button>
+          </div>
+
+        </div>
+        {% endfor %}
+      </div>
+
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+{% if not is_raw_mode %}
+<!-- Client-side Interactive Matrix Engine -->
+<script>
+(function() {
+  const DEFAULT_PERMS = {{ matrix.default_permissions | tojson }};
+  const ROLES = {{ matrix.roles | tojson }};
+
+  function updateRoleStats(roleId) {
+    const checkboxes = document.querySelectorAll('.perm-cb-' + roleId);
+    let count = 0;
+    checkboxes.forEach(function(cb) {
+      if (cb.checked) count++;
+    });
+
+    // Update pill badge and stat counter
+    const tabBadge = document.getElementById('tab-count-' + roleId);
+    if (tabBadge) tabBadge.textContent = count;
+
+    const counterSpan = document.querySelector('#stat-counter-' + roleId + ' .active-count-num');
+    if (counterSpan) counterSpan.textContent = count;
+
+    // Synchronize row "All" checkboxes
+    const modules = {{ matrix.modules | map(attribute='code') | list | tojson }};
+    modules.forEach(function(mod) {
+      const rowCbs = document.querySelectorAll('.perm-cb-' + roleId + '[data-module="' + mod + '"]');
+      let rowAllChecked = (rowCbs.length > 0);
+      rowCbs.forEach(function(cb) {
+        if (!cb.checked) rowAllChecked = false;
+      });
+      const rowToggle = document.querySelector('.row-toggle-' + roleId + '-' + mod);
+      if (rowToggle) rowToggle.checked = rowAllChecked;
+    });
+
+    // Synchronize column "All" checkboxes
+    const actions = ['view', 'add', 'change', 'delete'];
+    actions.forEach(function(act) {
+      const colCbs = document.querySelectorAll('.perm-cb-' + roleId + '[data-action="' + act + '"]');
+      let colAllChecked = (colCbs.length > 0);
+      colCbs.forEach(function(cb) {
+        if (!cb.checked) colAllChecked = false;
+      });
+      const colToggle = document.querySelector('.col-toggle-cb[data-role="' + roleId + '"][data-action="' + act + '"]');
+      if (colToggle) colToggle.checked = colAllChecked;
+    });
+  }
+
+  window.onCheckboxChanged = function(roleId, moduleCode) {
+    updateRoleStats(roleId);
+  };
+
+  window.onRowToggleChanged = function(roleId, moduleCode, isChecked) {
+    const cbs = document.querySelectorAll('.perm-cb-' + roleId + '[data-module="' + moduleCode + '"]');
+    cbs.forEach(function(cb) {
+      cb.checked = isChecked;
+    });
+    updateRoleStats(roleId);
+  };
+
+  window.onColToggleChanged = function(roleId, actionCode, isChecked) {
+    const cbs = document.querySelectorAll('.perm-cb-' + roleId + '[data-action="' + actionCode + '"]');
+    cbs.forEach(function(cb) {
+      cb.checked = isChecked;
+    });
+    updateRoleStats(roleId);
+  };
+
+  window.toggleColumn = function(roleId, actionCode) {
+    const colToggle = document.querySelector('.col-toggle-cb[data-role="' + roleId + '"][data-action="' + actionCode + '"]');
+    if (colToggle) {
+      colToggle.checked = !colToggle.checked;
+      window.onColToggleChanged(roleId, actionCode, colToggle.checked);
+    }
+  };
+
+  window.selectAllRole = function(roleId) {
+    const cbs = document.querySelectorAll('.perm-cb-' + roleId);
+    cbs.forEach(function(cb) { cb.checked = true; });
+    updateRoleStats(roleId);
+  };
+
+  window.deselectAllRole = function(roleId) {
+    const cbs = document.querySelectorAll('.perm-cb-' + roleId);
+    cbs.forEach(function(cb) { cb.checked = false; });
+    updateRoleStats(roleId);
+  };
+
+  window.resetRoleDefaults = function(roleId, roleCode) {
+    const defaults = DEFAULT_PERMS[roleCode];
+    if (!defaults) {
+      alert("Không tìm thấy cấu hình mặc định cho vai trò " + roleCode);
+      return;
+    }
+    if (!confirm("Bạn có chắc chắn muốn khôi phục ma trận quyền của vai trò " + roleCode + " về tiêu chuẩn ban đầu của GEMINI.md?")) {
+      return;
+    }
+
+    const cbs = document.querySelectorAll('.perm-cb-' + roleId);
+    cbs.forEach(function(cb) {
+      const mod = cb.getAttribute('data-module');
+      const act = cb.getAttribute('data-action');
+      const allowedActs = defaults[mod] || [];
+      cb.checked = allowedActs.includes(act);
+    });
+    updateRoleStats(roleId);
+
+    showFeedbackAlert('success', 'Đã khôi phục các ô tích theo tiêu chuẩn mặc định. Vui lòng bấm "Lưu thay đổi ma trận" để ghi nhận vào hệ thống.');
+  };
+
+  window.saveRoleMatrix = function(roleId) {
+    const saveBtns = document.querySelectorAll('#btn-save-' + roleId);
+    saveBtns.forEach(function(b) {
+      b.disabled = true;
+      b.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Đang lưu...';
+    });
+
+    const perms = [];
+    const checkedCbs = document.querySelectorAll('.perm-cb-' + roleId + ':checked');
+    checkedCbs.forEach(function(cb) {
+      perms.push({
+        module: cb.getAttribute('data-module'),
+        action: cb.getAttribute('data-action')
+      });
+    });
+
+    fetch('/admin/role-permission/matrix/save', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        role_id: roleId,
+        permissions: perms
+      })
+    })
+    .then(function(res) {
+      return res.json().then(function(data) {
+        return { ok: res.ok, data: data };
+      });
+    })
+    .then(function(result) {
+      saveBtns.forEach(function(b) {
+        b.disabled = false;
+        b.innerHTML = '<i class="fa-solid fa-floppy-disk me-1"></i> Lưu thay đổi ma trận';
+      });
+
+      if (result.ok && result.data && result.data.success) {
+        showFeedbackAlert('success', result.data.message || 'Đã lưu ma trận quyền thành công!');
+        updateRoleStats(roleId);
+      } else {
+        const errDetail = (result.data && result.data.detail) ? result.data.detail : 'Lưu thất bại.';
+        showFeedbackAlert('danger', errDetail);
+      }
+    })
+    .catch(function(err) {
+      saveBtns.forEach(function(b) {
+        b.disabled = false;
+        b.innerHTML = '<i class="fa-solid fa-floppy-disk me-1"></i> Lưu thay đổi ma trận';
+      });
+      showFeedbackAlert('danger', 'Lỗi kết nối khi lưu ma trận: ' + err.message);
+    });
+  };
+
+  function showFeedbackAlert(type, text) {
+    const el = document.getElementById('matrix-feedback-alert');
+    const icon = document.getElementById('matrix-feedback-icon');
+    const txt = document.getElementById('matrix-feedback-text');
+    if (!el) return;
+
+    el.className = 'alert align-items-center mb-3 py-2 px-3 rounded-2 shadow-sm d-flex alert-' + type;
+    icon.className = 'fa-solid me-2 fs-5 ' + (type === 'success' ? 'fa-circle-check text-success' : 'fa-circle-exclamation text-danger');
+    txt.textContent = text;
+    el.classList.remove('d-none');
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  window.hideFeedbackAlert = function() {
+    const el = document.getElementById('matrix-feedback-alert');
+    if (el) el.classList.add('d-none');
+  };
+
+  window.onRoleTabSelected = function(roleId, roleCode, roleName) {
+    hideFeedbackAlert();
+    updateRoleStats(roleId);
+  };
+
+  // Initialize stats for all roles on load
+  document.addEventListener('DOMContentLoaded', function() {
+    ROLES.forEach(function(r) {
+      updateRoleStats(r.id);
+    });
+  });
+})();
+</script>
+{% endif %}
+
+{% if is_raw_mode and model_view.can_delete %}
+{% include 'sqladmin/modals/delete.html' %}
+{% endif %}
+
+{% endblock %}
