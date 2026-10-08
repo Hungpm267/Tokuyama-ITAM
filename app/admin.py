@@ -22,6 +22,7 @@ from sqlalchemy import Select, func, select
 from sqlalchemy.orm import selectinload
 
 from app.core.audit import audit_login, record_audit
+from app.core.i18n import DEFAULT_ADMIN_COLUMN_LABELS
 from app.core.security import (
     SESSION_SECRET,
     create_session_token,
@@ -225,6 +226,11 @@ class BaseAdminView(ModelView):
     page_size_options = [10, 25, 50, 100]
     form_excluded_columns = COMMON_EXCLUDED_COLUMNS
 
+    def __init__(self) -> None:
+        merged = {**DEFAULT_ADMIN_COLUMN_LABELS, **(getattr(self, "column_labels", None) or {})}
+        self.column_labels = merged
+        super().__init__()
+
     async def insert_model(self, request: Request, data: dict) -> Any:
         try:
             return await super().insert_model(request, data)
@@ -397,6 +403,14 @@ class UserAdmin(BaseAdminView, model=User):
     category = "Hệ thống & Phân quyền"
     column_list = [User.id, User.username, User.display_name, User.role, User.preferred_lang, User.is_active, User.last_login_at]
     column_searchable_list = [User.username, User.display_name]
+    column_labels = {
+        "username": "Tên đăng nhập",
+        "display_name": "Tên hiển thị",
+        "role": "Vai trò hệ thống",
+        "preferred_lang": "Ngôn ngữ ưa thích",
+        "is_active": "Kích hoạt",
+        "last_login_at": "Đăng nhập lần cuối",
+    }
     form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["password_hash", "last_login_at"]
     form_overrides = {
         "preferred_lang": SelectField,
@@ -449,6 +463,11 @@ class RoleAdmin(BaseAdminView, model=Role):
     icon = "fa-solid fa-user-shield"
     category = "Hệ thống & Phân quyền"
     column_list = [Role.id, Role.code, Role.name_en, Role.name_ja]
+    column_labels = {
+        "code": "Mã vai trò",
+        "name_en": "Tên vai trò (Tiếng Anh/Việt)",
+        "name_ja": "Tên vai trò (Tiếng Nhật)",
+    }
     form_columns = [Role.code, Role.name_en, Role.name_ja]
 
 
@@ -459,6 +478,11 @@ class RolePermissionAdmin(BaseAdminView, model=RolePermission):
     category = "Hệ thống & Phân quyền"
     list_template = "sqladmin/role_permission_matrix.html"
     column_list = [RolePermission.id, RolePermission.role, RolePermission.module, RolePermission.action]
+    column_labels = {
+        "role": "Vai trò",
+        "module": "Phân hệ nghiệp vụ",
+        "action": "Thao tác",
+    }
 
     def get_matrix_payload(self) -> dict[str, Any]:
         """Trả về cấu trúc dữ liệu ma trận quyền vai trò trực quan."""
@@ -474,6 +498,12 @@ class UserPermissionOverrideAdmin(BaseAdminView, model=UserPermissionOverride):
     icon = "fa-solid fa-user-pen"
     category = "Hệ thống & Phân quyền"
     column_list = [UserPermissionOverride.id, UserPermissionOverride.user_id, UserPermissionOverride.module, UserPermissionOverride.action, UserPermissionOverride.granted]
+    column_labels = {
+        "user_id": "Người dùng",
+        "module": "Phân hệ nghiệp vụ",
+        "action": "Thao tác",
+        "granted": "Được cấp quyền",
+    }
 
 
 class DepartmentAdmin(BaseAdminView, model=Department):
@@ -482,6 +512,11 @@ class DepartmentAdmin(BaseAdminView, model=Department):
     icon = "fa-solid fa-sitemap"
     category = "Danh mục Dùng chung"
     column_list = [Department.id, Department.code, Department.name_en, Department.name_ja]
+    column_labels = {
+        "code": "Mã phòng ban",
+        "name_en": "Tên phòng ban (Tiếng Anh/Việt)",
+        "name_ja": "Tên phòng ban (Tiếng Nhật)",
+    }
 
 
 class AssetCategoryAdmin(BaseAdminView, model=AssetCategory):
@@ -490,6 +525,10 @@ class AssetCategoryAdmin(BaseAdminView, model=AssetCategory):
     icon = "fa-solid fa-tags"
     category = "Danh mục Dùng chung"
     column_list = [AssetCategory.id, AssetCategory.name_en, AssetCategory.name_ja]
+    column_labels = {
+        "name_en": "Tên loại tài sản (Tiếng Anh/Việt)",
+        "name_ja": "Tên loại tài sản (Tiếng Nhật)",
+    }
 
 
 class AssetTagAdmin(BaseAdminView, model=AssetTag):
@@ -498,6 +537,12 @@ class AssetTagAdmin(BaseAdminView, model=AssetTag):
     icon = "fa-solid fa-tag"
     category = "Danh mục Dùng chung"
     column_list = [AssetTag.id, AssetTag.code, AssetTag.name_en, AssetTag.color]
+    column_labels = {
+        "code": "Mã nhãn",
+        "name_en": "Tên nhãn (Tiếng Anh/Việt)",
+        "name_ja": "Tên nhãn (Tiếng Nhật)",
+        "color": "Màu nhãn",
+    }
 
 
 class LocationAdmin(BaseAdminView, model=Location):
@@ -506,6 +551,14 @@ class LocationAdmin(BaseAdminView, model=Location):
     icon = "fa-solid fa-location-dot"
     category = "Danh mục Dùng chung"
     column_list = [Location.id, Location.building, Location.floor, Location.room_en, Location.room_ja, Location.is_access_controlled]
+    column_labels = {
+        "building": "Tòa nhà",
+        "floor": "Tầng",
+        "room_en": "Phòng (EN)",
+        "room_ja": "Phòng (JA)",
+        "is_access_controlled": "Kiểm soát thẻ",
+        "description": "Mô tả vị trí",
+    }
 
 
 class PersonAdmin(BaseAdminView, model=Person):
@@ -515,6 +568,15 @@ class PersonAdmin(BaseAdminView, model=Person):
     category = "Nhân sự"
     column_list = [Person.id, Person.staff_code, Person.full_name, Person.department, Person.status, Person.email, Person.start_working_date]
     column_searchable_list = [Person.staff_code, Person.full_name, Person.email]
+    column_labels = {
+        "staff_code": "Mã nhân viên",
+        "full_name": "Họ và tên nhân viên",
+        "department": "Phòng ban",
+        "status": "Tình trạng",
+        "email": "Email",
+        "start_working_date": "Ngày vào làm việc",
+        "user_login_id": "Tài khoản đăng nhập",
+    }
     form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["secret", "assignments"]
 
 
@@ -572,6 +634,13 @@ class AssignmentAdmin(BaseAdminView, model=Assignment):
     category = "Tài sản"
     can_delete = False
     column_list = [Assignment.id, Assignment.asset, Assignment.person, Assignment.borrowed_at, Assignment.returned_at]
+    column_labels = {
+        "asset": "Thiết bị",
+        "person": "Nhân viên nhận máy",
+        "borrowed_at": "Thời điểm cấp phát",
+        "returned_at": "Thời điểm thu hồi",
+        "note": "Ghi chú cấp phát",
+    }
 
     async def after_model_change(
         self, data: dict, model: Any, is_created: bool, request: Request
@@ -605,6 +674,11 @@ class LicenseProductAdmin(BaseAdminView, model=LicenseProduct):
     icon = "fa-solid fa-compact-disc"
     category = "License"
     column_list = [LicenseProduct.id, LicenseProduct.name, LicenseProduct.vendor]
+    column_labels = {
+        "name": "Tên phần mềm",
+        "vendor": "Hãng phát triển / Nhà cung cấp",
+        "license_type": "Loại bản quyền",
+    }
 
 
 class LicenseAdmin(BaseAdminView, model=License):
@@ -613,6 +687,14 @@ class LicenseAdmin(BaseAdminView, model=License):
     icon = "fa-solid fa-certificate"
     category = "License"
     column_list = [License.id, License.product, License.seats, License.start_date, License.expiry_date]
+    column_labels = {
+        "product": "Sản phẩm phần mềm",
+        "seats": "Số lượng bản quyền (Seats)",
+        "start_date": "Ngày kích hoạt",
+        "expiry_date": "Ngày hết hạn",
+        "contract": "Hợp đồng mua sắm",
+        "note": "Ghi chú",
+    }
     form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["license_key_enc", "key_version", "assignments"]
 
 
@@ -631,6 +713,15 @@ class LicenseAssignmentAdmin(BaseAdminView, model=LicenseAssignment):
         LicenseAssignment.expiry_date,
         LicenseAssignment.removed_at,
     ]
+    column_labels = {
+        "license": "Bản quyền phần mềm",
+        "asset": "Thiết bị được gán",
+        "person": "Nhân viên được gán",
+        "assigned_at": "Thời điểm gán",
+        "expiry_date": "Ngày hết hạn",
+        "removed_at": "Thời điểm thu hồi",
+        "note": "Ghi chú",
+    }
     form_columns = [
         "license",
         "asset",
@@ -733,6 +824,16 @@ class CardLoanAdmin(BaseAdminView, model=CardLoan):
         CardLoan.borrowed_at,
         CardLoan.returned_at,
     ]
+    column_labels = {
+        "card": "Thẻ mượn",
+        "person": "Nhân viên mượn",
+        "external_name": "Người mượn ngoài",
+        "external_company": "Đơn vị mượn ngoài",
+        "purpose": "Mục đích mượn",
+        "borrowed_at": "Thời điểm mượn",
+        "expected_return_at": "Dự kiến ngày trả",
+        "returned_at": "Thời điểm trả",
+    }
 
     async def on_model_change(
         self, data: dict, model: Any, is_created: bool, request: Request
@@ -784,6 +885,12 @@ class ContractAdmin(BaseAdminView, model=Contract):
     icon = "fa-solid fa-file-contract"
     category = "Hợp đồng"
     column_list = [Contract.id, Contract.code, Contract.vendor_name, Contract.signed_date, Contract.delivery_status]
+    column_labels = {
+        "code": "Số hợp đồng",
+        "vendor_name": "Nhà cung cấp",
+        "signed_date": "Ngày ký hợp đồng",
+        "delivery_status": "Tiến độ giao hàng",
+    }
     form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["lines"]
 
 
@@ -793,6 +900,12 @@ class ContractLineAdmin(BaseAdminView, model=ContractLine):
     icon = "fa-solid fa-list-check"
     category = "Hợp đồng"
     column_list = [ContractLine.id, ContractLine.contract, ContractLine.item_type, ContractLine.qty_ordered]
+    column_labels = {
+        "contract": "Hợp đồng",
+        "item_type": "Hạng mục hàng hóa",
+        "spec": "Thông số kỹ thuật",
+        "qty_ordered": "Số lượng đặt",
+    }
     form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["assets"]
 
 
@@ -802,6 +915,14 @@ class PhoneAdmin(BaseAdminView, model=Phone):
     icon = "fa-solid fa-phone"
     category = "Danh bạ thoại"
     column_list = [Phone.id, Phone.extension_number, Phone.device_name, Phone.device_type, Phone.location, Phone.is_active]
+    column_labels = {
+        "device_name": "Tên máy điện thoại",
+        "device_type": "Loại điện thoại",
+        "extension_number": "Số máy nhánh (Ext)",
+        "location": "Vị trí đặt",
+        "is_active": "Trạng thái hoạt động",
+        "remarks": "Ghi chú",
+    }
 
 
 class AuditLogAdmin(BaseAdminView, model=AuditLog):
@@ -991,13 +1112,22 @@ def setup_admin(app, engine):
         templates_dir=str(TEMPLATES_DIR),
     )
 
-    from app.core.i18n import get_current_lang, translate
+    from app.core.i18n import (
+        format_datetime_clean,
+        get_current_lang,
+        get_property_label,
+        translate,
+    )
 
     admin.templates.env.globals["t"] = translate
     admin.templates.env.filters["t"] = translate
     admin.templates.env.globals["get_current_lang"] = get_current_lang
     admin.templates.env.globals["humanize_error"] = humanize_error_str
     admin.templates.env.filters["humanize_error"] = humanize_error_str
+    admin.templates.env.globals["get_property_label"] = get_property_label
+    admin.templates.env.filters["get_property_label"] = get_property_label
+    admin.templates.env.globals["format_datetime_clean"] = format_datetime_clean
+    admin.templates.env.filters["format_datetime_clean"] = format_datetime_clean
 
     # 1. Hệ thống & phân quyền
     admin.add_view(UserAdmin)

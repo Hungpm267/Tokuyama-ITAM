@@ -25,10 +25,22 @@
             </tr>
           </thead>
           <tbody>
-            {% for name in model_view._details_prop_names %}
-            {% set label = model_view._column_labels.get(name, name) %}
+            {% set system_audit_props = ['created_at', 'created_by', 'updated_at', 'updated_by', 'is_deleted', 'deleted_at', 'delete_reason', 'deleted_by'] %}
+            {% set business_props = [] %}
+            {% set audit_props = [] %}
+            {% for p in model_view._details_prop_names %}
+              {% if p in system_audit_props %}
+                {% set _ = audit_props.append(p) %}
+              {% else %}
+                {% set _ = business_props.append(p) %}
+              {% endif %}
+            {% endfor %}
+
+            {# --- Phần 1: Các thuộc tính nghiệp vụ chính --- #}
+            {% for name in business_props %}
+            {% set label = get_property_label(model_view, name, current_lang) %}
             <tr>
-              <td class="fw-semibold text-secondary align-top text-nowrap" style="width: 220px;">{{ t(label, current_lang) }}</td>
+              <td class="fw-semibold text-secondary align-top text-nowrap" style="width: 240px;">{{ label }}</td>
               {% set value, formatted_value = model_view.get_detail_value(model, name) %}
               {% if name in model_view._relation_names %}
                 {% if is_list( value ) %}
@@ -42,7 +54,7 @@
                   {% if value is not none %}
                   <a href="{{ model_view._url_for_details_with_prop(request, model, name) }}" class="text-decoration-none">{{ formatted_value }}</a>
                   {% else %}
-                  <span class="text-muted">-</span>
+                  <span class="text-muted fst-italic">-</span>
                   {% endif %}
                 </td>
                 {% endif %}
@@ -72,7 +84,7 @@
                   {% elif formatted_value and formatted_value != '-' %}
                   <span class="fw-semibold text-dark">{{ formatted_value }}</span>
                   {% else %}
-                  <span class="text-muted">-</span>
+                  <span class="text-muted fst-italic">-</span>
                   {% endif %}
                 </td>
               {% elif name == 'before_after' or (value is mapping and value) %}
@@ -102,7 +114,7 @@
                         <div class="d-flex flex-wrap gap-2">
                           {% for k, v in extra_items %}
                           <span class="badge bg-white text-dark border px-2 py-1" style="font-size: 12px;">
-                            <span class="text-muted">{{ k }}:</span> <strong class="ms-1">{{ v }}</strong>
+                            <span class="text-muted">{{ get_property_label(model_view, k, current_lang) }}:</span> <strong class="ms-1">{{ v }}</strong>
                           </span>
                           {% endfor %}
                         </div>
@@ -133,15 +145,15 @@
                         <table class="table table-sm table-bordered m-0" style="font-size: 12.5px;">
                           <thead class="table-light">
                             <tr>
-                              <th style="width: 25%;">{{ 'Trường dữ liệu' if current_lang != 'en' else 'Field' }}</th>
-                              <th style="width: 37.5%;" class="text-danger"><i class="fa-solid fa-minus me-1"></i>{{ 'Trước thay đổi' if current_lang != 'en' else 'Before' }}</th>
-                              <th style="width: 37.5%;" class="text-success"><i class="fa-solid fa-plus me-1"></i>{{ 'Sau thay đổi' if current_lang != 'en' else 'After' }}</th>
+                              <th style="width: 28%;">{{ 'Thuộc tính' if current_lang != 'en' else 'Property' }}</th>
+                              <th style="width: 36%;" class="text-danger"><i class="fa-solid fa-minus me-1"></i>{{ 'Trước thay đổi' if current_lang != 'en' else 'Before' }}</th>
+                              <th style="width: 36%;" class="text-success"><i class="fa-solid fa-plus me-1"></i>{{ 'Sau thay đổi' if current_lang != 'en' else 'After' }}</th>
                             </tr>
                           </thead>
                           <tbody>
                             {% for k in diff_keys %}
                             <tr>
-                              <td class="fw-semibold text-secondary font-monospace">{{ k }}</td>
+                              <td class="fw-semibold text-secondary">{{ get_property_label(model_view, k, current_lang) }}</td>
                               <td class="bg-danger-subtle bg-opacity-25">
                                 {% if before_dict.get(k) is none %}
                                   <span class="text-muted fst-italic">None</span>
@@ -176,14 +188,14 @@
                           <table class="table table-sm table-bordered m-0" style="font-size: 12px;">
                             <thead class="table-light">
                               <tr>
-                                <th style="width: 30%;">{{ 'Trường' if current_lang != 'en' else 'Field' }}</th>
+                                <th style="width: 30%;">{{ 'Thuộc tính' if current_lang != 'en' else 'Property' }}</th>
                                 <th>{{ 'Giá trị' if current_lang != 'en' else 'Value' }}</th>
                               </tr>
                             </thead>
                             <tbody>
                               {% for k in same_keys %}
                               <tr>
-                                <td class="text-secondary font-monospace">{{ k }}</td>
+                                <td class="text-secondary">{{ get_property_label(model_view, k, current_lang) }}</td>
                                 <td>{{ before_dict.get(k) }}</td>
                               </tr>
                               {% endfor %}
@@ -198,14 +210,14 @@
                         <table class="table table-sm table-bordered m-0" style="font-size: 12.5px;">
                           <thead class="table-light">
                             <tr>
-                              <th style="width: 30%;">{{ 'Trường dữ liệu' if current_lang != 'en' else 'Field' }}</th>
+                              <th style="width: 30%;">{{ 'Thuộc tính' if current_lang != 'en' else 'Property' }}</th>
                               <th>{{ 'Dữ liệu trước khi xóa' if current_lang != 'en' else 'Value before deletion' }}</th>
                             </tr>
                           </thead>
                           <tbody>
                             {% for k, v in before_dict.items() %}
                             <tr>
-                              <td class="fw-semibold text-secondary font-monospace">{{ k }}</td>
+                              <td class="fw-semibold text-secondary">{{ get_property_label(model_view, k, current_lang) }}</td>
                               <td>
                                 {% if v is none %}
                                   <span class="text-muted fst-italic">None</span>
@@ -232,14 +244,14 @@
                         <table class="table table-sm table-bordered m-0" style="font-size: 12.5px;">
                           <thead class="table-light">
                             <tr>
-                              <th style="width: 30%;">{{ 'Trường dữ liệu' if current_lang != 'en' else 'Field' }}</th>
+                              <th style="width: 30%;">{{ 'Thuộc tính' if current_lang != 'en' else 'Property' }}</th>
                               <th>{{ 'Giá trị thiết lập' if current_lang != 'en' else 'Configured value' }}</th>
                             </tr>
                           </thead>
                           <tbody>
                             {% for k, v in after_dict.items() %}
                             <tr>
-                              <td class="fw-semibold text-secondary font-monospace">{{ k }}</td>
+                              <td class="fw-semibold text-secondary">{{ get_property_label(model_view, k, current_lang) }}</td>
                               <td>
                                 {% if v is none %}
                                   <span class="text-muted fst-italic">None</span>
@@ -264,14 +276,14 @@
                         <table class="table table-sm table-bordered m-0" style="font-size: 12.5px;">
                           <thead class="table-light">
                             <tr>
-                              <th style="width: 30%;">{{ 'Khóa' if current_lang != 'en' else 'Key' }}</th>
+                              <th style="width: 30%;">{{ 'Thuộc tính' if current_lang != 'en' else 'Property' }}</th>
                               <th>{{ 'Giá trị' if current_lang != 'en' else 'Value' }}</th>
                             </tr>
                           </thead>
                           <tbody>
                             {% for k, v in value.items() %}
                             <tr>
-                              <td class="fw-semibold text-secondary font-monospace">{{ k }}</td>
+                              <td class="fw-semibold text-secondary">{{ get_property_label(model_view, k, current_lang) }}</td>
                               <td>{{ v }}</td>
                             </tr>
                             {% endfor %}
@@ -290,11 +302,78 @@
                     <span class="text-muted fst-italic">{{ 'Không có dữ liệu chi tiết' if current_lang != 'en' else 'No detail data' }}</span>
                   {% endif %}
                 </td>
+              {% elif name in ['last_login_at', 'borrowed_at', 'returned_at', 'expected_return_at', 'assigned_at', 'removed_at'] %}
+                <td>
+                  {% if value %}
+                  <span class="font-monospace text-dark">{{ format_datetime_clean(value) }}</span>
+                  {% else %}
+                  <span class="text-muted fst-italic">-</span>
+                  {% endif %}
+                </td>
+              {% elif value is sameas true %}
+                <td>
+                  <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fa-solid fa-check me-1"></i>{{ 'Đúng / Có' if current_lang != 'en' else 'Yes' }}</span>
+                </td>
+              {% elif value is sameas false %}
+                <td>
+                  <span class="badge bg-secondary-subtle text-secondary border px-2 py-1">{{ 'Không' if current_lang != 'en' else 'No' }}</span>
+                </td>
+              {% elif value is none or formatted_value == '' or formatted_value == '-' %}
+                <td><span class="text-muted fst-italic">-</span></td>
+              {% else %}
+                <td>{{ formatted_value }}</td>
+              {% endif %}
+            </tr>
+            {% endfor %}
+
+            {# --- Phần 2: Thông tin hệ thống & Kiểm toán --- #}
+            {% if audit_props %}
+            <tr style="background-color: #f8fafc; border-top: 2px solid #e2e8f0; border-bottom: 1px solid #e2e8f0;">
+              <td colspan="2" class="py-2 px-3 fw-bold text-uppercase text-secondary" style="font-size: 11.5px; letter-spacing: 0.05em;">
+                <i class="fa-solid fa-clock-rotate-left me-1 text-primary"></i> {{ 'Thông tin hệ thống & Kiểm toán' if current_lang != 'en' else 'System & Audit Metadata' }}
+              </td>
+            </tr>
+            {% for name in audit_props %}
+            {% set label = get_property_label(model_view, name, current_lang) %}
+            {% set value, formatted_value = model_view.get_detail_value(model, name) %}
+            <tr>
+              <td class="fw-semibold text-secondary align-top text-nowrap" style="width: 240px;">{{ label }}</td>
+              {% if name == 'is_deleted' %}
+              <td>
+                {% if value %}
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">
+                  <i class="fa-solid fa-trash-can me-1"></i>{{ 'Đã xóa mềm' if current_lang != 'en' else 'Soft Deleted' }}
+                </span>
+                {% else %}
+                <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                  <i class="fa-solid fa-circle-check me-1"></i>{{ 'Đang hoạt động (Chưa xóa)' if current_lang != 'en' else 'Active (Not Deleted)' }}
+                </span>
+                {% endif %}
+              </td>
+              {% elif name in ['created_at', 'updated_at', 'deleted_at'] %}
+              <td>
+                {% if value %}
+                <span class="font-monospace text-dark">{{ format_datetime_clean(value) }}</span>
+                {% else %}
+                <span class="text-muted fst-italic">-</span>
+                {% endif %}
+              </td>
+              {% elif name == 'delete_reason' %}
+              <td>
+                {% if value %}
+                <span class="badge bg-danger text-white px-2 py-1"><i class="fa-solid fa-triangle-exclamation me-1"></i>{{ value }}</span>
+                {% else %}
+                <span class="text-muted fst-italic">-</span>
+                {% endif %}
+              </td>
+              {% elif value is none or formatted_value == '' or formatted_value == '-' %}
+              <td><span class="text-muted fst-italic">-</span></td>
               {% else %}
               <td>{{ formatted_value }}</td>
               {% endif %}
             </tr>
             {% endfor %}
+            {% endif %}
           </tbody>
         </table>
       </div>

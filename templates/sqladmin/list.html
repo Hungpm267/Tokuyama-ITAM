@@ -120,20 +120,18 @@
               {{ 'ACTIONS' if current_lang == 'en' else 'THAO TÁC' }}
             </th>
             {% for name in model_view._list_prop_names %}
-            {% set label = model_view._column_labels.get(name, name) %}
+            {% set label = get_property_label(model_view, name, current_lang) %}
             <th style="font-size: 12px; font-weight: 700; color: #475569; letter-spacing: 0.04em;">
               {% if name in model_view._sort_fields %}
               {% if request.query_params.get("sortBy") == name and request.query_params.get("sort") == "asc" %}
-              <a href="{{ request.url.include_query_params(sort='desc') }}" class="text-decoration-none text-dark"><i class="fa-solid fa-arrow-up"></i> {{
-                t(label, current_lang) }}</a>
+              <a href="{{ request.url.include_query_params(sort='desc') }}" class="text-decoration-none text-dark"><i class="fa-solid fa-arrow-up"></i> {{ label }}</a>
               {% elif request.query_params.get("sortBy") == name and request.query_params.get("sort") == "desc" %}
-              <a href="{{ request.url.include_query_params(sort='asc') }}" class="text-decoration-none text-dark"><i class="fa-solid fa-arrow-down"></i> {{ t(label, current_lang)
-                }}</a>
+              <a href="{{ request.url.include_query_params(sort='asc') }}" class="text-decoration-none text-dark"><i class="fa-solid fa-arrow-down"></i> {{ label }}</a>
               {% else %}
-              <a href="{{ request.url.include_query_params(sortBy=name, sort='asc') }}" class="text-decoration-none text-secondary">{{ t(label, current_lang) }}</a>
+              <a href="{{ request.url.include_query_params(sortBy=name, sort='asc') }}" class="text-decoration-none text-secondary">{{ label }}</a>
               {% endif %}
               {% else %}
-              {{ t(label, current_lang) }}
+              {{ label }}
               {% endif %}
             </th>
             {% endfor %}

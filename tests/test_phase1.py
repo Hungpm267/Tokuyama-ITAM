@@ -755,6 +755,81 @@ def test_role_permission_matrix_workflow(db: Session, rbac_roles_and_users):
         app.dependency_overrides.pop(get_db, None)
 
 
+def test_details_view_human_friendly_labels(db: Session, rbac_roles_and_users):
+    """Kiểm tra màn hình Chi tiết (Details View) và Danh sách (List View):
+    - Không hiển thị tên thuộc tính dạng database column name (như code, name_en, is_deleted, created_at...)
+    - Hiển thị nhãn tiếng Việt rõ ràng, thân thiện với người dùng
+    - Hiển thị song ngữ chính xác khi chuyển đổi ngôn ngữ (lang=en)
+    - Phân tách khu vực nghiệp vụ và 'Thông tin hệ thống & Kiểm toán'
+    - Trạng thái xóa hiển thị badge thân thiện ('Đang hoạt động') thay vì biểu tượng kỹ thuật
+    """
+    from app.models import Department, AccessCard
+
+    admin = rbac_roles_and_users["admin"]
+    admin.preferred_lang = "vi"
+    db.commit()
+
+    client = TestClient(app)
+    admin_token = create_session_token({"user_id": admin.id, "role": "ADMIN", "username": admin.username})
+    client.cookies.set("itam_session", admin_token)
+    client.cookies.set("itam_lang", "vi")
+
+    # 1. Tạo dữ liệu mẫu phòng ban
+    dept = Department(code="TVC-TEST-DEPT", name_en="Phòng CNTT Thử nghiệm", name_ja="IT部門")
+    db.add(dept)
+    db.commit()
+    db.refresh(dept)
+
+    # 2. Kiểm tra xem chi tiết Phòng ban tiếng Việt
+    res_vi = client.get(f"/admin/department/details/{dept.id}?lang=vi")
+    assert res_vi.status_code == 200
+    text_vi = res_vi.text
+
+    # Phải có các nhãn tiếng Việt thân thiện
+    assert "Mã phòng ban" in text_vi
+    assert "Tên phòng ban (Tiếng Anh/Việt)" in text_vi
+    assert "Tên phòng ban (Tiếng Nhật)" in text_vi
+    assert "Thời gian tạo" in text_vi
+    assert "Thời gian cập nhật" in text_vi
+    assert "Trạng thái xóa" in text_vi
+    assert "Thông tin hệ thống &amp; Kiểm toán" in text_vi or "Thông tin hệ thống & Kiểm toán" in text_vi
+    assert "Đang hoạt động (Chưa xóa)" in text_vi
+
+    # Không được có raw table cell với text là tên cột trần
+    assert '>code<' not in text_vi
+    assert '>name_en<' not in text_vi
+    assert '>name_ja<' not in text_vi
+    assert '>is_deleted<' not in text_vi
+
+    # 3. Kiểm tra xem chi tiết Phòng ban tiếng Anh
+    res_en = client.get(f"/admin/department/details/{dept.id}?lang=en")
+    assert res_en.status_code == 200
+    text_en = res_en.text
+
+    assert "Department Code" in text_en
+    assert "Department Name (EN/VI)" in text_en
+    assert "Department Name (JA)" in text_en
+    assert "Created At" in text_en
+    assert "Updated At" in text_en
+    assert "System &amp; Audit Metadata" in text_en or "System & Audit Metadata" in text_en
+    assert "Active (Not Deleted)" in text_en
+
+    # 4. Kiểm tra xem chi tiết Thẻ từ
+    card = AccessCard(card_no="CARD-TEST-DETAIL", card_type="STAFF", status="IN_STOCK")
+    db.add(card)
+    db.commit()
+    db.refresh(card)
+
+    res_card = client.get(f"/admin/access-card/details/{card.id}?lang=vi")
+    assert res_card.status_code == 200
+    assert "Mã số thẻ từ" in res_card.text
+    assert "Phân loại thẻ" in res_card.text
+    assert "Trạng thái thẻ" in res_card.text
+    assert '>card_no<' not in res_card.text
+    assert '>card_type<' not in res_card.text
+
+
+
 
 
 
