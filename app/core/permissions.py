@@ -102,17 +102,18 @@ def require(
         hoặc
         def list_assets(current_user: Annotated[User, Depends(require(Module.ASSETS, PermissionAction.VIEW))]):
     """
-    # Import trễ tránh circular dependency với get_current_user / get_db
+    from fastapi import Depends
     from app.core.security import verify_session_token
+    from app.db import get_db
 
-    def dependency(request: Request) -> User:
+    def dependency(request: Request, db: Session = Depends(get_db)) -> User:
         # 1. Lấy thông tin user từ request state hoặc session token cookie
         user: User | None = getattr(request.state, "user", None)
-        db: Session | None = getattr(request.state, "db", None)
 
-        # Nếu chưa có trong request state, kiểm tra cookie phiên
         if user is None:
-            token = request.cookies.get("itam_session") or request.session.get("token")
+            token = request.cookies.get("itam_session")
+            if not token and hasattr(request, "session"):
+                token = request.session.get("token")
             if not token:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
@@ -125,30 +126,13 @@ def require(
                     detail="Phiên làm việc không hợp lệ.",
                 )
 
-            # Mở session nếu chưa có
-            should_close = False
-            if db is None:
-                from app.config import settings
-                from sqlalchemy import create_engine
-                from sqlalchemy.orm import sessionmaker
-
-                engine = getattr(request.app.state, "engine", None)
-                if engine is None:
-                    engine = create_engine(settings.database_url)
-                db = sessionmaker(bind=engine)()
-                should_close = True
-
-            try:
-                user = db.scalar(
-                    select(User).where(
-                        User.id == payload["user_id"],
-                        User.is_active.is_(True),
-                        User.is_deleted.is_(False),
-                    )
+            user = db.scalar(
+                select(User).where(
+                    User.id == payload["user_id"],
+                    User.is_active.is_(True),
+                    User.is_deleted.is_(False),
                 )
-            finally:
-                if should_close:
-                    db.close()
+            )
 
         if user is None or not user.is_active or user.is_deleted:
             raise HTTPException(
@@ -157,26 +141,7 @@ def require(
             )
 
         # 2. Kiểm tra quyền
-        # Cần database session để tra cứu role_permissions & overrides
-        db_session: Session | None = getattr(request.state, "db", None)
-        temp_db = False
-        if db_session is None:
-            from app.config import settings
-            from sqlalchemy import create_engine
-            from sqlalchemy.orm import sessionmaker
-
-            engine = getattr(request.app.state, "engine", None)
-            if engine is None:
-                engine = create_engine(settings.database_url)
-            db_session = sessionmaker(bind=engine)()
-            temp_db = True
-
-        try:
-            allowed = has_permission(db_session, user, module, action)
-        finally:
-            if temp_db:
-                db_session.close()
-
+        allowed = has_permission(db, user, module, action)
         if not allowed:
             # 403 chung, không tiết lộ chi tiết
             raise HTTPException(

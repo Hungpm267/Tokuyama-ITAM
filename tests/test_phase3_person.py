@@ -7,18 +7,12 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.enums import AssetStatus, AuditAction, CardStatus, PersonStatus
+from app.enums import AuditAction, PersonStatus
 from app.models import (
-    AccessCard,
-    Asset,
     Assignment,
     AuditLog,
     CardLoan,
-    Department,
-    License,
     LicenseAssignment,
-    LicenseProduct,
-    Person,
 )
 from app.services.person_service import (
     create_person,

@@ -17,11 +17,8 @@ from sqlalchemy.orm import Session, selectinload
 from app.core.audit import record_audit
 from app.enums import AuditAction, PersonStatus
 from app.models import (
-    AccessCard,
-    Asset,
     Assignment,
     CardLoan,
-    Department,
     License,
     LicenseAssignment,
     Person,

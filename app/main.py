@@ -16,6 +16,7 @@ from app.db import engine
 from app.routers.assets import router as assets_router
 from app.routers.auth import router as auth_router
 from app.routers.batch_receive import router as batch_receive_router
+from app.routers.export import router as export_router
 from app.routers.global_search import router as global_search_router
 from app.routers.portal import router as portal_router
 from app.routers.role_matrix import router as role_matrix_router
@@ -24,11 +25,12 @@ from app.routers.trash import router as trash_router
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+is_prod = settings.env.lower() in ("prod", "production")
 app = FastAPI(
     title="Tokuyama Vietnam ITAM",
     version="2.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url=None if is_prod else "/docs",
+    redoc_url=None if is_prod else "/redoc",
 )
 
 # 1. Session Middleware (hỗ trợ SQLAdmin và phiên làm việc web)
@@ -52,6 +54,7 @@ app.include_router(batch_receive_router)
 app.include_router(global_search_router)
 app.include_router(trash_router)
 app.include_router(assets_router)
+app.include_router(export_router)
 
 
 @app.get("/admin/set-lang")
