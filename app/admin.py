@@ -708,14 +708,144 @@ class AssignmentAdmin(BaseAdminView, model=Assignment):
     icon = "fa-solid fa-handshake"
     category = "Tài sản"
     can_delete = False
-    column_list = [Assignment.id, Assignment.asset, Assignment.person, Assignment.borrowed_at, Assignment.returned_at]
+    column_list = [
+        Assignment.id,
+        Assignment.asset,
+        Assignment.person,
+        "status_badge",
+        Assignment.borrowed_at,
+        Assignment.returned_at,
+    ]
+    column_details_list = [
+        Assignment.id,
+        Assignment.asset,
+        Assignment.person,
+        "status_badge",
+        Assignment.borrowed_at,
+        Assignment.returned_at,
+        Assignment.note,
+    ]
     column_labels = {
         "asset": "Thiết bị",
         "person": "Nhân viên nhận máy",
+        "status_badge": "Trạng thái",
         "borrowed_at": "Thời điểm cấp phát",
         "returned_at": "Thời điểm thu hồi",
         "note": "Ghi chú cấp phát",
     }
+    column_formatters = {
+        "status_badge": lambda m, a: (
+            Markup('<span class="badge bg-secondary text-white"><i class="fa-solid fa-ban me-1"></i>Đã thu hồi</span>')
+            if m.returned_at
+            else Markup('<span class="badge bg-success text-white"><i class="fa-solid fa-circle-check me-1"></i>Đang sử dụng</span>')
+        ),
+    }
+    column_formatters_detail = {
+        "status_badge": lambda m, a: (
+            Markup('<span class="badge bg-secondary text-white"><i class="fa-solid fa-ban me-1"></i>Đã thu hồi</span>')
+            if m.returned_at
+            else Markup('<span class="badge bg-success text-white"><i class="fa-solid fa-circle-check me-1"></i>Đang sử dụng</span>')
+        ),
+    }
+
+    def list_query(self, request: Request) -> Select:
+        stmt = super().list_query(request)
+        return stmt.options(
+            selectinload(Assignment.asset),
+            selectinload(Assignment.person),
+        )
+
+    async def get_object_for_details(self, value: Any) -> Any:
+        stmt = self._stmt_by_identifier(value)
+        stmt = stmt.options(
+            selectinload(Assignment.asset),
+            selectinload(Assignment.person),
+        )
+        for relation in self._details_relations:
+            stmt = stmt.options(selectinload(relation))
+        return await self._get_object_by_pk(stmt)
+
+    async def on_model_change(
+        self, data: dict, model: Any, is_created: bool, request: Request
+    ) -> None:
+        await super().on_model_change(data, model, is_created, request)
+        lang = request.session.get("lang", "vi")
+        is_en = (lang == "en")
+        is_ja = (lang == "ja")
+
+        asset_val = data.get("asset")
+        aid = getattr(asset_val, "id", None)
+        if aid is None and str(asset_val).isdigit():
+            aid = int(asset_val)
+        if aid is None and hasattr(model, "asset_id"):
+            aid = model.asset_id
+
+        b_at = data.get("borrowed_at") or getattr(model, "borrowed_at", None)
+        r_at = data.get("returned_at") if "returned_at" in data else getattr(model, "returned_at", None)
+
+        if b_at and r_at and r_at < b_at:
+            if is_ja:
+                raise ValueError("返却日を貸出日より前にすることはできません。")
+            elif is_en:
+                raise ValueError("Return date cannot be before borrow date.")
+            else:
+                raise ValueError("Ngày thu hồi thiết bị không được trước ngày cấp phát.")
+
+        if aid and b_at:
+            current_id = getattr(model, "id", None) if not is_created else None
+            with SessionLocal() as db:
+                query = (
+                    select(Assignment)
+                    .options(selectinload(Assignment.person))
+                    .where(
+                        Assignment.asset_id == aid,
+                        Assignment.is_deleted.is_(False),
+                    )
+                )
+                if current_id:
+                    query = query.where(Assignment.id != current_id)
+                existing = db.scalars(query).all()
+
+                for other in existing:
+                    o_start = other.borrowed_at
+                    o_end = other.returned_at
+                    holder = other.person.full_name if other.person else "nhân viên khác"
+
+                    if o_end is None:
+                        if r_at is None:
+                            if is_ja:
+                                raise ValueError(f"この機器は現在 '{holder}' が使用中です（未返却）。新しい割当を登録する前に前回の返却日を入力してください。")
+                            elif is_en:
+                                raise ValueError(f"This asset is currently in use by '{holder}'. Please record return date first.")
+                            else:
+                                raise ValueError(f"Thiết bị này hiện đang được bàn giao cho '{holder}' (chưa thu hồi). Vui lòng ghi nhận Ngày thu hồi trước khi tạo lượt bàn giao mới.")
+                        if b_at >= o_start or r_at > o_start:
+                            if is_ja:
+                                raise ValueError(f"割当期間の重複: この機器は {o_start} から '{holder}' が使用中です。")
+                            elif is_en:
+                                raise ValueError(f"Overlapping asset assignment period: This asset is in use by '{holder}' since {o_start}.")
+                            else:
+                                raise ValueError(f"Trùng lặp thời gian cấp phát: Thiết bị này đang được bàn giao cho '{holder}' từ ngày {o_start.strftime('%d/%m/%Y')} (chưa thu hồi). Thời gian cấp phát mới không thể trùng lấn với người đang sử dụng.")
+                    else:
+                        if b_at < o_end and (r_at is None or r_at > o_start):
+                            if is_ja:
+                                raise ValueError(
+                                    f"割当期間の重複: この機器はすでに {o_start} から {o_end} まで '{holder}' に割り当てられています。"
+                                    f"入力された期間（{b_at} - {r_at or '未返却'}）は前回の割当と重複しています。"
+                                )
+                            elif is_en:
+                                raise ValueError(
+                                    f"Overlapping asset assignment period: This asset was assigned to '{holder}' from {o_start} to {o_end}. "
+                                    f"The new period ({b_at} - {r_at or 'open'}) overlaps with the previous assignment."
+                                )
+                            else:
+                                raise ValueError(
+                                    f"Trùng lặp thời gian cấp phát: Thiết bị này đã được bàn giao cho '{holder}' "
+                                    f"từ ngày {o_start.strftime('%d/%m/%Y')} đến ngày {o_end.strftime('%d/%m/%Y')}. "
+                                    f"Thời gian cấp phát ({b_at.strftime('%d/%m/%Y')} - {r_at.strftime('%d/%m/%Y') if r_at else 'chưa thu hồi'}) "
+                                    f"bị trùng lấn với lượt bàn giao trước."
+                                )
+
 
     async def after_model_change(
         self, data: dict, model: Any, is_created: bool, request: Request
@@ -1024,36 +1154,154 @@ class CardLoanAdmin(BaseAdminView, model=CardLoan):
         CardLoan.card,
         CardLoan.person,
         CardLoan.external_name,
+        "status_badge",
         CardLoan.borrowed_at,
         CardLoan.returned_at,
+    ]
+    column_details_list = [
+        CardLoan.id,
+        CardLoan.card,
+        CardLoan.person,
+        CardLoan.external_name,
+        CardLoan.external_company,
+        "status_badge",
+        CardLoan.borrowed_at,
+        CardLoan.expected_return_at,
+        CardLoan.returned_at,
+        CardLoan.purpose,
     ]
     column_labels = {
         "card": "Thẻ mượn",
         "person": "Nhân viên mượn",
         "external_name": "Người mượn ngoài",
         "external_company": "Đơn vị mượn ngoài",
+        "status_badge": "Trạng thái",
         "purpose": "Mục đích mượn",
         "borrowed_at": "Thời điểm mượn",
         "expected_return_at": "Dự kiến ngày trả",
         "returned_at": "Thời điểm trả",
     }
+    column_formatters = {
+        "status_badge": lambda m, a: (
+            Markup('<span class="badge bg-secondary text-white"><i class="fa-solid fa-arrow-rotate-left me-1"></i>Đã trả</span>')
+            if m.returned_at
+            else Markup('<span class="badge bg-success text-white"><i class="fa-solid fa-id-badge me-1"></i>Đang mượn</span>')
+        ),
+    }
+    column_formatters_detail = {
+        "status_badge": lambda m, a: (
+            Markup('<span class="badge bg-secondary text-white"><i class="fa-solid fa-arrow-rotate-left me-1"></i>Đã trả</span>')
+            if m.returned_at
+            else Markup('<span class="badge bg-success text-white"><i class="fa-solid fa-id-badge me-1"></i>Đang mượn</span>')
+        ),
+    }
+
+    def list_query(self, request: Request) -> Select:
+        stmt = super().list_query(request)
+        return stmt.options(
+            selectinload(CardLoan.card),
+            selectinload(CardLoan.person),
+        )
+
+    async def get_object_for_details(self, value: Any) -> Any:
+        stmt = self._stmt_by_identifier(value)
+        stmt = stmt.options(
+            selectinload(CardLoan.card),
+            selectinload(CardLoan.person),
+        )
+        for relation in self._details_relations:
+            stmt = stmt.options(selectinload(relation))
+        return await self._get_object_by_pk(stmt)
 
     async def on_model_change(
         self, data: dict, model: Any, is_created: bool, request: Request
     ) -> None:
         await super().on_model_change(data, model, is_created, request)
+        lang = request.session.get("lang", "vi")
+        is_en = (lang == "en")
+        is_ja = (lang == "ja")
+
         card_val = data.get("card")
-        if card_val is not None:
-            cid = getattr(card_val, "id", None)
-            if cid is None and str(card_val).isdigit():
-                cid = int(card_val)
-            if cid and is_created and data.get("returned_at") is None:
-                with SessionLocal() as db:
-                    card = db.get(AccessCard, cid)
-                    if card and card.status in (CardStatus.LOST, CardStatus.DAMAGED):
-                        raise ValueError(
-                            f"Thẻ '{card.card_no}' đang ở trạng thái {card.status.value}, không thể cho mượn."
-                        )
+        cid = getattr(card_val, "id", None)
+        if cid is None and str(card_val).isdigit():
+            cid = int(card_val)
+        if cid is None and hasattr(model, "card_id"):
+            cid = model.card_id
+
+        if cid and is_created and data.get("returned_at") is None:
+            with SessionLocal() as db:
+                card = db.get(AccessCard, cid)
+                if card and card.status in (CardStatus.LOST, CardStatus.DAMAGED):
+                    raise ValueError(
+                        f"Thẻ '{card.card_no}' đang ở trạng thái {card.status.value}, không thể cho mượn."
+                        if not is_en else f"Card '{card.card_no}' is in status {card.status.value}, cannot loan out."
+                    )
+
+        b_at = data.get("borrowed_at") or getattr(model, "borrowed_at", None)
+        r_at = data.get("returned_at") if "returned_at" in data else getattr(model, "returned_at", None)
+
+        if b_at and r_at and r_at < b_at:
+            if is_ja:
+                raise ValueError("返却日を貸出日より前にすることはできません。")
+            elif is_en:
+                raise ValueError("Return date cannot be before borrow date.")
+            else:
+                raise ValueError("Ngày trả thẻ không được trước ngày mượn.")
+
+        if cid and b_at:
+            current_id = getattr(model, "id", None) if not is_created else None
+            with SessionLocal() as db:
+                query = (
+                    select(CardLoan)
+                    .options(selectinload(CardLoan.person))
+                    .where(
+                        CardLoan.card_id == cid,
+                        CardLoan.is_deleted.is_(False),
+                    )
+                )
+                if current_id:
+                    query = query.where(CardLoan.id != current_id)
+                existing = db.scalars(query).all()
+
+                for other in existing:
+                    o_start = other.borrowed_at
+                    o_end = other.returned_at
+                    borrower = other.person.full_name if other.person else (other.external_name or "người khác")
+
+                    if o_end is None:
+                        if r_at is None:
+                            if is_ja:
+                                raise ValueError(f"このカードは現在 '{borrower}' が借用中です（未返却）。新しい貸出を登録する前に前回の返却日を入力してください。")
+                            elif is_en:
+                                raise ValueError(f"This card is currently borrowed by '{borrower}' and has not been returned. Please record return date first.")
+                            else:
+                                raise ValueError(f"Thẻ này hiện đang được mượn bởi '{borrower}' (chưa trả). Vui lòng ghi nhận Ngày trả trước khi tạo lượt mượn mới.")
+                        if b_at >= o_start or r_at > o_start:
+                            if is_ja:
+                                raise ValueError(f"貸出期間の重複: このカードは {o_start} から '{borrower}' が借用中です。")
+                            elif is_en:
+                                raise ValueError(f"Overlapping card loan period: This card is currently borrowed by '{borrower}' since {o_start}.")
+                            else:
+                                raise ValueError(f"Trùng lặp thời gian mượn thẻ: Thẻ này đang được mượn bởi '{borrower}' từ ngày {o_start.strftime('%d/%m/%Y')} (chưa trả). Thời gian mượn thẻ mới không thể trùng lấn với người đang giữ thẻ.")
+                    else:
+                        if b_at < o_end and (r_at is None or r_at > o_start):
+                            if is_ja:
+                                raise ValueError(
+                                    f"貸出期間の重複: このカードはすでに {o_start} から {o_end} まで '{borrower}' に貸出されています。"
+                                    f"入力された期間（{b_at} - {r_at or '未返却'}）は前回の貸出と重複しています。"
+                                )
+                            elif is_en:
+                                raise ValueError(
+                                    f"Overlapping card loan period: This card was borrowed by '{borrower}' from {o_start} to {o_end}. "
+                                    f"The new period ({b_at} - {r_at or 'open'}) overlaps with the previous loan."
+                                )
+                            else:
+                                raise ValueError(
+                                    f"Trùng lặp thời gian mượn thẻ: Thẻ này đã được mượn bởi '{borrower}' "
+                                    f"từ ngày {o_start.strftime('%d/%m/%Y')} đến ngày {o_end.strftime('%d/%m/%Y')}. "
+                                    f"Thời gian mượn mới ({b_at.strftime('%d/%m/%Y')} - {r_at.strftime('%d/%m/%Y') if r_at else 'chưa trả'}) "
+                                    f"bị trùng lấn với lượt mượn trước."
+                                )
 
     async def after_model_change(
         self, data: dict, model: Any, is_created: bool, request: Request

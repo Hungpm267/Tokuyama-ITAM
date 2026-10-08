@@ -829,6 +829,80 @@ def test_details_view_human_friendly_labels(db: Session, rbac_roles_and_users):
     assert '>card_type<' not in res_card.text
 
 
+def test_card_loan_overlap_validation(db: Session):
+    """Kiểm tra chặn mượn thẻ khi thời gian mượn bị trùng lấn (overlap)."""
+    import asyncio
+    import datetime as dt
+    from unittest.mock import MagicMock
+    from app.admin import CardLoanAdmin
+    from app.models import AccessCard, CardLoan
+
+    card = AccessCard(card_no="CARD-OVERLAP-1", card_type="STAFF", status="IN_STOCK")
+    db.add(card)
+    db.commit()
+    db.refresh(card)
+
+    # Loan 1: 08/07/2026 -> 07/10/2026
+    l1 = CardLoan(card_id=card.id, borrowed_at=dt.date(2026, 7, 8), returned_at=dt.date(2026, 10, 7), external_name="User A")
+    db.add(l1)
+    db.commit()
+
+    admin = CardLoanAdmin()
+    req = MagicMock()
+    req.session = {"lang": "vi"}
+
+    # Thử tạo Loan 2: 04/10/2026 (trùng lấn với Loan 1 tới 07/10 mới trả)
+    data = {
+        "card": card,
+        "borrowed_at": dt.date(2026, 10, 4),
+        "external_name": "User B",
+    }
+    with pytest.raises(ValueError, match="Trùng lặp thời gian mượn thẻ"):
+        asyncio.run(admin.on_model_change(data, CardLoan(), is_created=True, request=req))
+
+
+def test_assignment_overlap_validation(db: Session):
+    """Kiểm tra chặn cấp phát thiết bị khi thời gian cấp phát bị trùng lấn (overlap)."""
+    import asyncio
+    import datetime as dt
+    from unittest.mock import MagicMock
+    from app.admin import AssignmentAdmin
+    from app.models import Asset, AssetCategory, Assignment, Person
+
+    cat = AssetCategory(name_en="Laptop Test", name_ja="Laptop Test")
+    db.add(cat)
+    db.commit()
+    db.refresh(cat)
+
+    person = Person(staff_code="TVC99998", full_name="User Test Assignment")
+    db.add(person)
+    db.commit()
+    db.refresh(person)
+
+    asset = Asset(asset_code="GA-LAP-TEST", category_id=cat.id)
+    db.add(asset)
+    db.commit()
+    db.refresh(asset)
+
+    # Assignment 1: 01/01/2026 -> 01/06/2026
+    a1 = Assignment(asset_id=asset.id, person_id=person.id, borrowed_at=dt.date(2026, 1, 1), returned_at=dt.date(2026, 6, 1))
+    db.add(a1)
+    db.commit()
+
+    admin = AssignmentAdmin()
+    req = MagicMock()
+    req.session = {"lang": "vi"}
+
+    # Thử tạo Assignment 2: 15/05/2026 (trùng lấn với Assignment 1)
+    data = {
+        "asset": asset,
+        "person": person,
+        "borrowed_at": dt.date(2026, 5, 15),
+    }
+    with pytest.raises(ValueError, match="Trùng lặp thời gian cấp phát"):
+        asyncio.run(admin.on_model_change(data, Assignment(), is_created=True, request=req))
+
+
 
 
 
