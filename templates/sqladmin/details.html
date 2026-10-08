@@ -536,6 +536,87 @@
 {% include 'sqladmin/asset_actions_modal.html' %}
 {% endif %}
 
+{% if model_view.identity == 'person' %}
+<!-- Card: Thiết bị & Bản quyền nhân sự đang giữ (FR-11) -->
+<div class="col-12 mt-4" id="person-holdings">
+  <div class="card shadow-sm border" style="border-color: var(--toku-border) !important; border-radius: 20px;">
+    <div class="card-header bg-white py-3 d-flex align-items-center justify-content-between" style="border-bottom: 1px solid var(--toku-border) !important;">
+      <div class="d-flex align-items-center gap-2">
+        <span style="width: 32px; height: 32px; border-radius: 10px; background-color: #EEF2FF; color: #4D5CB0; display: inline-flex; align-items: center; justify-content: center; font-size: 14px;">
+          <i class="fa-solid fa-laptop-file"></i>
+        </span>
+        <h4 class="card-title fw-bold text-dark m-0" style="font-size: 15px;">
+          {{ 'Thiết bị IT nhân viên đang sử dụng (FR-11)' if current_lang != 'en' else 'Assigned IT Assets (FR-11)' }}
+        </h4>
+      </div>
+      <a href="/admin/person-secret/list" class="btn btn-outline-success btn-sm" style="font-size: 12.5px;">
+        <i class="fa-solid fa-user-lock me-1"></i> {{ 'Xem Mật khẩu' if current_lang != 'en' else 'View Password' }}
+      </a>
+    </div>
+    <div class="card-body p-0 bg-white">
+      {% set active_items = [] %}
+      {% if model.assignments %}
+        {% for a in model.assignments %}
+          {% if a.returned_at is none and a.asset and not a.asset.is_deleted %}
+            {% set _ = active_items.append(a) %}
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+
+      {% if active_items | length > 0 %}
+      <div class="table-responsive">
+        <table class="table card-table table-vcenter table-hover mb-0" style="font-size: 13.5px;">
+          <thead>
+            <tr style="background-color: #f8fafc; border-bottom: 1px solid var(--toku-border) !important;">
+              <th style="font-size: 12px; font-weight: 700; color: #475569;">#</th>
+              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ 'THIẾT BỊ' if current_lang != 'en' else 'ASSET' }}</th>
+              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ 'SERIAL / MÃ GA' if current_lang != 'en' else 'SERIAL / GA CODE' }}</th>
+              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ 'NGÀY NHẬN MÁY' if current_lang != 'en' else 'ASSIGNED DATE' }}</th>
+              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ 'GHI CHÚ' if current_lang != 'en' else 'NOTES' }}</th>
+              <th style="font-size: 12px; font-weight: 700; color: #475569;" class="text-end">{{ 'THAO TÁC' if current_lang != 'en' else 'ACTIONS' }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for a in active_items %}
+            <tr>
+              <td class="text-muted small">{{ loop.index }}</td>
+              <td>
+                <a href="/admin/asset/details/{{ a.asset.id }}" class="fw-semibold text-primary text-decoration-none">
+                  <i class="fa-solid fa-laptop me-1"></i>{{ a.asset.model or a.asset.category.name_en if a.asset.category else 'Thiết bị #' ~ a.asset.id }}
+                </a>
+              </td>
+              <td>
+                <span class="badge bg-light text-dark border">{{ a.asset.asset_code or a.asset.serial or '-' }}</span>
+              </td>
+              <td class="text-dark">
+                {{ a.borrowed_at.strftime('%d/%m/%Y') if a.borrowed_at else '-' }}
+              </td>
+              <td class="text-secondary small">
+                {{ a.note or '-' }}
+              </td>
+              <td class="text-end">
+                <button type="button" class="btn btn-sm btn-outline-warning text-dark py-0 px-2 fw-bold" onclick="openReturnModal({{ a.asset.id }}, '{{ a.asset.asset_code or a.asset.serial or '' }}', '{{ model.full_name }}')" style="font-size: 12px;">
+                  <i class="fa-solid fa-arrow-rotate-left me-1"></i> {{ 'Thu hồi' if current_lang != 'en' else 'Return' }}
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="p-4 text-center text-muted">
+        <i class="fa-solid fa-check-circle text-success fs-3 d-block mb-2"></i>
+        <span>{{ 'Nhân viên này hiện không giữ thiết bị IT nào.' if current_lang != 'en' else 'This staff member is not currently assigned any IT equipment.' }}</span>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% include 'sqladmin/asset_actions_modal.html' %}
+{% endif %}
+
+
 {% if model_view.can_delete %}
 {% include 'sqladmin/modals/delete.html' %}
 {% endif %}

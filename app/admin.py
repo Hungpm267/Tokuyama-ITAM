@@ -619,6 +619,15 @@ class PersonAdmin(BaseAdminView, model=Person):
     }
     form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["secret", "assignments"]
 
+    async def get_object_for_details(self, value: Any) -> Any:
+        stmt = self._stmt_by_identifier(value)
+        stmt = stmt.options(
+            selectinload(Person.department),
+            selectinload(Person.assignments).selectinload(Assignment.asset),
+            selectinload(Person.secret),
+        )
+        return await self._run_query(stmt)
+
 
 class PersonSecretAdmin(BaseAdminView, model=PersonSecret):
     name = "Mật khẩu nhân viên"
