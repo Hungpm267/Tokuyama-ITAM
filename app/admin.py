@@ -1399,12 +1399,12 @@ class ContractLineAdmin(BaseAdminView, model=ContractLine):
             else (
                 Markup(
                     f'<span class="badge bg-warning text-dark me-2"><i class="fa-solid fa-clock me-1"></i>Giao một phần ({m.qty_delivered}/{m.qty_ordered})</span>'
-                    f'<a href="/admin/contract-line/{m.id}/receive" class="btn btn-sm btn-outline-success py-0 px-2 fw-semibold" style="font-size: 11px;"><i class="fa-solid fa-boxes-packing me-1"></i>Nhận hàng</a>'
+                    f'<a href="/admin/contract-line/{m.id}/receive" class="btn btn-sm btn-outline-primary py-0 px-2 fw-semibold" style="font-size: 11px;"><i class="fa-solid fa-boxes-packing me-1"></i>Nhận hàng</a>'
                 )
                 if m.qty_delivered > 0
                 else Markup(
                     f'<span class="badge bg-light text-secondary border me-2"><i class="fa-regular fa-clock me-1"></i>Chưa nhận</span>'
-                    f'<a href="/admin/contract-line/{m.id}/receive" class="btn btn-sm btn-outline-success py-0 px-2 fw-semibold" style="font-size: 11px;"><i class="fa-solid fa-boxes-packing me-1"></i>Nhận hàng</a>'
+                    f'<a href="/admin/contract-line/{m.id}/receive" class="btn btn-sm btn-outline-primary py-0 px-2 fw-semibold" style="font-size: 11px;"><i class="fa-solid fa-boxes-packing me-1"></i>Nhận hàng</a>'
                 )
             )
         ),
@@ -1424,12 +1424,12 @@ class ContractLineAdmin(BaseAdminView, model=ContractLine):
             else (
                 Markup(
                     f'<span class="badge bg-warning text-dark me-2"><i class="fa-solid fa-clock me-1"></i>Giao một phần ({m.qty_delivered}/{m.qty_ordered})</span>'
-                    f'<a href="/admin/contract-line/{m.id}/receive" class="btn btn-sm btn-success text-white py-0 px-2 fw-semibold" style="font-size: 12px;"><i class="fa-solid fa-boxes-packing me-1"></i>Nhập kho theo lô</a>'
+                    f'<a href="/admin/contract-line/{m.id}/receive" class="btn btn-sm btn-primary text-white py-0 px-2 fw-semibold" style="font-size: 12px;"><i class="fa-solid fa-boxes-packing me-1"></i>Nhập kho theo lô</a>'
                 )
                 if m.qty_delivered > 0
                 else Markup(
                     f'<span class="badge bg-light text-secondary border me-2"><i class="fa-regular fa-clock me-1"></i>Chưa nhận</span>'
-                    f'<a href="/admin/contract-line/{m.id}/receive" class="btn btn-sm btn-success text-white py-0 px-2 fw-semibold" style="font-size: 12px;"><i class="fa-solid fa-boxes-packing me-1"></i>Nhập kho theo lô</a>'
+                    f'<a href="/admin/contract-line/{m.id}/receive" class="btn btn-sm btn-primary text-white py-0 px-2 fw-semibold" style="font-size: 12px;"><i class="fa-solid fa-boxes-packing me-1"></i>Nhập kho theo lô</a>'
                 )
             )
         ),

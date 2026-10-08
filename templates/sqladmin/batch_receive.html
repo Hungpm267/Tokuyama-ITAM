@@ -2,352 +2,557 @@
 {% block content %}
 {% set current_lang = current_lang or get_current_lang(request) %}
 
-<div class="col-12">
-  <div class="card shadow-sm border" style="border-color: var(--toku-border) !important; border-radius: 8px;">
+<style>
+  /* --- Tokuyama Unified Card & Form Styling (Swiss Aesthetic) --- */
+  .toku-wrapper {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding-bottom: 40px;
+  }
 
-    <!-- 1. Header Section -->
-    <div class="card-header bg-white py-3 px-4 d-flex flex-wrap align-items-center justify-content-between gap-3" style="border-bottom: 1px solid var(--toku-border) !important;">
+  /* Card Containers: Border Radius 20px, Soft Elegant Drop Shadow, Clean Hairline Border */
+  .toku-card {
+    background: #ffffff;
+    border-radius: 20px !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.05), 0 4px 10px -2px rgba(15, 23, 42, 0.02) !important;
+    padding: 28px 32px;
+    margin-bottom: 24px;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+
+  .toku-card:hover {
+    box-shadow: 0 14px 35px -5px rgba(15, 23, 42, 0.07), 0 6px 12px -2px rgba(15, 23, 42, 0.03) !important;
+  }
+
+  /* Input Fields: Soft Gray Fill #f8fafc, Border-Radius 10px, Smooth Focus */
+  .toku-label {
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    color: #1e293b !important;
+    margin-bottom: 6px !important;
+    display: flex;
+    align-items: center;
+  }
+
+  .toku-input,
+  .toku-select {
+    background-color: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 10px !important;
+    padding: 10px 14px !important;
+    font-size: 13.5px !important;
+    color: #0f172a !important;
+    transition: all 0.15s ease-in-out !important;
+  }
+
+  .toku-input:focus,
+  .toku-select:focus {
+    background-color: #ffffff !important;
+    border-color: #4D5CB0 !important;
+    box-shadow: 0 0 0 3px rgba(77, 92, 176, 0.15) !important;
+    outline: none !important;
+  }
+
+  .toku-input::placeholder {
+    color: #94a3b8 !important;
+  }
+
+  /* Tokuyama Buttons */
+  .toku-btn-primary {
+    background-color: #4D5CB0 !important;
+    border: 1px solid #4D5CB0 !important;
+    color: #ffffff !important;
+    border-radius: 10px !important;
+    padding: 10px 24px !important;
+    font-weight: 700 !important;
+    font-size: 13.5px !important;
+    box-shadow: 0 4px 14px rgba(77, 92, 176, 0.25) !important;
+    transition: all 0.15s ease !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .toku-btn-primary:hover,
+  .toku-btn-primary:focus {
+    background-color: #3E4D9D !important;
+    border-color: #3E4D9D !important;
+    color: #ffffff !important;
+    box-shadow: 0 6px 18px rgba(77, 92, 176, 0.35) !important;
+  }
+
+  .toku-btn-secondary {
+    background-color: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    color: #475569 !important;
+    border-radius: 10px !important;
+    padding: 10px 20px !important;
+    font-weight: 600 !important;
+    font-size: 13.5px !important;
+    transition: all 0.15s ease !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .toku-btn-secondary:hover {
+    background-color: #f1f5f9 !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+  }
+
+  /* Sub-metric cards */
+  .toku-metric-box {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 14px 18px;
+    height: 100%;
+    transition: transform 0.15s ease;
+  }
+
+  /* Navigation Pills */
+  .toku-pill-tab {
+    border-radius: 10px !important;
+    padding: 8px 18px !important;
+    font-weight: 600 !important;
+    font-size: 13px !important;
+    transition: all 0.15s ease !important;
+  }
+
+  .toku-pill-tab.active {
+    background-color: #4D5CB0 !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 8px rgba(77, 92, 176, 0.25) !important;
+  }
+
+  .toku-pill-tab:not(.active) {
+    background-color: #f1f5f9 !important;
+    color: #64748b !important;
+  }
+
+  .toku-pill-tab:not(.active):hover {
+    background-color: #e2e8f0 !important;
+    color: #0f172a !important;
+  }
+
+  /* Table Grid */
+  .toku-table-frame {
+    border-radius: 14px !important;
+    overflow: hidden !important;
+    border: 1px solid #e2e8f0 !important;
+  }
+
+  .toku-table thead th {
+    background-color: #f8fafc !important;
+    color: #475569 !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.04em !important;
+    text-transform: uppercase !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    padding: 10px 12px !important;
+  }
+
+  .toku-grid-input {
+    background-color: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 8px !important;
+    padding: 7px 10px !important;
+    font-size: 13px !important;
+    color: #0f172a !important;
+    transition: all 0.15s ease !important;
+  }
+
+  .toku-grid-input:focus {
+    background-color: #ffffff !important;
+    border-color: #4D5CB0 !important;
+    box-shadow: 0 0 0 2px rgba(77, 92, 176, 0.15) !important;
+    outline: none !important;
+  }
+</style>
+
+<div class="col-12 toku-wrapper">
+
+  <!-- ======================================================== -->
+  <!-- CARD 1: BRAND HEADER & CONTRACT LINE SUMMARY           -->
+  <!-- ======================================================== -->
+  <div class="toku-card">
+    
+    <!-- Top Meta Strip: Logo on Left, Department & Contract on Right -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 pb-3 mb-3 border-bottom" style="border-color: #f1f5f9 !important;">
+      <div class="d-flex align-items-center gap-3">
+        <img src="/static/img/logo.svg" alt="Tokuyama" style="height: 36px; width: auto; object-fit: contain;">
+      </div>
+      
+      <div class="text-end">
+        <div class="text-uppercase fw-bold text-slate-500" style="font-size: 11.5px; letter-spacing: 0.06em; color: #64748b;">
+          {{ 'HỢP ĐỒNG' if current_lang != 'en' else 'CONTRACT' }} {{ contract.code }} • {{ contract.vendor_name or 'KDDI VIETNAM' }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Title & Navigation -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
       <div>
-        <div class="d-flex align-items-center gap-2">
-          <span style="width: 36px; height: 36px; border-radius: 6px; background-color: #ecfdf5; color: #059669; display: inline-flex; align-items: center; justify-content: center; font-size: 18px;">
-            <i class="fa-solid fa-boxes-packing"></i>
-          </span>
-          <div>
-            <h3 class="card-title fw-bold text-dark m-0" style="font-size: 18px;">
-              {{ 'Nhập kho thiết bị theo lô' if current_lang != 'en' else 'Batch Receive Assets' }}
-            </h3>
-            <div class="text-muted small" style="font-size: 12.5px;">
-              <span class="text-secondary fw-semibold">{{ 'Hợp đồng' if current_lang != 'en' else 'Contract' }}:</span> {{ contract.code }}
-              {% if contract.vendor_name %}({{ contract.vendor_name }}){% endif %}
-              <span class="mx-1 text-muted">•</span>
-              <span class="text-secondary fw-semibold">{{ 'Hạng mục' if current_lang != 'en' else 'Item' }}:</span> {{ contract_line.item_type }}
-            </div>
-          </div>
+        <h2 class="fw-bold m-0" style="font-size: 22px; color: #0f172a; letter-spacing: -0.01em;">
+          {{ 'Nhập kho thiết bị theo lô' if current_lang != 'en' else 'Batch Receive Assets' }}
+        </h2>
+        <div class="text-muted mt-1" style="font-size: 13.5px;">
+          <span class="text-secondary fw-semibold">{{ 'Hạng mục hàng hóa' if current_lang != 'en' else 'Contract Item' }}:</span>
+          <strong class="text-dark">{{ contract_line.item_type }}</strong>
+          {% if contract_line.spec %}
+          <span class="mx-1 text-muted">•</span>
+          <span class="text-muted small">{{ contract_line.spec }}</span>
+          {% endif %}
         </div>
       </div>
 
-      <div class="d-flex align-items-center gap-2">
-        <a href="/admin/contract-line/details/{{ contract_line.id }}" class="btn btn-outline-secondary btn-sm" style="font-size: 13px;">
-          <i class="fa-solid fa-arrow-left me-1"></i> {{ 'Quay lại Hạng mục' if current_lang != 'en' else 'Back to Item' }}
+      <div>
+        <a href="/admin/contract-line/details/{{ contract_line.id }}" class="toku-btn-secondary py-2 px-3" style="font-size: 13px;">
+          <i class="fa-solid fa-arrow-left me-1.5"></i> {{ 'Quay lại Hạng mục' if current_lang != 'en' else 'Back to Item' }}
         </a>
       </div>
     </div>
 
-    <!-- 2. Summary Progress Bar Card -->
-    <div class="p-3 bg-light border-bottom" style="border-color: var(--toku-border) !important;">
-      <div class="row g-3 align-items-center">
-        <div class="col-md-3">
-          <div class="p-2 bg-white rounded border shadow-none">
-            <div class="text-muted small" style="font-size: 11.5px; text-transform: uppercase; font-weight: 600;">
-              {{ 'Số lượng đặt mua' if current_lang != 'en' else 'Quantity Ordered' }}
-            </div>
-            <div class="fs-4 fw-bold text-dark">{{ contract_line.qty_ordered }} <span class="text-muted fs-6 fw-normal">{{ 'máy' if current_lang != 'en' else 'units' }}</span></div>
+    <!-- KPI Metric Progress Boxes -->
+    <div class="row g-3">
+      <div class="col-6 col-md-3">
+        <div class="toku-metric-box">
+          <div class="text-muted small" style="font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em;">
+            {{ 'Số lượng đặt mua' if current_lang != 'en' else 'Quantity Ordered' }}
           </div>
-        </div>
-        <div class="col-md-3">
-          <div class="p-2 bg-white rounded border shadow-none">
-            <div class="text-muted small" style="font-size: 11.5px; text-transform: uppercase; font-weight: 600;">
-              {{ 'Đã nhận trước đó' if current_lang != 'en' else 'Delivered' }}
-            </div>
-            <div class="fs-4 fw-bold text-primary">{{ contract_line.qty_delivered }} <span class="text-muted fs-6 fw-normal">{{ 'máy' if current_lang != 'en' else 'units' }}</span></div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="p-2 bg-white rounded border shadow-none">
-            <div class="text-muted small" style="font-size: 11.5px; text-transform: uppercase; font-weight: 600;">
-              {{ 'Còn cần nhận' if current_lang != 'en' else 'Remaining' }}
-            </div>
-            <div class="fs-4 fw-bold text-success">{{ contract_line.qty_remaining }} <span class="text-muted fs-6 fw-normal">{{ 'máy' if current_lang != 'en' else 'units' }}</span></div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="p-2 bg-white rounded border shadow-none">
-            <div class="d-flex justify-content-between align-items-center mb-1">
-              <span class="text-muted small fw-semibold" style="font-size: 11.5px;">{{ 'Tiến độ hoàn thành' if current_lang != 'en' else 'Progress' }}</span>
-              {% set pct = (contract_line.qty_delivered / contract_line.qty_ordered * 100) | round(0) | int if contract_line.qty_ordered > 0 else 0 %}
-              <span class="badge bg-primary text-white" style="font-size: 11px;">{{ pct }}%</span>
-            </div>
-            <div class="progress" style="height: 10px;">
-              <div class="progress-bar {% if pct >= 100 %}bg-success{% else %}bg-primary{% endif %}" role="progressbar" style="width: {{ pct }}%;" aria-valuenow="{{ pct }}" aria-valuemin="0" aria-valuemax="100"></div>
-            </div>
+          <div class="mt-2 fs-3 fw-bold text-dark">
+            {{ contract_line.qty_ordered }} <span class="fs-6 fw-normal text-muted">{{ 'máy' if current_lang != 'en' else 'units' }}</span>
           </div>
         </div>
       </div>
-      {% if contract_line.spec %}
-      <div class="mt-2 text-muted small px-1" style="font-size: 12px;">
-        <i class="fa-solid fa-circle-info text-secondary me-1"></i><strong>{{ 'Thông số HĐ:' if current_lang != 'en' else 'Spec:' }}</strong> {{ contract_line.spec }}
+
+      <div class="col-6 col-md-3">
+        <div class="toku-metric-box">
+          <div class="text-muted small" style="font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em;">
+            {{ 'Đã nhận trước đó' if current_lang != 'en' else 'Delivered' }}
+          </div>
+          <div class="mt-2 fs-3 fw-bold text-secondary">
+            {{ contract_line.qty_delivered }} <span class="fs-6 fw-normal text-muted">{{ 'máy' if current_lang != 'en' else 'units' }}</span>
+          </div>
+        </div>
       </div>
-      {% endif %}
-    </div>
 
-    <!-- Alert Container -->
-    <div id="alertContainer" class="px-4 pt-3 d-none"></div>
-
-    <!-- 3. Form Body -->
-    <div class="card-body p-4 bg-white">
-      <form id="batchReceiveForm" onsubmit="submitBatchReceive(event)">
-        
-        <!-- Section A: Thông tin chung cho toàn bộ lô máy -->
-        <div class="mb-4 p-3 rounded" style="background-color: #f8fafc; border: 1px solid var(--toku-border);">
-          <div class="d-flex align-items-center gap-2 mb-3">
-            <i class="fa-solid fa-sliders text-primary"></i>
-            <h5 class="fw-bold m-0 text-dark" style="font-size: 14.5px;">
-              {{ '1. THÔNG TIN CHUNG CHO LÔ THIẾT BỊ' if current_lang != 'en' else '1. COMMON ASSET SPECIFICATIONS' }}
-            </h5>
-            <span class="text-muted small" style="font-size: 12px;">({{ 'Áp dụng đồng thời cho tất cả các máy trong đợt nhận này' if current_lang != 'en' else 'Applied to all assets in this batch' }})</span>
+      <div class="col-6 col-md-3">
+        <div class="toku-metric-box" style="background-color: #EEF2FF; border-color: #C7D2FE;">
+          <div class="small" style="font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em; color: #4D5CB0;">
+            {{ 'Còn cần nhận' if current_lang != 'en' else 'Remaining' }}
           </div>
-
-          <div class="row g-3">
-            <div class="col-md-3">
-              <label class="form-label fw-semibold text-secondary small mb-1">
-                {{ 'Loại tài sản' if current_lang != 'en' else 'Asset Category' }} <span class="text-danger">*</span>
-              </label>
-              <select id="batchCategoryId" class="form-select form-select-sm" required style="font-size: 13px;">
-                {% for cat in categories %}
-                <option value="{{ cat.id }}" {% if cat.id == suggested_category_id %}selected{% endif %}>
-                  {{ cat.name_en }}{% if cat.name_ja %} ({{ cat.name_ja }}){% endif %}
-                </option>
-                {% endfor %}
-              </select>
-            </div>
-
-            <div class="col-md-3">
-              <label class="form-label fw-semibold text-secondary small mb-1">
-                {{ 'Model / Tên dòng máy' if current_lang != 'en' else 'Model Name' }}
-              </label>
-              <input type="text" id="batchModel" class="form-control form-control-sm" value="{{ suggested_model }}" placeholder="vd: Dell Latitude 5440" style="font-size: 13px;">
-            </div>
-
-            <div class="col-md-2">
-              <label class="form-label fw-semibold text-secondary small mb-1">
-                {{ 'Dạng thiết bị (Form Factor)' if current_lang != 'en' else 'Form Factor' }}
-              </label>
-              <input type="text" id="batchFormFactor" class="form-control form-control-sm" value="{{ suggested_form_factor }}" placeholder="vd: Laptop / Desktop" style="font-size: 13px;">
-            </div>
-
-            <div class="col-md-2">
-              <label class="form-label fw-semibold text-secondary small mb-1">
-                {{ 'Trạng thái nhập kho' if current_lang != 'en' else 'Initial Status' }}
-              </label>
-              <div>
-                <span class="badge bg-success-subtle text-success border border-success-subtle py-2 px-3 fw-bold" style="font-size: 12px;">
-                  <i class="fa-solid fa-boxes-stacked me-1"></i> IN_STOCK ({{ 'Trong kho' if current_lang != 'en' else 'In Stock' }})
-                </span>
-              </div>
-            </div>
-
-            <div class="col-md-2">
-              <label class="form-label fw-semibold text-secondary small mb-1">
-                {{ 'Ghi chú chung' if current_lang != 'en' else 'Batch Note' }}
-              </label>
-              <input type="text" id="batchNote" class="form-control form-control-sm" placeholder="vd: Giao đợt 1 HĐ KDDI" style="font-size: 13px;">
-            </div>
+          <div class="mt-2 fs-3 fw-bold" style="color: #4D5CB0;">
+            {{ contract_line.qty_remaining }} <span class="fs-6 fw-normal" style="color: #6366f1;">{{ 'máy' if current_lang != 'en' else 'units' }}</span>
           </div>
         </div>
+      </div>
 
-        <!-- Section B: Chi tiết danh sách thiết bị -->
-        <div class="mb-4">
-          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
-            <div class="d-flex align-items-center gap-2">
-              <i class="fa-solid fa-list-ol text-success"></i>
-              <h5 class="fw-bold m-0 text-dark" style="font-size: 14.5px;">
-                {{ '2. DANH SÁCH THIẾT BỊ NHẬN HÀNG' if current_lang != 'en' else '2. ASSET SERIALS & IDENTIFIERS' }}
-              </h5>
-            </div>
-
-            <!-- Tab Navigation Switches -->
-            <ul class="nav nav-pills" id="inputModeTabs" role="tablist" style="font-size: 12.5px;">
-              <li class="nav-item" role="presentation">
-                <button class="nav-link active py-1 px-3 fw-semibold" id="grid-tab" data-bs-toggle="pill" data-bs-target="#grid-pane" type="button" role="tab">
-                  <i class="fa-solid fa-table me-1"></i> {{ 'Bảng nhập nhanh (Grid)' if current_lang != 'en' else 'Fast Grid Entry' }}
-                </button>
-              </li>
-              <li class="nav-item" role="presentation">
-                <button class="nav-link py-1 px-3 fw-semibold" id="paste-tab" data-bs-toggle="pill" data-bs-target="#paste-pane" type="button" role="tab">
-                  <i class="fa-solid fa-paste me-1"></i> {{ 'Dán danh sách (Paste Text)' if current_lang != 'en' else 'Paste Multi-line' }}
-                </button>
-              </li>
-            </ul>
-          </div>
-
-          <div class="tab-content border rounded p-3" style="border-color: var(--toku-border) !important;" id="inputModeContent">
-            
-            <!-- Tab 1: Grid Mode -->
-            <div class="tab-pane fade show active" id="grid-pane" role="tabpanel">
-              <!-- Toolbar tự sinh mã & thao tác dòng -->
-              <div class="p-2 mb-3 bg-light rounded d-flex flex-wrap align-items-center justify-content-between gap-2" style="border: 1px dashed #cbd5e1;">
-                
-                <!-- Bộ sinh mã GA tự động -->
-                <div class="d-flex align-items-center gap-1.5 flex-wrap">
-                  <span class="text-secondary small fw-bold me-1" style="font-size: 12px;">
-                    <i class="fa-solid fa-wand-magic-sparkles text-primary me-1"></i>{{ 'Sinh mã GA tự động:' if current_lang != 'en' else 'Auto-Gen GA Code:' }}
-                  </span>
-                  <input type="text" id="autoGaPrefix" class="form-control form-control-sm text-center font-monospace" style="width: 100px; font-size: 12px;" value="{{ next_asset_code_prefix }}" title="Tiền tố mã GA">
-                  <span class="text-muted small">-</span>
-                  <input type="number" id="autoGaStart" class="form-control form-control-sm text-center font-monospace" style="width: 75px; font-size: 12px;" value="{{ next_asset_code_num }}" min="1" title="Số bắt đầu">
-                  <button type="button" class="btn btn-outline-primary btn-sm py-1 px-2 fw-semibold" style="font-size: 11.5px;" onclick="applyAutoGaCodes()">
-                    <i class="fa-solid fa-arrow-down-1-9 me-1"></i>{{ 'Điền cột Mã GA' if current_lang != 'en' else 'Fill GA Codes' }}
-                  </button>
-                </div>
-
-                <!-- Thao tác thêm/xóa dòng -->
-                <div class="d-flex align-items-center gap-1.5 flex-wrap">
-                  <button type="button" class="btn btn-outline-success btn-sm py-1 px-2.5 fw-semibold" style="font-size: 12px;" onclick="addRow()">
-                    <i class="fa-solid fa-plus me-1"></i>{{ 'Thêm 1 dòng' if current_lang != 'en' else 'Add Row' }}
-                  </button>
-                  {% if qty_remaining > 0 %}
-                  <button type="button" class="btn btn-outline-secondary btn-sm py-1 px-2.5 fw-semibold" style="font-size: 12px;" onclick="addRemainingRows({{ qty_remaining }})">
-                    <i class="fa-solid fa-layer-group me-1"></i>{{ 'Thêm đủ' if current_lang != 'en' else 'Add' }} {{ qty_remaining }} {{ 'dòng' if current_lang != 'en' else 'rows' }}
-                  </button>
-                  {% endif %}
-                  <button type="button" class="btn btn-outline-danger btn-sm py-1 px-2" style="font-size: 12px;" onclick="clearAllRows()" title="Xóa tất cả các dòng">
-                    <i class="fa-solid fa-trash-can"></i>
-                  </button>
-                </div>
-              </div>
-
-              <!-- Hướng dẫn thao tác nhanh -->
-              <div class="text-muted small mb-2 d-flex align-items-center gap-2" style="font-size: 11.5px;">
-                <i class="fa-solid fa-keyboard text-secondary"></i>
-                <span>{{ 'Mẹo: Nhấn Enter tại ô Serial để tự động chuyển sang dòng tiếp theo (hoặc tạo dòng mới). Hỗ trợ súng quét mã vạch (Barcode Scanner).' if current_lang != 'en' else 'Tip: Press Enter in the Serial box to advance or auto-create a new row. Fully barcode scanner friendly.' }}</span>
-              </div>
-
-              <!-- Table Grid -->
-              <div class="table-responsive">
-                <table class="table table-bordered table-sm align-middle mb-0" id="assetsGridTable" style="font-size: 12.5px;">
-                  <thead class="table-light">
-                    <tr>
-                      <th class="text-center" style="width: 40px;">#</th>
-                      <th style="min-width: 170px;">
-                        {{ 'Số Serial' if current_lang != 'en' else 'Serial Number' }} <span class="text-danger">*</span>
-                      </th>
-                      <th style="min-width: 140px;">
-                        {{ 'Mã tem GA' if current_lang != 'en' else 'GA Asset Code' }}
-                      </th>
-                      <th style="min-width: 140px;">
-                        {{ 'Mã KDDI / Vendor' if current_lang != 'en' else 'Vendor Code' }}
-                      </th>
-                      <th style="min-width: 130px;">
-                        MAC LAN (Ethernet)
-                      </th>
-                      <th style="min-width: 130px;">
-                        MAC Wifi
-                      </th>
-                      <th style="min-width: 150px;">
-                        {{ 'Ghi chú riêng' if current_lang != 'en' else 'Note' }}
-                      </th>
-                      <th class="text-center" style="width: 50px;">
-                        {{ 'Xóa' if current_lang != 'en' else 'Del' }}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody id="assetsGridBody">
-                    <!-- Dynamic Rows rendered via JS -->
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <!-- Tab 2: Paste Text Mode -->
-            <div class="tab-pane fade" id="paste-pane" role="tabpanel">
-              <div class="row g-3">
-                <div class="col-md-7">
-                  <label class="form-label fw-semibold text-secondary small mb-1">
-                    {{ 'Dán danh sách Serial (Mỗi dòng một Serial)' if current_lang != 'en' else 'Paste Serial Numbers (One per line)' }} <span class="text-danger">*</span>
-                  </label>
-                  <textarea id="pasteSerialsTextarea" class="form-control font-monospace" rows="9" style="font-size: 13px;" placeholder="8HG9X41&#10;8HG9X42&#10;8HG9X43&#10;8HG9X44&#10;8HG9X45"></textarea>
-                  <div class="form-text text-muted small" style="font-size: 11.5px;">
-                    {{ 'Copy một cột Serial từ Excel hoặc email của Vendor và dán vào đây.' if current_lang != 'en' else 'Copy a column of serials from Excel or Vendor email and paste here.' }}
-                  </div>
-                </div>
-
-                <div class="col-md-5">
-                  <div class="p-3 bg-light rounded border h-100 d-flex flex-column justify-content-between">
-                    <div>
-                      <h6 class="fw-bold text-dark mb-2" style="font-size: 13px;">
-                        <i class="fa-solid fa-gear text-primary me-1"></i>{{ 'Tự động gán mã tem khi chuyển đổi' if current_lang != 'en' else 'Auto-Assignment Options' }}
-                      </h6>
-                      
-                      <!-- GA code auto assign -->
-                      <div class="mb-3">
-                        <label class="form-label text-muted small mb-1">{{ 'Mã GA bắt đầu:' if current_lang != 'en' else 'Starting GA Code:' }}</label>
-                        <div class="input-group input-group-sm">
-                          <input type="text" id="pasteGaPrefix" class="form-control font-monospace" value="{{ next_asset_code_prefix }}" placeholder="TVC-EM">
-                          <input type="number" id="pasteGaStart" class="form-control font-monospace" value="{{ next_asset_code_num }}" min="1">
-                        </div>
-                      </div>
-
-                      <!-- Vendor code auto assign -->
-                      <div class="mb-3">
-                        <label class="form-label text-muted small mb-1">{{ 'Mã Vendor bắt đầu (tùy chọn):' if current_lang != 'en' else 'Starting Vendor Code (Optional):' }}</label>
-                        <div class="input-group input-group-sm">
-                          <input type="text" id="pasteVendorPrefix" class="form-control font-monospace" value="TKY-PC" placeholder="TKY-PC">
-                          <input type="number" id="pasteVendorStart" class="form-control font-monospace" value="1" min="1">
-                        </div>
-                      </div>
-                    </div>
-
-                    <button type="button" class="btn btn-primary btn-sm w-100 py-2 fw-semibold" onclick="convertPastedTextToGrid()">
-                      <i class="fa-solid fa-bolt me-1"></i>{{ '⚡ Chuyển đổi & Đưa vào Bảng kiểm tra' if current_lang != 'en' else '⚡ Parse & Load into Grid' }}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-          </div>
-        </div>
-
-        <!-- Section C: Footer Actions -->
-        <div class="pt-3 border-top d-flex flex-wrap align-items-center justify-content-between gap-3" style="border-color: var(--toku-border) !important;">
-          <div class="d-flex align-items-center gap-2">
-            <span class="badge bg-light text-dark border px-3 py-2" style="font-size: 13px;">
-              {{ 'Tổng số máy sẽ nhập kho:' if current_lang != 'en' else 'Total Assets to Receive:' }} 
-              <strong id="totalItemsCount" class="text-primary fs-6">0</strong> {{ 'máy' if current_lang != 'en' else 'units' }}
+      <div class="col-6 col-md-3">
+        <div class="toku-metric-box d-flex flex-column justify-content-between">
+          <div class="d-flex justify-content-between align-items-center">
+            <span class="text-muted small fw-bold" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;">
+              {{ 'Tiến độ giao hàng' if current_lang != 'en' else 'Delivery Progress' }}
             </span>
-            <span id="remainingHintBadge" class="text-muted small" style="font-size: 12px;"></span>
+            {% set pct = (contract_line.qty_delivered / contract_line.qty_ordered * 100) | round(0) | int if contract_line.qty_ordered > 0 else 0 %}
+            <span class="badge rounded-pill text-white px-2 py-0.5" style="background-color: #4D5CB0; font-size: 11px;">{{ pct }}%</span>
           </div>
-
-          <div class="d-flex align-items-center gap-2">
-            <a href="/admin/contract-line/details/{{ contract_line.id }}" class="btn btn-outline-secondary px-3" style="font-size: 13px;">
-              {{ 'Hủy bỏ' if current_lang != 'en' else 'Cancel' }}
-            </a>
-            <button type="submit" id="submitBtn" class="btn btn-success px-4 fw-bold shadow-sm" style="font-size: 13.5px;">
-              <i class="fa-solid fa-boxes-packing me-1.5"></i>{{ 'Xác nhận Nhập kho' if current_lang != 'en' else 'Confirm Batch Receive' }}
-            </button>
+          <div class="mt-2">
+            <div class="progress" style="height: 10px; border-radius: 6px; background-color: #e2e8f0;">
+              <div class="progress-bar" role="progressbar" style="width: {{ pct }}%; background-color: #4D5CB0;" aria-valuenow="{{ pct }}" aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
           </div>
         </div>
-
-      </form>
+      </div>
     </div>
 
   </div>
+
+  <!-- Alert Container for Messages -->
+  <div id="alertContainer" class="d-none mb-3"></div>
+
+  <!-- Form Start -->
+  <form id="batchReceiveForm" onsubmit="submitBatchReceive(event)">
+
+    <!-- ======================================================== -->
+    <!-- CARD 2: COMMON SPECIFICATIONS                           -->
+    <!-- ======================================================== -->
+    <div class="toku-card">
+      <div class="d-flex align-items-center gap-2 mb-3 pb-2 border-bottom" style="border-color: #f1f5f9 !important;">
+        <span style="width: 28px; height: 28px; border-radius: 8px; background: #EEF2FF; color: #4D5CB0; display: inline-flex; align-items: center; justify-content: center; font-size: 13px;">
+          <i class="fa-solid fa-sliders"></i>
+        </span>
+        <h3 class="fw-bold m-0" style="font-size: 15px; color: #0f172a;">
+          {{ '1. Cấu hình chung cho lô thiết bị' if current_lang != 'en' else '1. Common Asset Specifications' }}
+        </h3>
+        <span class="text-muted small ms-1" style="font-size: 12px;">({{ 'Tự động áp dụng cho toàn bộ các máy trong đợt nhận này' if current_lang != 'en' else 'Applied to all units in this batch' }})</span>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-md-3">
+          <label class="toku-label">
+            {{ 'Loại tài sản' if current_lang != 'en' else 'Asset Category' }} <span class="text-danger ms-1">*</span>
+          </label>
+          <select id="batchCategoryId" class="form-select toku-select" required>
+            {% for cat in categories %}
+            <option value="{{ cat.id }}" {% if cat.id == suggested_category_id %}selected{% endif %}>
+              {{ cat.name_en }}{% if cat.name_ja %} ({{ cat.name_ja }}){% endif %}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-3">
+          <label class="toku-label">
+            {{ 'Model / Tên dòng máy' if current_lang != 'en' else 'Model Name' }}
+          </label>
+          <input type="text" id="batchModel" class="form-control toku-input" value="{{ suggested_model }}" placeholder="vd: Dell Latitude 5440">
+        </div>
+
+        <div class="col-md-2">
+          <label class="toku-label">
+            {{ 'Dạng thiết bị (Form Factor)' if current_lang != 'en' else 'Form Factor' }}
+          </label>
+          <input type="text" id="batchFormFactor" class="form-control toku-input" value="{{ suggested_form_factor }}" placeholder="vd: Laptop / Desktop">
+        </div>
+
+        <div class="col-md-2">
+          <label class="toku-label">
+            {{ 'Trạng thái nhập kho' if current_lang != 'en' else 'Initial Status' }}
+          </label>
+          <div class="pt-1">
+            <span class="badge py-2 px-3 fw-bold" style="background-color: #EEF2FF; color: #4D5CB0; border: 1px solid #C7D2FE; border-radius: 8px; font-size: 12px;">
+              <i class="fa-solid fa-boxes-stacked me-1"></i> IN_STOCK ({{ 'Trong kho' if current_lang != 'en' else 'In Stock' }})
+            </span>
+          </div>
+        </div>
+
+        <div class="col-md-2">
+          <label class="toku-label">
+            {{ 'Ghi chú chung' if current_lang != 'en' else 'Batch Note' }}
+          </label>
+          <input type="text" id="batchNote" class="form-control toku-input" placeholder="vd: Giao đợt 1 HĐ KDDI">
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================== -->
+    <!-- CARD 3: ASSET SERIALS & IDENTIFIERS                     -->
+    <!-- ======================================================== -->
+    <div class="toku-card">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3 pb-2 border-bottom" style="border-color: #f1f5f9 !important;">
+        <div class="d-flex align-items-center gap-2">
+          <span style="width: 28px; height: 28px; border-radius: 8px; background: #EEF2FF; color: #4D5CB0; display: inline-flex; align-items: center; justify-content: center; font-size: 13px;">
+            <i class="fa-solid fa-list-ol"></i>
+          </span>
+          <h3 class="fw-bold m-0" style="font-size: 15px; color: #0f172a;">
+            {{ '2. Danh sách thiết bị nhận hàng' if current_lang != 'en' else '2. Asset Serials & Identifiers' }}
+          </h3>
+        </div>
+
+        <!-- Mode Tabs Switches -->
+        <ul class="nav nav-pills gap-1" id="inputModeTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active toku-pill-tab" id="grid-tab" data-bs-toggle="pill" data-bs-target="#grid-pane" type="button" role="tab">
+              <i class="fa-solid fa-table me-1.5"></i> {{ 'Bảng nhập nhanh (Grid)' if current_lang != 'en' else 'Fast Grid Entry' }}
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link toku-pill-tab" id="paste-tab" data-bs-toggle="pill" data-bs-target="#paste-pane" type="button" role="tab">
+              <i class="fa-solid fa-paste me-1.5"></i> {{ 'Dán danh sách (Paste Text)' if current_lang != 'en' else 'Paste Multi-line' }}
+            </button>
+          </li>
+        </ul>
+      </div>
+
+      <div class="tab-content" id="inputModeContent">
+        
+        <!-- Tab 1: Fast Grid Entry -->
+        <div class="tab-pane fade show active" id="grid-pane" role="tabpanel">
+          
+          <!-- Generator Toolbar -->
+          <div class="p-3 mb-3 rounded-3 d-flex flex-wrap align-items-center justify-content-between gap-3" style="background-color: #f8fafc; border: 1px solid #e2e8f0;">
+            <!-- Auto GA generator -->
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <span class="fw-bold small" style="font-size: 12.5px; color: #1e293b;">
+                <i class="fa-solid fa-wand-magic-sparkles me-1" style="color: #4D5CB0;"></i>{{ 'Sinh mã GA tự động:' if current_lang != 'en' else 'Auto-Gen GA Code:' }}
+              </span>
+              <input type="text" id="autoGaPrefix" class="form-control form-control-sm text-center font-monospace" style="width: 105px; border-radius: 8px; border: 1px solid #cbd5e1; background: #ffffff;" value="{{ next_asset_code_prefix }}" title="Tiền tố mã GA">
+              <span class="text-muted small">-</span>
+              <input type="number" id="autoGaStart" class="form-control form-control-sm text-center font-monospace" style="width: 80px; border-radius: 8px; border: 1px solid #cbd5e1; background: #ffffff;" value="{{ next_asset_code_num }}" min="1" title="Số bắt đầu">
+              <button type="button" class="btn btn-sm fw-semibold" style="background-color: #EEF2FF; color: #4D5CB0; border: 1px solid #C7D2FE; border-radius: 8px; font-size: 12px; padding: 5px 12px;" onclick="applyAutoGaCodes()">
+                <i class="fa-solid fa-arrow-down-1-9 me-1"></i>{{ 'Điền cột Mã GA' if current_lang != 'en' else 'Fill GA Codes' }}
+              </button>
+            </div>
+
+            <!-- Action buttons -->
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <button type="button" class="btn btn-sm fw-semibold" style="background-color: #ffffff; border: 1px solid #cbd5e1; color: #334155; border-radius: 8px; font-size: 12px; padding: 6px 14px;" onclick="addRow()">
+                <i class="fa-solid fa-plus me-1 text-primary"></i>{{ 'Thêm 1 dòng' if current_lang != 'en' else 'Add Row' }}
+              </button>
+              {% if qty_remaining > 0 %}
+              <button type="button" class="btn btn-sm fw-semibold" style="background-color: #ffffff; border: 1px solid #cbd5e1; color: #334155; border-radius: 8px; font-size: 12px; padding: 6px 14px;" onclick="addRemainingRows({{ qty_remaining }})">
+                <i class="fa-solid fa-layer-group me-1 text-primary"></i>{{ 'Thêm đủ' if current_lang != 'en' else 'Add' }} {{ qty_remaining }} {{ 'dòng' if current_lang != 'en' else 'rows' }}
+              </button>
+              {% endif %}
+              <button type="button" class="btn btn-sm btn-outline-danger" style="border-radius: 8px; font-size: 12px; padding: 6px 12px;" onclick="clearAllRows()" title="Xóa tất cả các dòng">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Tip -->
+          <div class="text-muted small mb-2 d-flex align-items-center gap-2" style="font-size: 12px;">
+            <i class="fa-solid fa-barcode text-secondary"></i>
+            <span>{{ 'Tương thích súng quét Barcode: Quét mã hoặc bấm Enter tại ô Serial để tự động chuyển sang dòng tiếp theo (hoặc tự tạo dòng mới).' if current_lang != 'en' else 'Barcode Scanner Friendly: Press Enter or scan in the Serial field to advance or auto-create a new row.' }}</span>
+          </div>
+
+          <!-- Table Container -->
+          <div class="table-responsive toku-table-frame">
+            <table class="table align-middle mb-0 toku-table" id="assetsGridTable" style="font-size: 13px;">
+              <thead>
+                <tr>
+                  <th class="text-center" style="width: 44px;">#</th>
+                  <th style="min-width: 175px;">
+                    {{ 'Số Serial' if current_lang != 'en' else 'Serial Number' }} <span class="text-danger">*</span>
+                  </th>
+                  <th style="min-width: 145px;">
+                    {{ 'Mã tem GA' if current_lang != 'en' else 'GA Asset Code' }}
+                  </th>
+                  <th style="min-width: 145px;">
+                    {{ 'Mã KDDI / Vendor' if current_lang != 'en' else 'Vendor Code' }}
+                  </th>
+                  <th style="min-width: 135px;">
+                    MAC LAN (Ethernet)
+                  </th>
+                  <th style="min-width: 135px;">
+                    MAC Wifi
+                  </th>
+                  <th style="min-width: 155px;">
+                    {{ 'Ghi chú riêng' if current_lang != 'en' else 'Note' }}
+                  </th>
+                  <th class="text-center" style="width: 50px;">
+                    {{ 'Xóa' if current_lang != 'en' else 'Del' }}
+                  </th>
+                </tr>
+              </thead>
+              <tbody id="assetsGridBody">
+                <!-- Dynamic Rows rendered via JS -->
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+
+        <!-- Tab 2: Paste Multi-line Mode -->
+        <div class="tab-pane fade" id="paste-pane" role="tabpanel">
+          <div class="row g-4">
+            <div class="col-md-7">
+              <label class="toku-label">
+                {{ 'Dán danh sách Serial (Mỗi dòng một Serial)' if current_lang != 'en' else 'Paste Serial Numbers (One per line)' }} <span class="text-danger ms-1">*</span>
+              </label>
+              <textarea id="pasteSerialsTextarea" class="form-control font-monospace" rows="10" style="font-size: 13.5px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px;" placeholder="8HG9X41&#10;8HG9X42&#10;8HG9X43&#10;8HG9X44&#10;8HG9X45"></textarea>
+              <div class="form-text text-muted small mt-2" style="font-size: 12px;">
+                {{ 'Copy một cột Serial từ Excel hoặc email của Vendor và dán vào đây.' if current_lang != 'en' else 'Copy a column of serials from Excel or Vendor email and paste here.' }}
+              </div>
+            </div>
+
+            <div class="col-md-5">
+              <div class="p-4 rounded-3 h-100 d-flex flex-column justify-content-between" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px !important;">
+                <div>
+                  <h4 class="fw-bold mb-3" style="font-size: 13.5px; color: #0f172a;">
+                    <i class="fa-solid fa-wand-magic-sparkles me-1.5" style="color: #4D5CB0;"></i>{{ 'Tự động gán mã khi chuyển đổi' if current_lang != 'en' else 'Auto-Assignment Options' }}
+                  </h4>
+                  
+                  <!-- GA Code Auto Assign -->
+                  <div class="mb-3">
+                    <label class="toku-label text-muted" style="font-size: 12px !important;">{{ 'Mã GA bắt đầu:' if current_lang != 'en' else 'Starting GA Code:' }}</label>
+                    <div class="input-group">
+                      <input type="text" id="pasteGaPrefix" class="form-control font-monospace toku-input" value="{{ next_asset_code_prefix }}" placeholder="TVC-EM">
+                      <input type="number" id="pasteGaStart" class="form-control font-monospace toku-input" value="{{ next_asset_code_num }}" min="1">
+                    </div>
+                  </div>
+
+                  <!-- Vendor Code Auto Assign -->
+                  <div class="mb-3">
+                    <label class="toku-label text-muted" style="font-size: 12px !important;">{{ 'Mã Vendor bắt đầu (tùy chọn):' if current_lang != 'en' else 'Starting Vendor Code (Optional):' }}</label>
+                    <div class="input-group">
+                      <input type="text" id="pasteVendorPrefix" class="form-control font-monospace toku-input" value="TKY-PC" placeholder="TKY-PC">
+                      <input type="number" id="pasteVendorStart" class="form-control font-monospace toku-input" value="1" min="1">
+                    </div>
+                  </div>
+                </div>
+
+                <button type="button" class="toku-btn-primary w-100 py-2.5 mt-3" onclick="convertPastedTextToGrid()">
+                  <i class="fa-solid fa-bolt me-1.5"></i>{{ 'Chuyển đổi & Đưa vào Bảng kiểm tra' if current_lang != 'en' else 'Parse & Load into Grid' }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Footer Actions Strip Inside Card 3 -->
+      <div class="pt-4 mt-4 border-top d-flex flex-wrap align-items-center justify-content-between gap-3" style="border-color: #f1f5f9 !important;">
+        <div class="d-flex align-items-center gap-2">
+          <span class="badge border px-3 py-2" style="background-color: #f8fafc; border-color: #e2e8f0 !important; color: #1e293b; border-radius: 10px; font-size: 13px;">
+            {{ 'Tổng số máy sẽ nhập kho:' if current_lang != 'en' else 'Total Assets to Receive:' }} 
+            <strong id="totalItemsCount" class="fs-6 ms-1" style="color: #4D5CB0;">0</strong> {{ 'máy' if current_lang != 'en' else 'units' }}
+          </span>
+          <span id="remainingHintBadge" class="text-muted small" style="font-size: 12px;"></span>
+        </div>
+
+        <div class="d-flex align-items-center gap-2.5">
+          <a href="/admin/contract-line/details/{{ contract_line.id }}" class="toku-btn-secondary" style="font-size: 13.5px;">
+            {{ 'Hủy bỏ' if current_lang != 'en' else 'Cancel' }}
+          </a>
+          <button type="submit" id="submitBtn" class="toku-btn-primary" style="font-size: 13.5px;">
+            <i class="fa-solid fa-boxes-packing me-2"></i>{{ 'Xác nhận Nhập kho' if current_lang != 'en' else 'Confirm Batch Receive' }}
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+  </form>
+
+  <!-- ======================================================== -->
+  <!-- BOTTOM BRAND WATERMARK (matching screenshot aesthetic)   -->
+  <!-- ======================================================== -->
+  <div class="text-center py-3 text-muted small" style="font-size: 12px; color: #94a3b8 !important;">
+    Tokuyama Vietnam Co., Ltd. • Internal Operational Utility (GMT+7)
+  </div>
+
 </div>
 
 <!-- Modal Thông Báo Thành Công -->
 <div class="modal fade" id="successModal" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true" data-bs-backdrop="static">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content border-0 shadow">
-      <div class="modal-header bg-success text-white py-3">
-        <h5 class="modal-title fw-bold" id="successModalLabel">
+    <div class="modal-content border-0" style="border-radius: 20px; box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25); overflow: hidden;">
+      <div class="modal-header text-white py-3 px-4" style="background-color: #4D5CB0;">
+        <h5 class="modal-title fw-bold m-0" id="successModalLabel" style="font-size: 16px;">
           <i class="fa-solid fa-circle-check me-2"></i>{{ 'Nhập kho thành công!' if current_lang != 'en' else 'Batch Receive Successful!' }}
         </h5>
       </div>
       <div class="modal-body p-4 text-center">
-        <div style="font-size: 48px; color: #16a34a; margin-bottom: 12px;">
+        <div style="font-size: 52px; color: #4D5CB0; margin-bottom: 14px;">
           <i class="fa-solid fa-boxes-stacked"></i>
         </div>
-        <p id="successModalMessage" class="fs-6 text-dark mb-3 fw-semibold"></p>
-        <p class="text-muted small">
+        <p id="successModalMessage" class="fs-6 text-dark mb-2 fw-bold"></p>
+        <p class="text-muted small m-0" style="font-size: 12.5px;">
           {{ 'Toàn bộ thiết bị đã được lưu vào hệ thống và ghi nhận lịch sử tiếp nhận trong Audit Trail.' if current_lang != 'en' else 'All assets have been created in the database and logged in the Audit Trail.' }}
         </p>
       </div>
-      <div class="modal-footer bg-light py-2 px-3 d-flex justify-content-center gap-2">
-        <a id="successLineBtn" href="/admin/contract-line/details/{{ contract_line.id }}" class="btn btn-primary px-3 btn-sm">
-          <i class="fa-solid fa-list-check me-1"></i>{{ 'Xem chi tiết Hạng mục HĐ' if current_lang != 'en' else 'View Contract Item' }}
+      <div class="modal-footer bg-light py-3 px-4 d-flex justify-content-center gap-2 border-0">
+        <a id="successLineBtn" href="/admin/contract-line/details/{{ contract_line.id }}" class="toku-btn-primary py-2 px-3" style="font-size: 13px;">
+          <i class="fa-solid fa-list-check me-1.5"></i>{{ 'Xem chi tiết Hạng mục HĐ' if current_lang != 'en' else 'View Contract Item' }}
         </a>
-        <a href="/admin/asset/list" class="btn btn-outline-secondary px-3 btn-sm">
-          <i class="fa-solid fa-laptop me-1"></i>{{ 'Danh sách Thiết bị' if current_lang != 'en' else 'Asset List' }}
+        <a href="/admin/asset/list" class="toku-btn-secondary py-2 px-3" style="font-size: 13px;">
+          <i class="fa-solid fa-laptop me-1.5"></i>{{ 'Danh sách Thiết bị' if current_lang != 'en' else 'Asset List' }}
         </a>
       </div>
     </div>
@@ -382,9 +587,9 @@ function addRow(data = {}) {
   tr.className = "asset-input-row";
 
   tr.innerHTML = `
-    <td class="text-center text-muted fw-bold align-middle row-stt">${tbody.children.length + 1}</td>
+    <td class="text-center text-muted fw-bold align-middle row-stt" style="font-size: 12px;">${tbody.children.length + 1}</td>
     <td>
-      <input type="text" class="form-control form-control-sm font-monospace col-serial" 
+      <input type="text" class="form-control toku-grid-input font-monospace col-serial" 
              value="${escapeHtml(data.serial || '')}" 
              placeholder="vd: 8HG9X41" 
              required
@@ -393,35 +598,35 @@ function addRow(data = {}) {
              oninput="updateCounter()">
     </td>
     <td>
-      <input type="text" class="form-control form-control-sm font-monospace col-asset-code" 
+      <input type="text" class="form-control toku-grid-input font-monospace col-asset-code" 
              value="${escapeHtml(data.asset_code || '')}" 
              placeholder="vd: TVC-EM0070"
              oninput="updateCounter()">
     </td>
     <td>
-      <input type="text" class="form-control form-control-sm font-monospace col-vendor-code" 
+      <input type="text" class="form-control toku-grid-input font-monospace col-vendor-code" 
              value="${escapeHtml(data.vendor_code || '')}" 
              placeholder="vd: TKY-PC0021"
              oninput="updateCounter()">
     </td>
     <td>
-      <input type="text" class="form-control form-control-sm font-monospace col-mac-eth" 
+      <input type="text" class="form-control toku-grid-input font-monospace col-mac-eth" 
              value="${escapeHtml(data.mac_ethernet || '')}" 
              placeholder="00:1A:2B:3C:4D:5E">
     </td>
     <td>
-      <input type="text" class="form-control form-control-sm font-monospace col-mac-wifi" 
+      <input type="text" class="form-control toku-grid-input font-monospace col-mac-wifi" 
              value="${escapeHtml(data.mac_wifi || '')}" 
              placeholder="00:1A:2B:3C:4D:5F">
     </td>
     <td>
-      <input type="text" class="form-control form-control-sm col-note" 
+      <input type="text" class="form-control toku-grid-input col-note" 
              value="${escapeHtml(data.note || '')}" 
              placeholder="Ghi chú máy...">
     </td>
     <td class="text-center align-middle">
-      <button type="button" class="btn btn-outline-danger btn-sm p-1 border-0" onclick="removeRow('${tr.id}')" title="Xóa dòng này">
-        <i class="fa-solid fa-xmark"></i>
+      <button type="button" class="btn btn-sm p-1 border-0 text-muted" style="font-size: 13px;" onclick="removeRow('${tr.id}')" title="Xóa dòng này">
+        <i class="fa-solid fa-xmark text-danger"></i>
       </button>
     </td>
   `;
@@ -486,9 +691,9 @@ function updateCounter() {
   const hintElem = document.getElementById("remainingHintBadge");
   if (hintElem) {
     if (validCount === expectedRemaining) {
-      hintElem.innerHTML = `<span class="badge bg-success-subtle text-success border border-success-subtle ms-2"><i class="fa-solid fa-check me-1"></i>Đủ số lượng cần nhận (${validCount}/${expectedRemaining})</span>`;
+      hintElem.innerHTML = `<span class="badge ms-2" style="background-color: #EEF2FF; color: #4D5CB0; border: 1px solid #C7D2FE; border-radius: 6px;"><i class="fa-solid fa-check me-1"></i>Đủ số lượng cần nhận (${validCount}/${expectedRemaining})</span>`;
     } else if (validCount > expectedRemaining) {
-      hintElem.innerHTML = `<span class="badge bg-warning-subtle text-dark border border-warning-subtle ms-2"><i class="fa-solid fa-triangle-exclamation me-1"></i>Vượt số lượng đặt (${validCount}/${expectedRemaining})</span>`;
+      hintElem.innerHTML = `<span class="badge bg-warning-subtle text-dark border border-warning-subtle ms-2" style="border-radius: 6px;"><i class="fa-solid fa-triangle-exclamation me-1"></i>Vượt số lượng đặt (${validCount}/${expectedRemaining})</span>`;
     } else {
       hintElem.innerHTML = `<span class="text-muted ms-2">(Còn thiếu ${expectedRemaining - validCount} máy để đủ đợt đặt mua)</span>`;
     }
@@ -600,10 +805,10 @@ function convertPastedTextToGrid() {
 // Hiển thị thông báo
 function showAlert(message, type = "danger") {
   const container = document.getElementById("alertContainer");
-  container.className = "px-4 pt-3";
+  container.className = "mb-4";
   container.innerHTML = `
-    <div class="alert alert-${type} alert-dismissible fade show shadow-sm" role="alert">
-      <i class="fa-solid ${type === 'danger' ? 'fa-triangle-exclamation' : 'fa-circle-info'} me-2"></i>
+    <div class="alert alert-${type} alert-dismissible fade show shadow-sm border" style="border-radius: 14px;" role="alert">
+      <i class="fa-solid ${type === 'danger' ? 'fa-triangle-exclamation text-danger' : 'fa-circle-info text-primary'} me-2"></i>
       ${escapeHtml(message)}
       <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>

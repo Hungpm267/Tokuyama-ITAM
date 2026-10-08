@@ -14,7 +14,7 @@
         </a>
         {% endif %}
         {% if model_view.identity == 'contract-line' %}
-        <a href="/admin/contract-line/{{ get_object_identifier(model) }}/receive" class="btn btn-success btn-sm text-white" style="font-size: 13px;">
+        <a href="/admin/contract-line/{{ get_object_identifier(model) }}/receive" class="btn btn-primary btn-sm text-white" style="font-size: 13px;">
           <i class="fa-solid fa-boxes-packing me-1"></i> {{ 'Nhập kho theo lô' if current_lang != 'en' else 'Batch Receive' }}
         </a>
         {% endif %}
@@ -397,7 +397,7 @@
         </div>
         <div class="d-flex align-items-center gap-2">
           {% if model_view.identity == 'contract-line' %}
-          <a href="/admin/contract-line/{{ get_object_identifier(model) }}/receive" class="btn btn-success btn-sm text-white px-3" style="font-size: 13px; font-weight: 600;">
+          <a href="/admin/contract-line/{{ get_object_identifier(model) }}/receive" class="btn btn-primary btn-sm text-white px-3" style="font-size: 13px; font-weight: 600;">
             <i class="fa-solid fa-boxes-packing me-1"></i> {{ 'Nhập kho theo lô' if current_lang != 'en' else 'Batch Receive' }}
           </a>
           {% endif %}
