@@ -8,6 +8,7 @@ Quy định bảo mật GEMINI.md:
 
 from __future__ import annotations
 
+import contextvars
 import datetime as dt
 from pathlib import Path
 from typing import Any
@@ -18,13 +19,15 @@ from starlette.datastructures import FormData, URL
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
+from starlette.types import ASGIApp, Receive, Scope, Send
 from sqlalchemy import Select, func, or_, select
 from sqlalchemy.orm import selectinload
 from markupsafe import Markup, escape
 
 
 from app.core.audit import audit_login, record_audit
-from app.core.i18n import DEFAULT_ADMIN_COLUMN_LABELS
+from app.core.i18n import DEFAULT_ADMIN_COLUMN_LABELS, get_current_lang, translate
+from app.core.permissions import get_user_permissions
 from app.core.security import (
     SESSION_SECRET,
     create_session_token,
@@ -35,7 +38,7 @@ from app.core.security import (
 from wtforms import Form, PasswordField, SelectField
 from wtforms.widgets import PasswordInput
 from app.db import SessionLocal
-from app.enums import AssetStatus, AuditAction, CardStatus, PersonStatus, RoleCode
+from app.enums import AssetStatus, AuditAction, CardStatus, Module, PermissionAction, PersonStatus, RoleCode
 from app.models import (
     AccessCard,
     Asset,
@@ -65,6 +68,67 @@ COMMON_EXCLUDED_COLUMNS = [
     "is_deleted", "deleted_at", "deleted_by", "delete_reason"
 ]
 
+current_request_ctx: contextvars.ContextVar[Request | None] = contextvars.ContextVar("current_request_ctx", default=None)
+ 
+ 
+def get_admin_lang() -> str:
+    """Lấy mã ngôn ngữ hiện tại của request (vi, en, ja)."""
+    req = current_request_ctx.get()
+    if req:
+        return get_current_lang(req)
+    return "vi"
+
+
+class RequestContextMiddleware:
+    """Middleware ASGI lưu giữ Request hiện tại vào ContextVar để hỗ trợ kiểm tra RBAC động trên View."""
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] == "http":
+            request = Request(scope, receive)
+            token = current_request_ctx.set(request)
+            try:
+                await self.app(scope, receive, send)
+            finally:
+                current_request_ctx.reset(token)
+        else:
+            await self.app(scope, receive, send)
+
+
+def get_user_from_request(request: Request, db: Any) -> User | None:
+    """Trích xuất và cache thông tin User từ request để tránh truy vấn lặp lại."""
+    if hasattr(request.state, "current_user"):
+        return request.state.current_user
+
+    user_id = request.session.get("user_id") if hasattr(request, "session") else None
+    if not user_id:
+        token = request.cookies.get("itam_session")
+        if token:
+            payload = verify_session_token(token)
+            if payload and "user_id" in payload:
+                user_id = payload["user_id"]
+
+    if not user_id:
+        return None
+
+    user = db.scalar(
+        select(User).options(selectinload(User.role)).where(
+            User.id == int(user_id),
+            User.is_active.is_(True),
+            User.is_deleted.is_(False),
+        )
+    )
+    request.state.current_user = user
+    return user
+
+
+def get_user_permissions_cached(request: Request, db: Any, user: User) -> set[tuple[str, str]]:
+    """Cache tập hợp quyền (module, action) của user trên scope request."""
+    if not hasattr(request.state, "user_perms_set"):
+        request.state.user_perms_set = get_user_permissions(db, user)
+    return request.state.user_perms_set
+
 
 class AdminAuth(AuthenticationBackend):
     def __init__(self, secret_key: str) -> None:
@@ -88,7 +152,7 @@ class AdminAuth(AuthenticationBackend):
 
         with SessionLocal() as db:
             user = db.scalar(
-                select(User).where(
+                select(User).options(selectinload(User.role)).where(
                     User.username == username,
                     User.is_active.is_(True),
                     User.is_deleted.is_(False),
@@ -107,22 +171,29 @@ class AdminAuth(AuthenticationBackend):
                         "username": user.username,
                     })
                     lang = user.preferred_lang or request.cookies.get("itam_lang") or "vi"
+
+                    if role_code == RoleCode.ADMIN.value:
+                        role_title = "ADMINISTRATOR"
+                    elif role_code == RoleCode.GA_MANAGER.value:
+                        role_title = "GA MANAGER"
+                    elif role_code == RoleCode.EXECUTIVE.value:
+                        role_title = "EXECUTIVE"
+                    else:
+                        role_title = role_code
+
                     request.session.update({
                         "token": token,
                         "user_id": user.id,
                         "role": role_code,
+                        "role_code": role_code,
+                        "role_title": role_title,
                         "username": user.username,
+                        "display_name": user.display_name or user.username,
                         "lang": lang,
                     })
 
-                    # Phân luồng điều hướng theo vai trò:
-                    # ADMIN -> /admin (cổng quản trị kỹ thuật)
-                    # GA_MANAGER / EXECUTIVE -> / (Cổng Web Portal nghiệp vụ)
-                    if role_code == RoleCode.ADMIN.value:
-                        request.state.redirect_url = "/admin"
-                    else:
-                        request.state.redirect_url = "/"
-
+                    # Điều hướng vào trang quản trị /admin cho cả 3 vai trò
+                    request.state.redirect_url = "/admin"
                     return True
                 else:
                     request.state.login_error = "Mật khẩu không chính xác."
@@ -144,20 +215,33 @@ class AdminAuth(AuthenticationBackend):
             return False
 
         payload = verify_session_token(token)
-        if not payload or payload.get("role") != RoleCode.ADMIN.value:
+        if not payload:
             return False
 
         user_id = payload.get("user_id")
         with SessionLocal() as db:
             user = db.scalar(
-                select(User).where(
+                select(User).options(selectinload(User.role)).where(
                     User.id == user_id,
                     User.is_active.is_(True),
                     User.is_deleted.is_(False),
                 )
             )
-            if not user or not user.role or user.role.code != RoleCode.ADMIN.value:
+            if not user or not user.role:
                 return False
+
+            role_code = user.role.code
+            if role_code not in (RoleCode.ADMIN.value, RoleCode.GA_MANAGER.value, RoleCode.EXECUTIVE.value):
+                return False
+
+            if role_code == RoleCode.ADMIN.value:
+                role_title = "ADMINISTRATOR"
+            elif role_code == RoleCode.GA_MANAGER.value:
+                role_title = "GA MANAGER"
+            elif role_code == RoleCode.EXECUTIVE.value:
+                role_title = "EXECUTIVE"
+            else:
+                role_title = role_code
 
             if "lang" not in request.session:
                 request.session["lang"] = user.preferred_lang or request.cookies.get("itam_lang") or "vi"
@@ -165,7 +249,9 @@ class AdminAuth(AuthenticationBackend):
             request.session["user_id"] = user.id
             request.session["username"] = user.username
             request.session["display_name"] = user.display_name or user.username
-            request.session["role"] = RoleCode.ADMIN.value
+            request.session["role"] = role_code
+            request.session["role_code"] = role_code
+            request.session["role_title"] = role_title
         return True
 
 
@@ -269,6 +355,7 @@ def humanize_error_str(msg: str, lang: str = "vi") -> str:
 # --- Base Model View ---
 
 class BaseAdminView(ModelView):
+    module: Module | None = None
     can_export = True
     page_size = 25
     page_size_options = [10, 25, 50, 100]
@@ -278,6 +365,66 @@ class BaseAdminView(ModelView):
         merged = {**DEFAULT_ADMIN_COLUMN_LABELS, **(getattr(self, "column_labels", None) or {})}
         self.column_labels = merged
         super().__init__()
+
+    def has_action_permission(self, request: Request, action: PermissionAction) -> bool:
+        if self.module is None:
+            return True
+        with SessionLocal() as db:
+            user = get_user_from_request(request, db)
+            if not user:
+                return False
+            if user.role and user.role.code == RoleCode.ADMIN.value:
+                return True
+            perms = get_user_permissions_cached(request, db, user)
+            mod_val = self.module.value if isinstance(self.module, Module) else str(self.module)
+            act_val = action.value if isinstance(action, PermissionAction) else str(action)
+            return (mod_val, act_val) in perms
+
+    def is_visible(self, request: Request) -> bool:
+        if self.module is None:
+            return True
+        return self.has_action_permission(request, PermissionAction.VIEW)
+
+    def is_accessible(self, request: Request) -> bool:
+        if self.module is None:
+            return True
+        path = request.url.path.lower()
+        if "/create" in path:
+            action = PermissionAction.ADD
+        elif "/edit" in path:
+            action = PermissionAction.CHANGE
+        elif "/delete" in path:
+            action = PermissionAction.DELETE
+        else:
+            action = PermissionAction.VIEW
+        return self.has_action_permission(request, action)
+
+    @property
+    def can_create(self) -> bool:
+        if getattr(self, "_can_create_override", None) is False:
+            return False
+        req = current_request_ctx.get()
+        if not req:
+            return True
+        return self.has_action_permission(req, PermissionAction.ADD)
+
+    @property
+    def can_edit(self) -> bool:
+        if getattr(self, "_can_edit_override", None) is False:
+            return False
+        req = current_request_ctx.get()
+        if not req:
+            return True
+        return self.has_action_permission(req, PermissionAction.CHANGE)
+
+    @property
+    def can_delete(self) -> bool:
+        if getattr(self, "_can_delete_override", None) is False:
+            return False
+        req = current_request_ctx.get()
+        if not req:
+            return True
+        return self.has_action_permission(req, PermissionAction.DELETE)
 
     async def insert_model(self, request: Request, data: dict) -> Any:
         try:
@@ -445,6 +592,7 @@ class BaseAdminView(ModelView):
 # --- Model Views ---
 
 class UserAdmin(BaseAdminView, model=User):
+    module = Module.USERS
     name = "Người dùng"
     name_plural = "Tài khoản Đăng nhập"
     icon = "fa-solid fa-users-gear"
@@ -515,6 +663,7 @@ class UserAdmin(BaseAdminView, model=User):
 
 
 class RoleAdmin(BaseAdminView, model=Role):
+    module = Module.USERS
     name = "Vai trò"
     name_plural = "Vai trò Hệ thống"
     icon = "fa-solid fa-user-shield"
@@ -530,6 +679,7 @@ class RoleAdmin(BaseAdminView, model=Role):
 
 
 class RolePermissionAdmin(BaseAdminView, model=RolePermission):
+    module = Module.USERS
     name = "Quyền vai trò"
     name_plural = "Ma trận Quyền Vai trò"
     icon = "fa-solid fa-key"
@@ -552,6 +702,7 @@ class RolePermissionAdmin(BaseAdminView, model=RolePermission):
 
 
 class UserPermissionOverrideAdmin(BaseAdminView, model=UserPermissionOverride):
+    module = Module.USERS
     name = "Ghi đè quyền"
     name_plural = "Quyền riêng Người dùng"
     icon = "fa-solid fa-user-pen"
@@ -567,6 +718,7 @@ class UserPermissionOverrideAdmin(BaseAdminView, model=UserPermissionOverride):
 
 
 class DepartmentAdmin(BaseAdminView, model=Department):
+    module = Module.PERSONS
     name = "Phòng ban"
     name_plural = "Danh mục Phòng ban"
     icon = "fa-solid fa-sitemap"
@@ -581,6 +733,7 @@ class DepartmentAdmin(BaseAdminView, model=Department):
 
 
 class AssetCategoryAdmin(BaseAdminView, model=AssetCategory):
+    module = Module.ASSETS
     name = "Loại tài sản"
     name_plural = "Danh mục Loại tài sản"
     icon = "fa-solid fa-tags"
@@ -594,6 +747,7 @@ class AssetCategoryAdmin(BaseAdminView, model=AssetCategory):
 
 
 class AssetTagAdmin(BaseAdminView, model=AssetTag):
+    module = Module.ASSETS
     name = "Nhãn tài sản"
     name_plural = "Danh mục Nhãn (Tags)"
     icon = "fa-solid fa-tag"
@@ -609,6 +763,7 @@ class AssetTagAdmin(BaseAdminView, model=AssetTag):
 
 
 class LocationAdmin(BaseAdminView, model=Location):
+    module = Module.CARDS
     name = "Vị trí / Phòng"
     name_plural = "Danh mục Vị trí"
     icon = "fa-solid fa-location-dot"
@@ -634,6 +789,7 @@ class LocationAdmin(BaseAdminView, model=Location):
 
 
 class PersonAdmin(BaseAdminView, model=Person):
+    module = Module.PERSONS
     name = "Nhân sự"
     name_plural = "Hồ sơ Nhân sự"
     icon = "fa-solid fa-id-card-clip"
@@ -663,23 +819,23 @@ class PersonAdmin(BaseAdminView, model=Person):
     }
     column_formatters = {
         "status": lambda m, a: (
-            Markup('<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fa-solid fa-user-check me-1"></i>Đang làm việc</span>')
+            Markup(f'<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fa-solid fa-user-check me-1"></i>{translate("Đang làm việc", get_admin_lang())}</span>')
             if m.status == PersonStatus.ACTIVE
             else (
-                Markup('<span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1"><i class="fa-solid fa-user-clock me-1"></i>Sắp vào làm</span>')
+                Markup(f'<span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1"><i class="fa-solid fa-user-clock me-1"></i>{translate("Sắp vào làm", get_admin_lang())}</span>')
                 if m.status == PersonStatus.SCHEDULED
-                else Markup('<span class="badge bg-secondary text-white px-2 py-1"><i class="fa-solid fa-user-slash me-1"></i>Đã nghỉ việc</span>')
+                else Markup(f'<span class="badge bg-secondary text-white px-2 py-1"><i class="fa-solid fa-user-slash me-1"></i>{translate("Đã nghỉ việc", get_admin_lang())}</span>')
             )
         ),
     }
     column_formatters_detail = {
         "status": lambda m, a: (
-            Markup('<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fa-solid fa-user-check me-1"></i>Đang làm việc (ACTIVE)</span>')
+            Markup(f'<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fa-solid fa-user-check me-1"></i>{translate("Đang làm việc", get_admin_lang())} (ACTIVE)</span>')
             if m.status == PersonStatus.ACTIVE
             else (
-                Markup('<span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1"><i class="fa-solid fa-user-clock me-1"></i>Sắp vào làm (SCHEDULED)</span>')
+                Markup(f'<span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1"><i class="fa-solid fa-user-clock me-1"></i>{translate("Sắp vào làm", get_admin_lang())} (SCHEDULED)</span>')
                 if m.status == PersonStatus.SCHEDULED
-                else Markup('<span class="badge bg-secondary text-white px-2 py-1"><i class="fa-solid fa-user-slash me-1"></i>Đã nghỉ việc (RESIGNED)</span>')
+                else Markup(f'<span class="badge bg-secondary text-white px-2 py-1"><i class="fa-solid fa-user-slash me-1"></i>{translate("Đã nghỉ việc", get_admin_lang())} (RESIGNED)</span>')
             )
         ),
     }
@@ -740,6 +896,7 @@ class PersonAdmin(BaseAdminView, model=Person):
 
 
 class PersonSecretAdmin(BaseAdminView, model=PersonSecret):
+    module = Module.SECRETS
     name = "Mật khẩu nhân viên"
     name_plural = "Kho Mật khẩu Nhân sự"
     icon = "fa-solid fa-user-lock"
@@ -787,6 +944,7 @@ class PersonSecretAdmin(BaseAdminView, model=PersonSecret):
 
 
 class AssetAdmin(BaseAdminView, model=Asset):
+    module = Module.ASSETS
     name = "Tài sản IT"
     name_plural = "Danh sách Thiết bị"
     icon = "fa-solid fa-laptop"
@@ -830,16 +988,16 @@ class AssetAdmin(BaseAdminView, model=Asset):
     }
     column_formatters = {
         "status_badge": lambda m, a: (
-            Markup('<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fa-solid fa-box-archive me-1"></i>Trong kho</span>')
+            Markup(f'<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fa-solid fa-box-archive me-1"></i>{translate("Trong kho", get_admin_lang())}</span>')
             if m.status == AssetStatus.IN_STOCK
             else (
-                Markup('<span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1"><i class="fa-solid fa-user-check me-1"></i>Đang sử dụng</span>')
+                Markup(f'<span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1"><i class="fa-solid fa-user-check me-1"></i>{translate("Đang sử dụng", get_admin_lang())}</span>')
                 if m.status == AssetStatus.IN_USE
                 else (
-                    Markup('<span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1"><i class="fa-solid fa-wrench me-1"></i>Đang sửa chữa</span>')
+                    Markup(f'<span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1"><i class="fa-solid fa-wrench me-1"></i>{translate("Đang sửa chữa", get_admin_lang())}</span>')
                     if m.status == AssetStatus.REPAIR
                     else (
-                        Markup('<span class="badge bg-secondary text-white px-2 py-1"><i class="fa-solid fa-trash-can me-1"></i>Đã thanh lý</span>')
+                        Markup(f'<span class="badge bg-secondary text-white px-2 py-1"><i class="fa-solid fa-trash-can me-1"></i>{translate("Đã thanh lý", get_admin_lang())}</span>')
                         if m.status == AssetStatus.DISPOSED
                         else Markup(f'<span class="badge bg-danger text-white px-2 py-1">{escape(m.status.value if m.status else "-")}</span>')
                     )
@@ -855,14 +1013,14 @@ class AssetAdmin(BaseAdminView, model=Asset):
             Markup(
                 f'<button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 fw-semibold" '
                 f'onclick="openAssignModal({m.id}, \'{escape(m.asset_code or m.serial or "")}\', \'{escape(m.model or "")}\')" style="font-size: 11.5px;">'
-                f'<i class="fa-solid fa-handshake me-1"></i>Bàn giao</button>'
+                f'<i class="fa-solid fa-handshake me-1"></i>{translate("Bàn giao", get_admin_lang())}</button>'
             )
             if m.status == AssetStatus.IN_STOCK
             else (
                 Markup(
                     f'<button type="button" class="btn btn-sm btn-outline-warning text-dark py-0 px-2 fw-bold" '
                     f'onclick="openReturnModal({m.id}, \'{escape(m.asset_code or m.serial or "")}\', \'{escape(m.current_holder or "")}\')" style="font-size: 11.5px;">'
-                    f'<i class="fa-solid fa-arrow-rotate-left me-1"></i>Thu hồi</button>'
+                    f'<i class="fa-solid fa-arrow-rotate-left me-1"></i>{translate("Thu hồi", get_admin_lang())}</button>'
                 )
                 if m.status == AssetStatus.IN_USE
                 else Markup('<span class="text-muted small">-</span>')
@@ -871,16 +1029,16 @@ class AssetAdmin(BaseAdminView, model=Asset):
     }
     column_formatters_detail = {
         "status": lambda m, a: (
-            Markup('<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fa-solid fa-box-archive me-1"></i>Trong kho (IN_STOCK)</span>')
+            Markup(f'<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fa-solid fa-box-archive me-1"></i>{translate("Trong kho", get_admin_lang())} (IN_STOCK)</span>')
             if m.status == AssetStatus.IN_STOCK
             else (
-                Markup('<span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1"><i class="fa-solid fa-user-check me-1"></i>Đang sử dụng (IN_USE)</span>')
+                Markup(f'<span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1"><i class="fa-solid fa-user-check me-1"></i>{translate("Đang sử dụng", get_admin_lang())} (IN_USE)</span>')
                 if m.status == AssetStatus.IN_USE
                 else (
-                    Markup('<span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1"><i class="fa-solid fa-wrench me-1"></i>Đang sửa chữa (REPAIR)</span>')
+                    Markup(f'<span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1"><i class="fa-solid fa-wrench me-1"></i>{translate("Đang sửa chữa", get_admin_lang())} (REPAIR)</span>')
                     if m.status == AssetStatus.REPAIR
                     else (
-                        Markup('<span class="badge bg-secondary text-white px-2 py-1"><i class="fa-solid fa-trash-can me-1"></i>Đã thanh lý (DISPOSED)</span>')
+                        Markup(f'<span class="badge bg-secondary text-white px-2 py-1"><i class="fa-solid fa-trash-can me-1"></i>{translate("Đã thanh lý", get_admin_lang())} (DISPOSED)</span>')
                         if m.status == AssetStatus.DISPOSED
                         else Markup(f'<span class="badge bg-danger text-white px-2 py-1">{escape(m.status.value if m.status else "-")}</span>')
                     )
@@ -890,7 +1048,7 @@ class AssetAdmin(BaseAdminView, model=Asset):
         "current_holder": lambda m, a: (
             Markup(f'<span class="fw-semibold text-dark"><i class="fa-solid fa-user me-1 text-primary"></i>{escape(m.current_holder)}</span>')
             if m.current_holder
-            else Markup('<span class="text-muted fst-italic">- (Trong kho)</span>')
+            else Markup(f'<span class="text-muted fst-italic">- ({translate("Trong kho", get_admin_lang())})</span>')
         ),
     }
     column_searchable_list = [Asset.asset_code, Asset.serial, Asset.vendor_code, Asset.model]
@@ -915,6 +1073,7 @@ class AssetAdmin(BaseAdminView, model=Asset):
 
 
 class AssignmentAdmin(BaseAdminView, model=Assignment):
+    module = Module.ASSIGNMENTS
     name = "Bàn giao thiết bị"
     name_plural = "Lịch sử Cấp phát Tài sản"
     icon = "fa-solid fa-handshake"
@@ -949,15 +1108,15 @@ class AssignmentAdmin(BaseAdminView, model=Assignment):
     }
     column_formatters = {
         "status_badge": lambda m, a: (
-            Markup('<span class="badge bg-secondary text-white"><i class="fa-solid fa-ban me-1"></i>Đã thu hồi</span>')
+            Markup(f'<span class="badge bg-secondary text-white"><i class="fa-solid fa-ban me-1"></i>{translate("Đã thu hồi", get_admin_lang())}</span>')
             if m.returned_at
-            else Markup('<span class="badge bg-success text-white"><i class="fa-solid fa-circle-check me-1"></i>Đang sử dụng</span>')
+            else Markup(f'<span class="badge bg-success text-white"><i class="fa-solid fa-circle-check me-1"></i>{translate("Đang sử dụng", get_admin_lang())}</span>')
         ),
         "actions_quick": lambda m, a: (
             Markup(
                 f'<button type="button" class="btn btn-sm btn-outline-warning text-dark py-0 px-2 fw-bold" '
                 f'onclick="openReturnModal({m.asset_id}, \'{escape(m.asset.asset_code or m.asset.serial or "" if m.asset else "")}\', \'{escape(m.person.full_name if m.person else "")}\')" style="font-size: 11.5px;">'
-                f'<i class="fa-solid fa-arrow-rotate-left me-1"></i>Thu hồi</button>'
+                f'<i class="fa-solid fa-arrow-rotate-left me-1"></i>{translate("Thu hồi", get_admin_lang())}</button>'
             )
             if not m.returned_at
             else Markup('<span class="text-muted small">-</span>')
@@ -966,9 +1125,9 @@ class AssignmentAdmin(BaseAdminView, model=Assignment):
 
     column_formatters_detail = {
         "status_badge": lambda m, a: (
-            Markup('<span class="badge bg-secondary text-white"><i class="fa-solid fa-ban me-1"></i>Đã thu hồi</span>')
+            Markup(f'<span class="badge bg-secondary text-white"><i class="fa-solid fa-ban me-1"></i>{translate("Đã thu hồi", get_admin_lang())}</span>')
             if m.returned_at
-            else Markup('<span class="badge bg-success text-white"><i class="fa-solid fa-circle-check me-1"></i>Đang sử dụng</span>')
+            else Markup(f'<span class="badge bg-success text-white"><i class="fa-solid fa-circle-check me-1"></i>{translate("Đang sử dụng", get_admin_lang())}</span>')
         ),
     }
 
@@ -1098,6 +1257,7 @@ class AssignmentAdmin(BaseAdminView, model=Assignment):
 
 
 class LicenseProductAdmin(BaseAdminView, model=LicenseProduct):
+    module = Module.LICENSES
     name = "Sản phẩm License"
     name_plural = "Danh mục Phần mềm"
     icon = "fa-solid fa-compact-disc"
@@ -1117,6 +1277,7 @@ class LicenseProductAdmin(BaseAdminView, model=LicenseProduct):
 
 
 class LicenseAdmin(BaseAdminView, model=License):
+    module = Module.LICENSES
     name = "Bản quyền License"
     name_plural = "Kho License Phần mềm"
     icon = "fa-solid fa-certificate"
@@ -1157,11 +1318,11 @@ class LicenseAdmin(BaseAdminView, model=License):
         ),
         "remaining_seats": lambda m, a: (
             Markup(
-                f'<span class="badge bg-danger text-white fs-6 px-2 py-1"><i class="fa-solid fa-triangle-exclamation me-1"></i>{m.remaining_seats} (Vượt định mức)</span>'
+                f'<span class="badge bg-danger text-white fs-6 px-2 py-1"><i class="fa-solid fa-triangle-exclamation me-1"></i>{m.remaining_seats} ({translate("Vượt định mức", get_admin_lang())})</span>'
             )
             if m.remaining_seats < 0
             else Markup(
-                '<span class="badge bg-secondary text-white fs-6 px-2 py-1">0 (Hết chỗ)</span>'
+                f'<span class="badge bg-secondary text-white fs-6 px-2 py-1">0 ({translate("Hết chỗ", get_admin_lang())})</span>'
             )
             if m.remaining_seats == 0
             else Markup(
@@ -1175,11 +1336,11 @@ class LicenseAdmin(BaseAdminView, model=License):
         ),
         "remaining_seats": lambda m, a: (
             Markup(
-                f'<span class="badge bg-danger text-white fs-6 px-2 py-1"><i class="fa-solid fa-triangle-exclamation me-1"></i>{m.remaining_seats} (Vượt định mức)</span>'
+                f'<span class="badge bg-danger text-white fs-6 px-2 py-1"><i class="fa-solid fa-triangle-exclamation me-1"></i>{m.remaining_seats} ({translate("Vượt định mức", get_admin_lang())})</span>'
             )
             if m.remaining_seats < 0
             else Markup(
-                '<span class="badge bg-secondary text-white fs-6 px-2 py-1">0 (Hết chỗ)</span>'
+                f'<span class="badge bg-secondary text-white fs-6 px-2 py-1">0 ({translate("Hết chỗ", get_admin_lang())})</span>'
             )
             if m.remaining_seats == 0
             else Markup(
@@ -1202,6 +1363,7 @@ class LicenseAdmin(BaseAdminView, model=License):
 
 
 class LicenseAssignmentAdmin(BaseAdminView, model=LicenseAssignment):
+    module = Module.LICENSES
     name = "Gán License"
     name_plural = "Phân bổ Bản quyền"
     icon = "fa-solid fa-user-check"
@@ -1297,6 +1459,7 @@ class LicenseAssignmentAdmin(BaseAdminView, model=LicenseAssignment):
 
 
 class AccessCardAdmin(BaseAdminView, model=AccessCard):
+    module = Module.CARDS
     name = "Thẻ ra vào"
     name_plural = "Danh sách Thẻ từ"
     icon = "fa-solid fa-address-card"
@@ -1326,15 +1489,15 @@ class AccessCardAdmin(BaseAdminView, model=AccessCard):
     }
     column_formatters = {
         "status_badge": lambda m, a: (
-            Markup('<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fa-solid fa-box-archive me-1"></i>Trong kho</span>')
+            Markup(f'<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fa-solid fa-box-archive me-1"></i>{translate("Trong kho", get_admin_lang())}</span>')
             if m.status == CardStatus.IN_STOCK
             else (
-                Markup('<span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1"><i class="fa-solid fa-user-check me-1"></i>Đang cho mượn</span>')
+                Markup(f'<span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1"><i class="fa-solid fa-user-check me-1"></i>{translate("Đang cho mượn", get_admin_lang())}</span>')
                 if m.status == CardStatus.BORROWED
                 else (
-                    Markup('<span class="badge bg-danger text-white px-2 py-1"><i class="fa-solid fa-triangle-exclamation me-1"></i>Bị mất</span>')
+                    Markup(f'<span class="badge bg-danger text-white px-2 py-1"><i class="fa-solid fa-triangle-exclamation me-1"></i>{translate("Bị mất", get_admin_lang())}</span>')
                     if m.status == CardStatus.LOST
-                    else Markup('<span class="badge bg-secondary text-white px-2 py-1">Đã hủy</span>')
+                    else Markup(f'<span class="badge bg-secondary text-white px-2 py-1">{translate("Đã hủy", get_admin_lang())}</span>')
                 )
             )
         ),
@@ -1342,22 +1505,22 @@ class AccessCardAdmin(BaseAdminView, model=AccessCard):
     }
     column_formatters_detail = {
         "status": lambda m, a: (
-            Markup('<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fa-solid fa-box-archive me-1"></i>Trong kho (IN_STOCK)</span>')
+            Markup(f'<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fa-solid fa-box-archive me-1"></i>{translate("Trong kho", get_admin_lang())} (IN_STOCK)</span>')
             if m.status == CardStatus.IN_STOCK
             else (
-                Markup('<span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1"><i class="fa-solid fa-user-check me-1"></i>Đang cho mượn (BORROWED)</span>')
+                Markup(f'<span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1"><i class="fa-solid fa-user-check me-1"></i>{translate("Đang cho mượn", get_admin_lang())} (BORROWED)</span>')
                 if m.status == CardStatus.BORROWED
                 else (
-                    Markup('<span class="badge bg-danger text-white px-2 py-1"><i class="fa-solid fa-triangle-exclamation me-1"></i>Bị mất (LOST)</span>')
+                    Markup(f'<span class="badge bg-danger text-white px-2 py-1"><i class="fa-solid fa-triangle-exclamation me-1"></i>{translate("Bị mất", get_admin_lang())} (LOST)</span>')
                     if m.status == CardStatus.LOST
-                    else Markup('<span class="badge bg-secondary text-white px-2 py-1">Đã hủy (DECOMMISSIONED)</span>')
+                    else Markup(f'<span class="badge bg-secondary text-white px-2 py-1">{translate("Đã hủy", get_admin_lang())} (DECOMMISSIONED)</span>')
                 )
             )
         ),
         "current_borrower": lambda m, a: (
             Markup(f'<span class="fw-semibold text-dark"><i class="fa-solid fa-user me-1 text-primary"></i>{escape(m.current_borrower)}</span>')
             if m.current_borrower
-            else Markup('<span class="text-muted fst-italic">- (Trong kho)</span>')
+            else Markup(f'<span class="text-muted fst-italic">- ({translate("Trong kho", get_admin_lang())})</span>')
         ),
     }
     form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["loans"]
@@ -1415,6 +1578,7 @@ class AccessCardAdmin(BaseAdminView, model=AccessCard):
 
 
 class CardLoanAdmin(BaseAdminView, model=CardLoan):
+    module = Module.CARDS
     name = "Mượn thẻ từ"
     name_plural = "Sổ Mượn-Trả Thẻ"
     icon = "fa-solid fa-clock-rotate-left"
@@ -1454,16 +1618,16 @@ class CardLoanAdmin(BaseAdminView, model=CardLoan):
     }
     column_formatters = {
         "status_badge": lambda m, a: (
-            Markup('<span class="badge bg-secondary text-white"><i class="fa-solid fa-arrow-rotate-left me-1"></i>Đã trả</span>')
+            Markup(f'<span class="badge bg-secondary text-white"><i class="fa-solid fa-arrow-rotate-left me-1"></i>{translate("Đã trả", get_admin_lang())}</span>')
             if m.returned_at
-            else Markup('<span class="badge bg-success text-white"><i class="fa-solid fa-id-badge me-1"></i>Đang mượn</span>')
+            else Markup(f'<span class="badge bg-success text-white"><i class="fa-solid fa-id-badge me-1"></i>{translate("Đang mượn", get_admin_lang())}</span>')
         ),
     }
     column_formatters_detail = {
         "status_badge": lambda m, a: (
-            Markup('<span class="badge bg-secondary text-white"><i class="fa-solid fa-arrow-rotate-left me-1"></i>Đã trả</span>')
+            Markup(f'<span class="badge bg-secondary text-white"><i class="fa-solid fa-arrow-rotate-left me-1"></i>{translate("Đã trả", get_admin_lang())}</span>')
             if m.returned_at
-            else Markup('<span class="badge bg-success text-white"><i class="fa-solid fa-id-badge me-1"></i>Đang mượn</span>')
+            else Markup(f'<span class="badge bg-success text-white"><i class="fa-solid fa-id-badge me-1"></i>{translate("Đang mượn", get_admin_lang())}</span>')
         ),
     }
 
@@ -1602,6 +1766,7 @@ class CardLoanAdmin(BaseAdminView, model=CardLoan):
 
 
 class ContractAdmin(BaseAdminView, model=Contract):
+    module = Module.CONTRACTS
     name = "Hợp đồng"
     name_plural = "Hợp đồng Mua sắm IT"
     icon = "fa-solid fa-file-contract"
@@ -1632,6 +1797,7 @@ class ContractAdmin(BaseAdminView, model=Contract):
 
 
 class ContractLineAdmin(BaseAdminView, model=ContractLine):
+    module = Module.CONTRACTS
     name = "Hạng mục Hợp đồng"
     name_plural = "Chi tiết Hạng mục"
     icon = "fa-solid fa-list-check"
@@ -1673,18 +1839,18 @@ class ContractLineAdmin(BaseAdminView, model=ContractLine):
         ),
         "delivery_progress": lambda m, a: (
             Markup(
-                '<span class="badge bg-success text-white"><i class="fa-solid fa-circle-check me-1"></i>Đã đủ hàng</span>'
+                f'<span class="badge bg-success text-white"><i class="fa-solid fa-circle-check me-1"></i>{translate("Đã đủ hàng", get_admin_lang())}</span>'
             )
             if m.qty_delivered >= m.qty_ordered
             else (
                 Markup(
-                    f'<span class="badge bg-warning text-dark me-2"><i class="fa-solid fa-clock me-1"></i>Giao một phần ({m.qty_delivered}/{m.qty_ordered})</span>'
-                    f'<a href="/admin/contract-line/{m.id}/receive" class="btn btn-sm btn-outline-primary py-0 px-2 fw-semibold" style="font-size: 11px;"><i class="fa-solid fa-boxes-packing me-1"></i>Nhận hàng</a>'
+                    f'<span class="badge bg-warning text-dark me-2"><i class="fa-solid fa-clock me-1"></i>{translate("Giao một phần", get_admin_lang())} ({m.qty_delivered}/{m.qty_ordered})</span>'
+                    f'<a href="/admin/contract-line/{m.id}/receive" class="btn btn-sm btn-outline-primary py-0 px-2 fw-semibold" style="font-size: 11px;"><i class="fa-solid fa-boxes-packing me-1"></i>{translate("Nhận hàng", get_admin_lang())}</a>'
                 )
                 if m.qty_delivered > 0
                 else Markup(
-                    f'<span class="badge bg-light text-secondary border me-2"><i class="fa-regular fa-clock me-1"></i>Chưa nhận</span>'
-                    f'<a href="/admin/contract-line/{m.id}/receive" class="btn btn-sm btn-outline-primary py-0 px-2 fw-semibold" style="font-size: 11px;"><i class="fa-solid fa-boxes-packing me-1"></i>Nhận hàng</a>'
+                    f'<span class="badge bg-light text-secondary border me-2"><i class="fa-regular fa-clock me-1"></i>{translate("Chưa nhận", get_admin_lang())}</span>'
+                    f'<a href="/admin/contract-line/{m.id}/receive" class="btn btn-sm btn-outline-primary py-0 px-2 fw-semibold" style="font-size: 11px;"><i class="fa-solid fa-boxes-packing me-1"></i>{translate("Nhận hàng", get_admin_lang())}</a>'
                 )
             )
         ),
@@ -1698,18 +1864,18 @@ class ContractLineAdmin(BaseAdminView, model=ContractLine):
         ),
         "delivery_progress": lambda m, a: (
             Markup(
-                '<span class="badge bg-success text-white"><i class="fa-solid fa-circle-check me-1"></i>Đã đủ hàng</span>'
+                f'<span class="badge bg-success text-white"><i class="fa-solid fa-circle-check me-1"></i>{translate("Đã đủ hàng", get_admin_lang())}</span>'
             )
             if m.qty_delivered >= m.qty_ordered
             else (
                 Markup(
-                    f'<span class="badge bg-warning text-dark me-2"><i class="fa-solid fa-clock me-1"></i>Giao một phần ({m.qty_delivered}/{m.qty_ordered})</span>'
-                    f'<a href="/admin/contract-line/{m.id}/receive" class="btn btn-sm btn-primary text-white py-0 px-2 fw-semibold" style="font-size: 12px;"><i class="fa-solid fa-boxes-packing me-1"></i>Nhập kho theo lô</a>'
+                    f'<span class="badge bg-warning text-dark me-2"><i class="fa-solid fa-clock me-1"></i>{translate("Giao một phần", get_admin_lang())} ({m.qty_delivered}/{m.qty_ordered})</span>'
+                    f'<a href="/admin/contract-line/{m.id}/receive" class="btn btn-sm btn-primary text-white py-0 px-2 fw-semibold" style="font-size: 12px;"><i class="fa-solid fa-boxes-packing me-1"></i>{translate("Nhập kho theo lô", get_admin_lang())}</a>'
                 )
                 if m.qty_delivered > 0
                 else Markup(
-                    f'<span class="badge bg-light text-secondary border me-2"><i class="fa-regular fa-clock me-1"></i>Chưa nhận</span>'
-                    f'<a href="/admin/contract-line/{m.id}/receive" class="btn btn-sm btn-primary text-white py-0 px-2 fw-semibold" style="font-size: 12px;"><i class="fa-solid fa-boxes-packing me-1"></i>Nhập kho theo lô</a>'
+                    f'<span class="badge bg-light text-secondary border me-2"><i class="fa-regular fa-clock me-1"></i>{translate("Chưa nhận", get_admin_lang())}</span>'
+                    f'<a href="/admin/contract-line/{m.id}/receive" class="btn btn-sm btn-primary text-white py-0 px-2 fw-semibold" style="font-size: 12px;"><i class="fa-solid fa-boxes-packing me-1"></i>{translate("Nhập kho theo lô", get_admin_lang())}</a>'
                 )
             )
         ),
@@ -1736,6 +1902,7 @@ class ContractLineAdmin(BaseAdminView, model=ContractLine):
 
 
 class PhoneAdmin(BaseAdminView, model=Phone):
+    module = Module.PHONES
     name = "Thiết bị Thoại"
     name_plural = "Danh bạ & Thiết bị Điện thoại"
     icon = "fa-solid fa-phone"
@@ -1761,6 +1928,7 @@ class PhoneAdmin(BaseAdminView, model=Phone):
 
 
 class AuditLogAdmin(BaseAdminView, model=AuditLog):
+    module = Module.AUDIT
     name = "Nhật ký kiểm toán"
     name_plural = "Audit Trail (Bất biến)"
     icon = "fa-solid fa-shield-halved"
@@ -1876,15 +2044,12 @@ class TokuyamaAdmin(Admin):
         assert self.authentication_backend is not None
 
         if request.method == "GET":
-            # Nếu đã có phiên đăng nhập hợp lệ: chuyển hướng ngay đến trang tương ứng
+            # Nếu đã có phiên đăng nhập hợp lệ: chuyển hướng ngay đến trang tổng quan
             token = request.session.get("token") or request.cookies.get("itam_session")
             if token:
                 payload = verify_session_token(token)
                 if payload:
-                    role = payload.get("role")
-                    if role == RoleCode.ADMIN.value:
-                        return RedirectResponse(request.url_for("admin:index"), status_code=302)
-                    return RedirectResponse("/", status_code=302)
+                    return RedirectResponse(request.url_for("admin:index"), status_code=302)
             return await self.templates.TemplateResponse(request, "sqladmin/login.html")
 
         ok = await self.authentication_backend.login(request)
@@ -1911,6 +2076,29 @@ class TokuyamaAdmin(Admin):
             )
         return response
 
+    async def logout(self, request: Request) -> Response:
+        """Đăng xuất hoàn toàn: thu hồi token reveal, xoá session, xoá cookies và điều hướng về trang đăng nhập."""
+        token = request.session.get("token") or request.cookies.get("itam_session")
+        if token:
+            payload = verify_session_token(token)
+            if payload and "user_id" in payload:
+                try:
+                    from app.routers.auth import reveal_gate
+                    reveal_gate.revoke(payload["user_id"])
+                except Exception:
+                    pass
+
+        if self.authentication_backend:
+            await self.authentication_backend.logout(request)
+
+        if hasattr(request, "session"):
+            request.session.clear()
+
+        response = RedirectResponse(request.url_for("admin:login"), status_code=302)
+        response.delete_cookie("itam_session", path="/")
+        response.delete_cookie("admin_session", path="/")
+        return response
+
     @login_required
     async def index(self, request: Request) -> Response:
         """Dashboard tổng quan hệ thống ITAM Tokuyama theo triết lý Swiss."""
@@ -1919,6 +2107,9 @@ class TokuyamaAdmin(Admin):
         current_lang = get_current_lang(request)
         today = dt.date.today()
         sixty_days_later = today + dt.timedelta(days=60)
+        user_role = request.session.get("role") or RoleCode.ADMIN.value
+        can_view_audit = (user_role in (RoleCode.ADMIN.value, RoleCode.EXECUTIVE.value))
+        can_view_licenses = (user_role in (RoleCode.ADMIN.value, RoleCode.EXECUTIVE.value))
 
         with SessionLocal() as db:
             asset_count = db.scalar(
@@ -1942,11 +2133,15 @@ class TokuyamaAdmin(Admin):
             active_card_loans = db.scalar(
                 select(func.count()).select_from(CardLoan).where(CardLoan.returned_at.is_(None))
             ) or 0
-            recent_logs = db.scalars(
-                select(AuditLog).order_by(AuditLog.id.desc()).limit(8)
-            ).all()
 
-            # Overdue card loans (FR-17)
+            # Audit logs (chỉ query khi có quyền xem)
+            recent_logs = []
+            if can_view_audit:
+                recent_logs = db.scalars(
+                    select(AuditLog).order_by(AuditLog.id.desc()).limit(8)
+                ).all()
+
+            # Overdue card loans (FR-17) - hiển thị cho cả Admin, GA Manager, Executive
             overdue_loans_raw = db.scalars(
                 select(CardLoan)
                 .options(
@@ -1977,37 +2172,38 @@ class TokuyamaAdmin(Admin):
                     "days_overdue": days_overdue,
                 })
 
-            # Expiring licenses within 60 days (FR-17)
-            expiring_lics_raw = db.scalars(
-                select(License)
-                .options(
-                    selectinload(License.product),
-                    selectinload(License.assignments),
-                )
-                .where(
-                    License.is_deleted.is_(False),
-                    License.expiry_date.is_not(None),
-                    License.expiry_date <= sixty_days_later,
-                )
-                .order_by(License.expiry_date.asc())
-                .limit(8)
-            ).all()
-
+            # Expiring licenses within 60 days (FR-17) - chỉ query khi có quyền xem
             expiring_licenses = []
-            for lic in expiring_lics_raw:
-                days_left = (lic.expiry_date - today).days if lic.expiry_date else 0
-                active_assignments = len([a for a in lic.assignments if a.removed_at is None])
-                product_name = lic.product.name if lic.product else "N/A"
-                expiring_licenses.append({
-                    "id": lic.id,
-                    "product_name": product_name,
-                    "license_type": lic.product.license_type.value if (lic.product and lic.product.license_type) else "",
-                    "expiry_date": lic.expiry_date,
-                    "days_left": days_left,
-                    "is_expired": days_left < 0,
-                    "seats_used": f"{active_assignments}/{lic.seats}",
-                    "note": lic.note or "",
-                })
+            if can_view_licenses:
+                expiring_lics_raw = db.scalars(
+                    select(License)
+                    .options(
+                        selectinload(License.product),
+                        selectinload(License.assignments),
+                    )
+                    .where(
+                        License.is_deleted.is_(False),
+                        License.expiry_date.is_not(None),
+                        License.expiry_date <= sixty_days_later,
+                    )
+                    .order_by(License.expiry_date.asc())
+                    .limit(8)
+                ).all()
+
+                for lic in expiring_lics_raw:
+                    days_left = (lic.expiry_date - today).days if lic.expiry_date else 0
+                    active_assignments = len([a for a in lic.assignments if a.removed_at is None])
+                    product_name = lic.product.name if lic.product else "N/A"
+                    expiring_licenses.append({
+                        "id": lic.id,
+                        "product_name": product_name,
+                        "license_type": lic.product.license_type.value if (lic.product and lic.product.license_type) else "",
+                        "expiry_date": lic.expiry_date,
+                        "days_left": days_left,
+                        "is_expired": days_left < 0,
+                        "seats_used": f"{active_assignments}/{lic.seats}",
+                        "note": lic.note or "",
+                    })
 
         allocation_rate = int(round((assignment_count / asset_count) * 100)) if asset_count > 0 else 0
 
@@ -2028,6 +2224,8 @@ class TokuyamaAdmin(Admin):
             "recent_logs": recent_logs,
             "overdue_card_loans": overdue_card_loans,
             "expiring_licenses": expiring_licenses,
+            "can_view_audit": can_view_audit,
+            "can_view_licenses": can_view_licenses,
         }
         return await self.templates.TemplateResponse(request, "sqladmin/index.html", context)
 
@@ -2037,7 +2235,7 @@ def setup_admin(app, engine):
         app,
         engine,
         title="Tokuyama IT Portal",
-        logo_url="/static/img/logo.svg",
+        logo_url="/static/img/logo.png",
         authentication_backend=authentication_backend,
         base_url="/admin",
         templates_dir=str(TEMPLATES_DIR),

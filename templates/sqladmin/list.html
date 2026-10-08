@@ -30,7 +30,7 @@
         </div>
         {% endif %}
         {% endif %}
-        {% if model_view.identity == 'person' %}
+        {% if model_view.identity == 'person' and (request.session.get('role') == 'ADMIN' or request.session.get('role_code') == 'ADMIN') %}
         <div class="ms-2 d-inline-block">
           <a href="/admin/person-secret/list" class="btn btn-outline-success d-inline-flex align-items-center gap-1" style="font-size: 13px; font-weight: 600;">
             <i class="fa-solid fa-user-lock"></i>
@@ -42,7 +42,7 @@
         <div class="ms-3 d-inline-block">
           <a href="{{ url_for('admin:create', identity=model_view.identity) }}" class="btn btn-primary d-inline-flex align-items-center gap-1" style="font-size: 13px; font-weight: 600;">
             <i class="fa-solid fa-plus"></i>
-            <span>{{ '+ New' if current_lang == 'en' else '+ Thêm mới' }} {{ t(model_view.name, current_lang) }}</span>
+            <span>{{ '+ New' if current_lang == 'en' else ('+ 新規作成' if current_lang == 'ja' else '+ Thêm mới') }} {{ t(model_view.name, current_lang) }}</span>
           </a>
         </div>
         {% endif %}
@@ -54,7 +54,7 @@
           <button {% if not model_view.can_delete and not model_view._custom_actions_in_list %} disabled {% endif %}
             class="btn btn-light dropdown-toggle border" type="button" id="dropdownMenuButton" data-bs-toggle="dropdown" data-toggle="dropdown"
             aria-haspopup="true" aria-expanded="false" style="border-color: var(--toku-border) !important; font-size: 13px;">
-            {{ 'Actions' if current_lang == 'en' else 'Thao tác' }}
+            {{ 'Actions' if current_lang == 'en' else ('一括操作' if current_lang == 'ja' else 'Thao tác') }}
           </button>
           {% if model_view.can_delete or model_view._custom_actions_in_list %}
           <div class="dropdown-menu shadow" aria-labelledby="dropdownMenuButton" style="border-color: var(--toku-border) !important; z-index: 1050;">
@@ -86,7 +86,7 @@
         <div class="col-md-4 text-muted">
           <div class="input-group">
             <input id="search-input" type="text" class="form-control" style="font-size: 13px; border-color: var(--toku-border) !important;"
-              placeholder="{{ 'Search' if current_lang == 'en' else 'Tìm kiếm' }}: {{ model_view.search_placeholder() }}"
+              placeholder="{{ 'Search' if current_lang == 'en' else ('検索' if current_lang == 'ja' else 'Tìm kiếm') }}: {{ model_view.search_placeholder() }}"
               value="{{ request.query_params.get('search', '') }}">
             <button id="search-button" class="btn btn-outline-secondary" type="button" style="font-size: 13px; border-color: var(--toku-border) !important;">
               <i class="fa-solid fa-magnifying-glass"></i>
@@ -101,17 +101,17 @@
     {% if model_view.identity == 'audit-log' %}
     <div class="px-3 py-2 bg-light border-bottom d-flex flex-wrap align-items-center gap-3" style="font-size: 12.5px; border-color: var(--toku-border) !important;">
       <div class="d-flex align-items-center gap-1 flex-wrap">
-        <span class="text-muted fw-semibold me-1"><i class="fa-solid fa-filter me-1 text-primary"></i>{{ 'Action' if current_lang == 'en' else 'Hành động' }}:</span>
+        <span class="text-muted fw-semibold me-1"><i class="fa-solid fa-filter me-1 text-primary"></i>{{ 'Action' if current_lang == 'en' else ('アクション' if current_lang == 'ja' else 'Hành động') }}:</span>
         {% set cur_action = request.query_params.get('action', '') %}
-        <a href="{{ request.url.remove_query_params(['action', 'page']) }}" class="btn btn-sm py-0 px-2 rounded-pill {% if not cur_action %}btn-dark{% else %}btn-outline-secondary{% endif %}" style="font-size: 11px;">{{ 'All' if current_lang == 'en' else 'Tất cả' }}</a>
+        <a href="{{ request.url.remove_query_params(['action', 'page']) }}" class="btn btn-sm py-0 px-2 rounded-pill {% if not cur_action %}btn-dark{% else %}btn-outline-secondary{% endif %}" style="font-size: 11px;">{{ 'All' if current_lang == 'en' else ('すべて' if current_lang == 'ja' else 'Tất cả') }}</a>
         {% for act in ['DELETE', 'CREATE', 'UPDATE', 'LOGIN', 'REVEAL'] %}
         <a href="{{ request.url.include_query_params(action=act, page=1) }}" class="btn btn-sm py-0 px-2 rounded-pill {% if cur_action == act %}btn-primary text-white fw-bold{% else %}btn-outline-secondary{% endif %}" style="font-size: 11px;">{{ act }}</a>
         {% endfor %}
       </div>
       <div class="d-flex align-items-center gap-1 flex-wrap ms-md-auto">
-        <span class="text-muted fw-semibold me-1"><i class="fa-solid fa-table me-1 text-secondary"></i>{{ 'Table' if current_lang == 'en' else 'Bảng' }}:</span>
+        <span class="text-muted fw-semibold me-1"><i class="fa-solid fa-table me-1 text-secondary"></i>{{ 'Table' if current_lang == 'en' else ('テーブル' if current_lang == 'ja' else 'Bảng') }}:</span>
         {% set cur_table = request.query_params.get('table', '') %}
-        <a href="{{ request.url.remove_query_params(['table', 'page']) }}" class="btn btn-sm py-0 px-2 rounded-pill {% if not cur_table %}btn-dark{% else %}btn-outline-secondary{% endif %}" style="font-size: 11px;">{{ 'All' if current_lang == 'en' else 'Tất cả' }}</a>
+        <a href="{{ request.url.remove_query_params(['table', 'page']) }}" class="btn btn-sm py-0 px-2 rounded-pill {% if not cur_table %}btn-dark{% else %}btn-outline-secondary{% endif %}" style="font-size: 11px;">{{ 'All' if current_lang == 'en' else ('すべて' if current_lang == 'ja' else 'Tất cả') }}</a>
         {% for tbl in ['users', 'assets', 'access_cards', 'licenses', 'persons'] %}
         <a href="{{ request.url.include_query_params(table=tbl, page=1) }}" class="btn btn-sm py-0 px-2 rounded-pill {% if cur_table == tbl %}btn-info text-white fw-bold{% else %}btn-outline-secondary{% endif %}" style="font-size: 11px;">{{ tbl }}</a>
         {% endfor %}
@@ -125,7 +125,7 @@
             <th class="w-1"><input class="form-check-input m-0 align-middle" type="checkbox" aria-label="Select all"
                 id="select-all"></th>
             <th class="w-1 text-center" style="font-size: 12px; font-weight: 700; color: #64748b; letter-spacing: 0.04em;">
-              {{ 'ACTIONS' if current_lang == 'en' else 'THAO TÁC' }}
+              {{ 'ACTIONS' if current_lang == 'en' else ('操作' if current_lang == 'ja' else 'THAO TÁC') }}
             </th>
             {% for name in model_view._list_prop_names %}
             {% set label = get_property_label(model_view, name, current_lang) %}
@@ -155,19 +155,19 @@
             <td class="text-end">
               {% if model_view.identity == 'contract-line' %}
               <a href="/admin/contract-line/{{ get_object_identifier(row) }}/receive" data-bs-toggle="tooltip"
-                data-bs-placement="top" title="{{ 'Batch Receive' if current_lang == 'en' else 'Nhập kho theo lô' }}" class="btn btn-sm btn-outline-primary py-0 px-1 me-2" style="font-size: 11px;">
-                <i class="fa-solid fa-boxes-packing me-1"></i>{{ 'Nhận hàng' if current_lang != 'en' else 'Receive' }}
+                data-bs-placement="top" title="{{ '一括受入' if current_lang == 'ja' else ('Batch Receive' if current_lang == 'en' else 'Nhập kho theo lô') }}" class="btn btn-sm btn-outline-primary py-0 px-1 me-2" style="font-size: 11px;">
+                <i class="fa-solid fa-boxes-packing me-1"></i>{{ '受入' if current_lang == 'ja' else ('Receive' if current_lang == 'en' else 'Nhận hàng') }}
               </a>
               {% endif %}
               {% if model_view.can_view_details %}
               <a href="{{ model_view._build_url_for('admin:details', request, row) }}" data-bs-toggle="tooltip"
-                data-bs-placement="top" title="{{ 'View' if current_lang == 'en' else 'Xem chi tiết' }}" class="text-secondary me-2">
+                data-bs-placement="top" title="{{ '詳細' if current_lang == 'ja' else ('View' if current_lang == 'en' else 'Xem chi tiết') }}" class="text-secondary me-2">
                 <i class="fa-solid fa-eye"></i>
               </a>
               {% endif %}
               {% if model_view.can_edit %}
               <a href="{{ model_view._build_url_for('admin:edit', request, row) }}" data-bs-toggle="tooltip"
-                data-bs-placement="top" title="{{ 'Edit' if current_lang == 'en' else 'Chỉnh sửa' }}" class="text-primary me-2">
+                data-bs-placement="top" title="{{ '編集' if current_lang == 'ja' else ('Edit' if current_lang == 'en' else 'Chỉnh sửa') }}" class="text-primary me-2">
                 <i class="fa-solid fa-pen-to-square"></i>
               </a>
               {% endif %}
@@ -175,7 +175,7 @@
               <a href="#" data-name="{{ model_view.name }}" data-pk="{{ get_object_identifier(row) }}"
                 data-label="{{ row }}"
                 data-url="{{ model_view._url_for_delete(request, row) }}" data-bs-toggle="modal"
-                data-bs-target="#modal-delete" title="{{ t('Xóa', current_lang) }}" class="text-danger">
+                data-bs-target="#modal-delete" title="{{ '削除' if current_lang == 'ja' else ('Delete' if current_lang == 'en' else 'Xóa') }}" class="text-danger">
                 <i class="fa-solid fa-trash-can"></i>
               </a>
               {% endif %}
@@ -207,11 +207,13 @@
     </div>
     <div class="card-footer d-flex justify-content-between align-items-center gap-2 bg-white flex-wrap" style="border-top: 1px solid var(--toku-border) !important; position: relative; z-index: 10;">
       <p class="m-0 text-muted" style="font-size: 13px;">
-        {{ 'Showing' if current_lang == 'en' else 'Hiển thị' }} <span>{{ ((pagination.page - 1) * pagination.page_size) + 1 if pagination.count > 0 else 0 }}</span>
-        {{ 'to' if current_lang == 'en' else 'đến' }}
-        <span>{{ min(pagination.page * pagination.page_size, pagination.count) }}</span>
-        {{ 'of' if current_lang == 'en' else 'trong tổng số' }}
-        <span>{{ pagination.count }}</span> {{ 'items' if current_lang == 'en' else 'mục' }}
+        {% if current_lang == 'ja' %}
+        全 <span>{{ pagination.count }}</span> 件中 <span>{{ ((pagination.page - 1) * pagination.page_size) + 1 if pagination.count > 0 else 0 }}</span> 〜 <span>{{ min(pagination.page * pagination.page_size, pagination.count) }}</span> 件を表示
+        {% elif current_lang == 'en' %}
+        Showing <span>{{ ((pagination.page - 1) * pagination.page_size) + 1 if pagination.count > 0 else 0 }}</span> to <span>{{ min(pagination.page * pagination.page_size, pagination.count) }}</span> of <span>{{ pagination.count }}</span> items
+        {% else %}
+        Hiển thị <span>{{ ((pagination.page - 1) * pagination.page_size) + 1 if pagination.count > 0 else 0 }}</span> đến <span>{{ min(pagination.page * pagination.page_size, pagination.count) }}</span> trong tổng số <span>{{ pagination.count }}</span> mục
+        {% endif %}
       </p>
       <ul class="pagination m-0 ms-auto">
         <li class="page-item {% if not pagination.has_previous %}disabled{% endif %}">
@@ -221,7 +223,7 @@
             <a class="page-link" href="#">
               {% endif %}
               <i class="fa-solid fa-chevron-left me-1"></i>
-              {{ 'prev' if current_lang == 'en' else 'Trước' }}
+              {{ '前へ' if current_lang == 'ja' else ('prev' if current_lang == 'en' else 'Trước') }}
             </a>
         </li>
         {% for page_control in pagination.page_controls %}
@@ -234,21 +236,21 @@
             {% else %}
             <a class="page-link" href="#">
               {% endif %}
-              {{ 'next' if current_lang == 'en' else 'Sau' }}
+              {{ '次へ' if current_lang == 'ja' else ('next' if current_lang == 'en' else 'Sau') }}
               <i class="fa-solid fa-chevron-right ms-1"></i>
             </a>
         </li>
       </ul>
       <div class="dropup dropdown text-muted position-relative" style="font-size: 13px;">
-        {{ 'Show' if current_lang == 'en' else 'Hiển thị' }}
+        {{ '表示件数:' if current_lang == 'ja' else ('Show' if current_lang == 'en' else 'Hiển thị') }}
         <button type="button" class="btn btn-sm btn-light border dropdown-toggle" data-bs-toggle="dropdown" data-toggle="dropdown" aria-haspopup="true"
           aria-expanded="false" style="border-color: var(--toku-border) !important; font-size: 12.5px;">
-          {{ request.query_params.get("pageSize") or model_view.page_size }} / {{ 'Page' if current_lang == 'en' else 'Trang' }}
+          {{ request.query_params.get("pageSize") or model_view.page_size }} / {{ 'ページ' if current_lang == 'ja' else ('Page' if current_lang == 'en' else 'Trang') }}
         </button>
         <div class="dropdown-menu dropdown-menu-end shadow" style="border-color: var(--toku-border) !important; z-index: 1060; min-width: 140px; margin-bottom: 6px;">
           {% for page_size_option in model_view.page_size_options %}
           <a class="dropdown-item py-1.5 px-3" href="{{ request.url.include_query_params(pageSize=page_size_option, page=pagination.resize(page_size_option).page) }}">
-            {{ page_size_option }} / {{ 'Page' if current_lang == 'en' else 'Trang' }}
+            {{ page_size_option }} / {{ 'ページ' if current_lang == 'ja' else ('Page' if current_lang == 'en' else 'Trang') }}
           </a>
           {% endfor %}
         </div>

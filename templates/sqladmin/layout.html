@@ -9,12 +9,12 @@
   <aside class="navbar navbar-vertical d-flex flex-column flex-shrink-0" style="width: 260px; min-width: 260px; max-width: 260px; height: 100vh; position: sticky; top: 0; background-color: #ffffff; border-right: 1px solid var(--toku-border); z-index: 1000; overflow: hidden;">
     <div class="d-flex flex-column h-100 w-100 p-0" style="overflow: hidden;">
       
-      <!-- Brand Masthead (Clean Swiss Alignment) -->
+      <!-- Brand Masthead (Clean Swiss Alignment with Tokuyama Brand Colors) -->
       <div class="py-3 px-3 w-100 border-bottom bg-white" style="border-color: var(--toku-border) !important;">
         <a href="{{ url_for('admin:index') }}" class="d-block text-decoration-none">
           {% if admin.logo_url %}
-          <img src="{{ admin.logo_url }}" alt="Tokuyama" style="height: 34px; width: auto; max-width: 100%; object-fit: contain; display: block;" />
-          <div class="mt-1" style="font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: #64748b; text-transform: uppercase;">
+          <img src="{{ admin.logo_url }}" alt="Tokuyama" style="height: 38px; width: auto; max-width: 100%; object-fit: contain; display: block;" />
+          <div class="mt-1" style="font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: #595B61; text-transform: uppercase;">
             {{ t('IT Asset Management', current_lang) }}
           </div>
           {% else %}
@@ -37,7 +37,7 @@
             </div>
             <div class="d-flex flex-column" style="max-width: 120px;">
               <span class="text-truncate" style="font-size: 12.5px; font-weight: 700; color: #0f172a; line-height: 1.2;" title="{{ request.session.get('display_name', '') }}">{{ request.session.get("username", "it.admin") }}</span>
-              <span style="font-size: 10px; font-weight: 600; color: #4D5CB0; letter-spacing: 0.04em;">{{ t('ADMINISTRATOR', current_lang) }}</span>
+              <span style="font-size: 10px; font-weight: 600; color: #4D5CB0; letter-spacing: 0.04em;">{{ t(request.session.get('role_title', 'ADMINISTRATOR'), current_lang) }}</span>
             </div>
           </div>
           <div class="d-inline-flex align-items-center" title="Online" style="color: #15803d; font-size: 11px; font-weight: 600;">
@@ -64,11 +64,11 @@
   <!-- Main Content Wrapper -->
   <div class="page-wrapper flex-grow-1 d-flex flex-column min-vh-100" style="min-width: 0; background-color: var(--toku-canvas);">
     
-    <!-- Top Utility Bar (Bilingual Switcher & System Posture) - Fixed Sticky Top -->
-    <header class="w-100 bg-white border-bottom px-4 py-2 d-flex align-items-center justify-content-between d-print-none flex-shrink-0" style="position: sticky; top: 0; z-index: 1020; background-color: #ffffff !important; border-color: var(--toku-border) !important; height: 44px; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);">
+    <!-- Top Utility Bar (Trilingual Switcher & System Posture) - Fixed Sticky Top -->
+    <header class="w-100 bg-white border-bottom px-4 py-2 d-flex align-items-center justify-content-between d-print-none flex-shrink-0" style="position: sticky; top: 0; z-index: 1020; background-color: #ffffff !important; border-color: var(--toku-border) !important; height: 46px; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);">
       <div class="d-flex align-items-center gap-2">
-        <span style="font-size: 11.5px; font-weight: 700; color: #4D5CB0; letter-spacing: 0.04em;">TOKUYAMA VIETNAM</span>
-        <span class="text-muted" style="font-size: 10px;">/</span>
+        <span style="font-size: 12px; font-weight: 800; color: #4D5CB0; letter-spacing: 0.04em;">TOKUYAMA <span style="color: #FF561D;">VIETNAM</span></span>
+        <span class="text-muted" style="font-size: 11px;">/</span>
         <span class="text-secondary" style="font-size: 12px; font-weight: 500;">{{ t('IT Asset Management System', current_lang) }}</span>
       </div>
 
@@ -78,26 +78,33 @@
           <span class="input-group-text bg-transparent border-0 text-muted ps-2.5 pe-1 py-0" style="font-size: 11px;">
             <i class="fa-solid fa-magnifying-glass"></i>
           </span>
-          <input type="search" name="q" id="topbarSearchInput" class="form-control bg-transparent border-0 shadow-none py-0 text-dark" placeholder="{{ 'Tìm kiếm (GA code, Serial, MAC, Nhân sự, HĐ...)' if current_lang != 'en' else 'Quick Search (GA code, Serial, MAC, Person, Contract...)' }}" value="{{ request.query_params.get('q', '') }}" style="font-size: 11.5px; height: 26px;" />
+          <input type="search" name="q" id="topbarSearchInput" class="form-control bg-transparent border-0 shadow-none py-0 text-dark" placeholder="{{ 'Tìm kiếm (GA code, Serial, MAC, Nhân sự, HĐ...)' if current_lang == 'vi' else ('Quick Search (GA code, Serial, MAC, Person, Contract...)' if current_lang == 'en' else '検索 (GAコード, シリアル, 社員, 契約...)') }}" value="{{ request.query_params.get('q', '') }}" style="font-size: 11.5px; height: 26px;" />
           <span class="input-group-text bg-transparent border-0 pe-2 py-0">
             <kbd class="border text-muted bg-white fw-bold" style="font-size: 9px; padding: 1px 4px; border-radius: 3px;">Ctrl K</kbd>
           </span>
         </div>
       </form>
 
-      <!-- Swiss Segmented Language Switcher -->
+      <!-- Swiss Segmented Language Switcher (Trilingual: VI | EN | JA) -->
       <div class="d-flex align-items-center gap-2">
-        <span class="text-muted me-1" style="font-size: 11px; font-weight: 500;"><i class="fa-solid fa-globe me-1"></i>Ngôn ngữ / Language:</span>
+        <span class="text-muted me-1 d-none d-lg-inline" style="font-size: 11px; font-weight: 500;">
+          <i class="fa-solid fa-globe me-1"></i>{{ 'Ngôn ngữ' if current_lang == 'vi' else ('Language' if current_lang == 'en' else '言語') }}:
+        </span>
         <div class="d-inline-flex align-items-center rounded border" style="background-color: #f1f5f9; border-color: var(--toku-border) !important; padding: 2px;">
           <a href="/admin/set-lang?lang=vi&next={{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}"
              class="btn btn-sm px-2 py-0 border-0 rounded text-decoration-none {% if current_lang == 'vi' %}bg-white text-dark shadow-sm fw-bold{% else %}text-muted fw-medium{% endif %}"
-             style="font-size: 11px; line-height: 1.6;">
+             style="font-size: 11px; line-height: 1.6;" title="Tiếng Việt">
             Tiếng Việt
           </a>
           <a href="/admin/set-lang?lang=en&next={{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}"
              class="btn btn-sm px-2 py-0 border-0 rounded text-decoration-none {% if current_lang == 'en' %}bg-white text-dark shadow-sm fw-bold{% else %}text-muted fw-medium{% endif %}"
-             style="font-size: 11px; line-height: 1.6;">
+             style="font-size: 11px; line-height: 1.6;" title="English">
             English
+          </a>
+          <a href="/admin/set-lang?lang=ja&next={{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}"
+             class="btn btn-sm px-2 py-0 border-0 rounded text-decoration-none {% if current_lang == 'ja' %}bg-white text-dark shadow-sm fw-bold{% else %}text-muted fw-medium{% endif %}"
+             style="font-size: 11px; line-height: 1.6;" title="日本語">
+            日本語
           </a>
         </div>
       </div>

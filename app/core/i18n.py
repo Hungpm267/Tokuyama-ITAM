@@ -10,7 +10,7 @@ from typing import Any, Final
 from starlette.requests import Request
 
 DEFAULT_LANGUAGE: Final[str] = "vi"
-SUPPORTED_LANGUAGES: Final[tuple[str, ...]] = ("vi", "en")
+SUPPORTED_LANGUAGES: Final[tuple[str, ...]] = ("vi", "en", "ja")
 
 TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
     # System & Layout
@@ -49,6 +49,14 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
     "ONLINE": {
         "vi": "ONLINE",
         "en": "ONLINE",
+    },
+    "Tìm kiếm toàn cục": {
+        "vi": "Tìm kiếm toàn cục",
+        "en": "Global Search",
+    },
+    "Thùng rác & Khôi phục": {
+        "vi": "Thùng rác & Khôi phục",
+        "en": "Recycle Bin",
     },
 
     # Sidebar Categories
@@ -154,9 +162,33 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         "vi": "Cấp phát License Thiết bị",
         "en": "License Assignments",
     },
+    "Danh mục Phần mềm": {
+        "vi": "Danh mục Phần mềm",
+        "en": "Software Products",
+    },
+    "Kho License Phần mềm": {
+        "vi": "Kho License Phần mềm",
+        "en": "Software Licenses",
+    },
+    "Phân bổ Bản quyền": {
+        "vi": "Phân bổ Bản quyền",
+        "en": "License Assignments",
+    },
     "Danh sách Thẻ": {
         "vi": "Danh sách Thẻ",
         "en": "Access Cards",
+    },
+    "Danh sách Thẻ từ": {
+        "vi": "Danh sách Thẻ từ",
+        "en": "Access Cards",
+    },
+    "Sổ Mượn-Trả Thẻ": {
+        "vi": "Sổ Mượn-Trả Thẻ",
+        "en": "Card Loans Log",
+    },
+    "Mượn thẻ từ": {
+        "vi": "Mượn thẻ từ",
+        "en": "Card Loan",
     },
     "Lịch sử Cho mượn Thẻ": {
         "vi": "Lịch sử Cho mượn Thẻ",
@@ -166,6 +198,14 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         "vi": "Danh sách Hợp đồng",
         "en": "Contracts",
     },
+    "Hợp đồng Mua sắm IT": {
+        "vi": "Hợp đồng Mua sắm IT",
+        "en": "IT Procurement Contracts",
+    },
+    "Chi tiết Hạng mục": {
+        "vi": "Chi tiết Hạng mục",
+        "en": "Contract Line Items",
+    },
     "Hạng mục Hợp đồng": {
         "vi": "Hạng mục Hợp đồng",
         "en": "Contract Lines",
@@ -174,9 +214,153 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         "vi": "Danh bạ Nội bộ",
         "en": "Internal Directory",
     },
+    "Danh bạ & Thiết bị Điện thoại": {
+        "vi": "Danh bạ & Thiết bị Điện thoại",
+        "en": "Phone Directory & Devices",
+    },
+    "Thiết bị Thoại": {
+        "vi": "Thiết bị Thoại",
+        "en": "Phone Device",
+    },
     "Nhật ký Hoạt động": {
         "vi": "Nhật ký Hoạt động",
         "en": "Audit Logs",
+    },
+    "Audit Trail (Bất biến)": {
+        "vi": "Audit Trail (Bất biến)",
+        "en": "Audit Trail (Immutable)",
+    },
+    "Nhật ký kiểm toán": {
+        "vi": "Nhật ký kiểm toán",
+        "en": "Audit Log",
+    },
+    "Ma trận Quyền Vai trò": {
+        "vi": "Ma trận Quyền Vai trò",
+        "en": "Role Permission Matrix",
+    },
+    "Quyền riêng Người dùng": {
+        "vi": "Quyền riêng Người dùng",
+        "en": "User Permission Overrides",
+    },
+    "Người đang giữ thẻ": {
+        "vi": "Người đang giữ thẻ",
+        "en": "Current Holder",
+    },
+    "Người đang giữ máy": {
+        "vi": "Người đang giữ máy",
+        "en": "Current Holder",
+    },
+    "Thao tác": {
+        "vi": "Thao tác",
+        "en": "Actions",
+    },
+    "THAO TÁC": {
+        "vi": "THAO TÁC",
+        "en": "ACTIONS",
+    },
+    "Trong kho": {
+        "vi": "Trong kho",
+        "en": "In Stock",
+    },
+    "Đang cho mượn": {
+        "vi": "Đang cho mượn",
+        "en": "Borrowed",
+    },
+    "Bị mất": {
+        "vi": "Bị mất",
+        "en": "Lost",
+    },
+    "Đã hủy": {
+        "vi": "Đã hủy",
+        "en": "Decommissioned",
+    },
+    "Đang sử dụng": {
+        "vi": "Đang sử dụng",
+        "en": "In Use",
+    },
+    "Đang làm việc": {
+        "vi": "Đang làm việc",
+        "en": "Active",
+    },
+    "Sắp vào làm": {
+        "vi": "Sắp vào làm",
+        "en": "Scheduled",
+    },
+    "Đã nghỉ việc": {
+        "vi": "Đã nghỉ việc",
+        "en": "Resigned",
+    },
+    "Đang sửa chữa": {
+        "vi": "Đang sửa chữa",
+        "en": "In Repair",
+    },
+    "Đã thanh lý": {
+        "vi": "Đã thanh lý",
+        "en": "Disposed",
+    },
+    "Đã trả": {
+        "vi": "Đã trả",
+        "en": "Returned",
+    },
+    "Đang mượn": {
+        "vi": "Đang mượn",
+        "en": "Borrowing",
+    },
+    "Đã thu hồi": {
+        "vi": "Đã thu hồi",
+        "en": "Returned",
+    },
+    "Bàn giao": {
+        "vi": "Bàn giao",
+        "en": "Assign",
+    },
+    "Thu hồi": {
+        "vi": "Thu hồi",
+        "en": "Return",
+    },
+    "Thu hồi thiết bị": {
+        "vi": "Thu hồi thiết bị",
+        "en": "Return Asset",
+    },
+    "Nhận hàng": {
+        "vi": "Nhận hàng",
+        "en": "Receive",
+    },
+    "Đã đủ hàng": {
+        "vi": "Đã đủ hàng",
+        "en": "Fully Delivered",
+    },
+    "Giao một phần": {
+        "vi": "Giao một phần",
+        "en": "Partial Delivery",
+    },
+    "Chưa nhận": {
+        "vi": "Chưa nhận",
+        "en": "Pending",
+    },
+    "Vượt định mức": {
+        "vi": "Vượt định mức",
+        "en": "Over Quota",
+    },
+    "Hết chỗ": {
+        "vi": "Hết chỗ",
+        "en": "Full",
+    },
+    "Số thẻ": {
+        "vi": "Số thẻ",
+        "en": "Card Number",
+    },
+    "Loại thẻ": {
+        "vi": "Loại thẻ",
+        "en": "Card Type",
+    },
+    "Trạng thái": {
+        "vi": "Trạng thái",
+        "en": "Status",
+    },
+    "Ghi chú": {
+        "vi": "Ghi chú",
+        "en": "Notes",
     },
 
     # Dashboard Metrics & Units
@@ -443,6 +627,9 @@ PROPERTY_LABELS: Final[dict[str, dict[str, str]]] = {
     "external_company": {"vi": "Công ty / Đơn vị ngoài", "en": "External Company"},
     "purpose": {"vi": "Mục đích sử dụng", "en": "Purpose"},
     "expected_return_at": {"vi": "Dự kiến ngày trả", "en": "Expected Return Date"},
+    "current_borrower": {"vi": "Người đang giữ thẻ", "en": "Current Holder", "ja": "保持者"},
+    "current_holder": {"vi": "Người đang giữ máy", "en": "Current Holder", "ja": "保持者"},
+    "actions_quick": {"vi": "Thao tác", "en": "Actions", "ja": "操作"},
 
     # Location & Facility
     "location_id": {"vi": "Vị trí / Phòng", "en": "Location"},
@@ -514,9 +701,11 @@ MODEL_SPECIFIC_LABELS: Final[dict[tuple[str, str], dict[str, str]]] = {
     ("contract-line", "qty_ordered"): {"vi": "Số lượng đặt mua", "en": "Quantity Ordered"},
 
     # Access Card
-    ("access-card", "card_no"): {"vi": "Mã số thẻ từ", "en": "Card Number"},
-    ("access-card", "card_type"): {"vi": "Phân loại thẻ", "en": "Card Type"},
-    ("access-card", "status"): {"vi": "Trạng thái thẻ", "en": "Card Status"},
+    ("access-card", "card_no"): {"vi": "Mã số thẻ từ", "en": "Card Number", "ja": "カード番号"},
+    ("access-card", "card_type"): {"vi": "Phân loại thẻ", "en": "Card Type", "ja": "カード種別"},
+    ("access-card", "status"): {"vi": "Trạng thái thẻ", "en": "Card Status", "ja": "カード状態"},
+    ("access-card", "status_badge"): {"vi": "Trạng thái", "en": "Status", "ja": "ステータス"},
+    ("access-card", "current_borrower"): {"vi": "Người đang giữ thẻ", "en": "Current Holder", "ja": "保持者"},
 
     # Card Loan
     ("card-loan", "card"): {"vi": "Thẻ mượn", "en": "Access Card"},
@@ -545,6 +734,396 @@ MODEL_SPECIFIC_LABELS: Final[dict[tuple[str, str], dict[str, str]]] = {
     ("asset", "serial"): {"vi": "Số Serial máy", "en": "Serial Number"},
     ("asset", "status"): {"vi": "Trạng thái thiết bị", "en": "Asset Status"},
 }
+
+JA_TRANSLATIONS: Final[dict[str, str]] = {
+    # System & Layout
+    "Tokuyama IT Portal": "トクヤマITポータル",
+    "IT Asset Management": "IT資産管理",
+    "IT Asset Management System": "IT資産管理システム",
+    "Tổng quan Quản trị": "ダッシュボード",
+    "Bảng điều khiển tác nghiệp IT": "IT運用コンソール",
+    "Đăng xuất": "ログアウト",
+    "Đăng nhập": "ログイン",
+    "QUẢN TRỊ VIÊN": "システム管理者",
+    "ADMINISTRATOR": "システム管理者",
+    "GA MANAGER": "総務マネージャー",
+    "EXECUTIVE": "役員・経営陣",
+    "ONLINE": "オンライン",
+    "Online": "オンライン",
+
+    # Sidebar Categories
+    "Hệ thống & Phân quyền": "システム・権限管理",
+    "Danh mục Dùng chung": "マスタ管理",
+    "Nhân sự": "社員・人事",
+    "Tài sản": "IT資産・機器",
+    "License": "ソフトウェアライセンス",
+    "Thẻ ra vào": "入退室カード",
+    "Hợp đồng": "調達契約",
+    "Danh bạ thoại": "内線電話帳",
+    "Truy vết": "監査ログ",
+
+    # Submenus & Model Names
+    "Tài khoản Đăng nhập": "ログインアカウント",
+    "Người dùng": "ユーザー",
+    "Vai trò Hệ thống": "ロール設定",
+    "Vai trò": "ロール",
+    "Ma trận Quyền": "権限マトリクス",
+    "Ma trận Quyền Vai trò": "ロール権限マトリクス",
+    "Quyền vai trò": "ロール権限",
+    "Ghi đè Quyền": "個別権限設定",
+    "Quyền riêng Người dùng": "個別ユーザー権限",
+    "Ghi đè quyền": "個別権限",
+    "Danh mục Phòng ban": "部署マスタ",
+    "Phòng ban": "部署",
+    "Danh mục Loại tài sản": "資産分類",
+    "Loại tài sản": "機器分類",
+    "Danh mục Nhãn (Tags)": "機器タグ",
+    "Nhãn tài sản": "機器タグ",
+    "Danh mục Vị trí": "設置場所・エリア",
+    "Vị trí / Phòng": "設置場所",
+    "Hồ sơ Nhân sự": "社員名簿",
+    "Kho Mật khẩu Nhân sự": "パスワード保管庫",
+    "Mật khẩu nhân viên": "社員パスワード",
+    "Danh sách Thiết bị": "機器台帳",
+    "Tài sản IT": "IT機器",
+    "Lịch sử Bàn giao / Thu hồi": "割当・返却履歴",
+    "Lịch sử Cấp phát Tài sản": "機器割当履歴",
+    "Bàn giao thiết bị": "機器割当",
+    "Danh mục Sản phẩm License": "ソフトウェア製品",
+    "Danh mục Phần mềm": "ソフトウェア製品一覧",
+    "Sản phẩm License": "ソフトウェア製品",
+    "Danh sách License": "ライセンス台帳",
+    "Kho License Phần mềm": "ライセンス台帳",
+    "Bản quyền License": "ソフトウェアライセンス",
+    "Cấp phát License Thiết bị": "ライセンス割当",
+    "Phân bổ Bản quyền": "ライセンス割当",
+    "Gán License": "ライセンス割当",
+    "Danh sách Thẻ": "ICカード一覧",
+    "Danh sách Thẻ từ": "入退室カード一覧",
+    "Sổ Mượn-Trả Thẻ": "カード貸出返却台帳",
+    "Mượn thẻ từ": "カード貸出",
+    "Lịch sử Cho mượn Thẻ": "カード貸出台帳",
+    "Danh sách Hợp đồng": "契約一覧",
+    "Hợp đồng Mua sắm IT": "調達契約一覧",
+    "Chi tiết Hạng mục": "契約明細一覧",
+    "Hạng mục Hợp đồng": "契約明細",
+    "Danh bạ Nội bộ": "社内電話帳",
+    "Danh bạ & Thiết bị Điện thoại": "内線電話・通信機器一覧",
+    "Thiết bị Thoại": "内線電話機器",
+    "Nhật ký Hoạt động": "システム操作ログ",
+    "Audit Trail (Bất biến)": "監査ログ（改ざん防止）",
+    "Nhật ký kiểm toán": "監査ログ",
+
+    # Table Column Labels & Property Names
+    "Người đang giữ thẻ": "保持者",
+    "Người đang giữ máy": "保持者",
+    "Thao tác": "操作",
+    "THAO TÁC": "操作",
+    "Số thẻ": "カード番号",
+    "Loại thẻ": "カード種別",
+    "Trạng thái": "ステータス",
+    "Ghi chú": "備考",
+    "Mục đích mượn": "利用目的",
+    "Thời điểm mượn": "貸出日時",
+    "Dự kiến ngày trả": "返却予定日",
+    "Thời điểm trả": "返却日時",
+    "Số lượng đặt mua": "発注数量",
+    "Đã nhận": "納品済み",
+    "Tiến độ": "進捗",
+
+    # Status Values & Action Labels
+    "Trong kho": "在庫",
+    "Đang cho mượn": "貸出中",
+    "Bị mất": "紛失",
+    "Đã hủy": "無効化",
+    "Đang sử dụng": "使用中",
+    "Đang làm việc": "在籍",
+    "Sắp vào làm": "入社予定",
+    "Đã nghỉ việc": "退職",
+    "Đang sửa chữa": "修理中",
+    "Đã thanh lý": "廃棄済み",
+    "Đã trả": "返却済み",
+    "Đang mượn": "貸出中",
+    "Đã thu hồi": "回収済み",
+    "Bàn giao": "割当",
+    "Thu hồi": "返却",
+    "Thu hồi thiết bị": "機器返却",
+    "Nhận hàng": "受入",
+    "Đã đủ hàng": "完納",
+    "Giao một phần": "分納",
+    "Chưa nhận": "未受入",
+    "Vượt định mức": "超過",
+    "Hết chỗ": "空きなし",
+
+    # UI Controls & Pagination
+    "Hiển thị": "表示件数",
+    "Trang": "ページ",
+    "Trước": "前へ",
+    "Sau": "次へ",
+    "Quay lại": "戻る",
+    "Quay lại danh sách": "一覧に戻る",
+    "Xem chi tiết": "詳細表示",
+    "+ Thêm mới": "+ 新規作成",
+
+    # Dashboard Metrics & Units
+    "Thiết bị IT": "IT機器",
+    "Đang cấp phát": "割当済み",
+    "Bản quyền phần mềm": "ソフトウェアライセンス",
+    "máy": "台",
+    "lượt": "件",
+    "gói": "本",
+    "thẻ": "枚",
+    "người": "名",
+    "hợp đồng": "件",
+
+    # Dashboard Sections
+    "Chi tiết": "詳細",
+    "Nhật ký hoạt động gần nhất": "最近の操作履歴",
+    "Xem tất cả nhật ký": "すべてのログを表示",
+    "Mã": "ID",
+    "Thời điểm": "日時",
+    "Hành động": "操作",
+    "Bảng dữ liệu": "テーブル",
+    "Bản ghi ID": "レコードID",
+    "Địa chỉ IP": "IPアドレス",
+    "Tổng quan vận hành": "運用概要",
+    "Tỷ lệ cấp phát": "割当率",
+    "Nhân sự đang làm việc": "在籍社員",
+    "Hợp đồng mua sắm": "調達契約",
+    "Thẻ đang mượn": "貸出中カード",
+    "Thao tác nhanh": "クイック操作",
+    "Thêm thiết bị mới": "機器の新規登録",
+    "Cấp phát tài sản": "機器の割当",
+    "Thêm nhân sự": "社員の新規追加",
+    "Cho mượn thẻ": "カード貸出",
+    "Thêm danh bạ thoại": "電話番号追加",
+    "Chưa có dữ liệu kiểm toán phát sinh trong phiên làm việc này.": "このセッションでの監査ログはありません。",
+
+    # Alerts & Dialogs
+    "Thẻ mượn quá hạn hẹn trả": "返却期限超過カード",
+    "Sổ mượn thẻ": "カード貸出台帳",
+    "Mã thẻ": "カード番号",
+    "Người mượn": "借用者",
+    "Hẹn trả": "返却予定日",
+    "Tình trạng": "状態",
+    "Trễ": "遅延",
+    "ngày": "日",
+    "Hiện không có thẻ nào bị quá hạn hẹn trả.": "現在、返却期限を超過したカードはありません。",
+    "Bản quyền sắp hết hạn (≤ 60 ngày)": "期限間近のライセンス (60日以内)",
+    "Xem tất cả": "すべて表示",
+    "Phần mềm": "ソフトウェア",
+    "Seat": "シート",
+    "Hạn dùng": "有効期限",
+    "Còn lại": "残り",
+    "Đã hết hạn": "期限切れ",
+    "Tất cả bản quyền đều đang trong thời hạn an toàn.": "すべてのライセンスは有効期限内です。",
+
+    # Actions & Buttons
+    "Xác nhận xóa": "削除の確認",
+    "Bạn có chắc chắn muốn xóa bản ghi này?": "このレコードを削除してもよろしいですか？",
+    "Lý do xóa (tùy chọn)": "削除理由（任意）",
+    "Xóa": "削除",
+    "Hủy": "キャンセル",
+    "Xóa các mục đã chọn": "選択項目を削除",
+    "Không thể xóa tài khoản của chính bạn đang đăng nhập.": "現在ログイン中の自身のアカウントは削除できません。",
+    "Không thể xóa vai trò ADMIN hệ thống.": "システムADMINロールは削除できません。",
+    "Chỉnh sửa": "編集",
+    "Lưu": "保存",
+    "Thêm mới": "新規作成",
+    "Tìm kiếm": "検索",
+    "Nhập kho theo lô": "一括受入・入庫",
+    "Bàn giao / Thu hồi": "機器割当・返却",
+    "Tìm kiếm toàn cục": "全体検索",
+    "Thùng rác & Khôi phục": "ゴミ箱・データ復元",
+}
+
+JA_PROPERTY_LABELS: Final[dict[str, str]] = {
+    "id": "ID",
+    "created_at": "作成日時",
+    "created_by": "作成者",
+    "updated_at": "更新日時",
+    "updated_by": "更新者",
+    "is_deleted": "削除状態",
+    "deleted_at": "削除日時",
+    "delete_reason": "削除理由",
+    "deleted_by": "削除者",
+    "code": "コード",
+    "name": "名称",
+    "name_en": "英語/越語名",
+    "name_ja": "日本語名",
+    "note": "備考",
+    "remarks": "追記事項",
+    "status": "ステータス",
+    "description": "説明",
+    "color": "カラー",
+    "username": "ユーザー名",
+    "password_hash": "パスワードハッシュ",
+    "display_name": "表示名",
+    "preferred_lang": "優先言語",
+    "is_active": "有効状態",
+    "last_login_at": "最終ログイン日時",
+    "role_id": "ロール",
+    "role": "ロール",
+    "user_id": "ユーザー",
+    "user": "ユーザー",
+    "users": "ユーザー一覧",
+    "module": "機能モジュール",
+    "action": "アクション",
+    "granted": "権限付与",
+    "permissions": "権限一覧",
+    "staff_code": "社員番号",
+    "user_login_id": "ログインアカウント",
+    "full_name": "氏名",
+    "department_id": "所属部署",
+    "department": "所属部署",
+    "email": "メールアドレス",
+    "start_working_date": "入社日",
+    "person_id": "社員",
+    "person": "社員",
+    "pc_password_enc": "PCパスワード（暗号化）",
+    "pc_password_note": "PCパスワード備考",
+    "email_password_enc": "メールパスワード（暗号化）",
+    "email_password_note": "メールパスワード備考",
+    "key_version": "暗号化鍵バージョン",
+    "secret": "機密情報",
+    "asset_code": "資産番号 (GA)",
+    "vendor_code": "ベンダーコード",
+    "category_id": "機器カテゴリ",
+    "category": "機器カテゴリ",
+    "contract_line_id": "契約明細",
+    "contract_line": "契約明細",
+    "model": "モデル・型番",
+    "form_factor": "形状・タイプ",
+    "serial": "シリアル番号",
+    "hwid": "ハードウェアID",
+    "mac_ethernet": "MACアドレス (LAN)",
+    "mac_wifi": "MACアドレス (Wi-Fi)",
+    "asset_id": "IT機器",
+    "asset": "IT機器",
+    "assets": "機器一覧",
+    "tag_id": "資産タグ",
+    "tags": "資産タグ",
+    "borrowed_at": "割当・貸出日時",
+    "returned_at": "返却日時",
+    "assignments": "割当履歴",
+    "product_id": "ソフトウェア製品",
+    "product": "ソフトウェア製品",
+    "license_id": "ライセンス",
+    "license": "ライセンス",
+    "license_key_enc": "ライセンスキー（暗号化）",
+    "license_type": "ライセンス種別",
+    "seats": "総ライセンス数",
+    "assigned_seats": "割当済み",
+    "remaining_seats": "空き",
+    "start_date": "開始日",
+    "expiry_date": "有効期限",
+    "assigned_at": "割当日時",
+    "removed_at": "回収日時",
+    "status_badge": "ステータス",
+    "licenses": "ライセンス一覧",
+    "card_id": "ICカード",
+    "card": "ICカード",
+    "card_no": "カード番号",
+    "card_type": "カード種別",
+    "loans": "貸出履歴",
+    "external_name": "外部借用者氏名",
+    "external_company": "外部借用者所属会社",
+    "purpose": "利用目的",
+    "expected_return_at": "返却予定日",
+    "location_id": "設置場所",
+    "location": "設置場所",
+    "building": "棟・建物",
+    "floor": "階",
+    "room_en": "部屋名 (英語)",
+    "room_ja": "部屋名 (日本語)",
+    "is_access_controlled": "入退室制限",
+    "contract_id": "調達契約",
+    "contract": "調達契約",
+    "vendor": "ベンダー",
+    "vendor_name": "ベンダー名",
+    "signed_date": "契約締結日",
+    "delivery_status": "納品状況",
+    "item_type": "品目種別",
+    "qty_ordered": "発注数量",
+    "qty_delivered": "納品数量",
+    "qty_remaining": "残数量",
+    "delivery_progress": "納品進捗",
+    "lines": "契約明細",
+    "device_name": "電話機器名",
+    "device_type": "電話種別",
+    "extension_number": "内線番号",
+    "table_name": "テーブル名",
+    "record_id": "レコードID",
+    "before_after": "変更履歴",
+    "ip_address": "IPアドレス",
+    "summary": "概要",
+    "current_borrower": "保持者",
+    "current_holder": "保持者",
+    "actions_quick": "操作",
+}
+
+JA_MODEL_SPECIFIC_LABELS: Final[dict[tuple[str, str], str]] = {
+    ("department", "code"): "部署コード",
+    ("department", "name_en"): "部署名 (英語/越語)",
+    ("department", "name_ja"): "部署名 (日本語)",
+    ("asset-category", "name_en"): "分類名 (英語/越語)",
+    ("asset-category", "name_ja"): "分類名 (日本語)",
+    ("asset-tag", "code"): "タグコード",
+    ("asset-tag", "name_en"): "タグ名 (英語/越語)",
+    ("asset-tag", "name_ja"): "タグ名 (日本語)",
+    ("asset-tag", "color"): "タグカラー",
+    ("role", "code"): "ロールコード",
+    ("role", "name_en"): "ロール名 (英語/越語)",
+    ("role", "name_ja"): "ロール名 (日本語)",
+    ("contract", "code"): "契約番号",
+    ("contract", "vendor_name"): "ベンダー名",
+    ("contract", "signed_date"): "契約締結日",
+    ("contract", "delivery_status"): "納品状況",
+    ("contract-line", "contract"): "調達契約",
+    ("contract-line", "item_type"): "品目種別",
+    ("contract-line", "spec"): "仕様・スペック",
+    ("contract-line", "qty_ordered"): "発注数量",
+    ("access-card", "card_no"): "カード番号",
+    ("access-card", "card_type"): "カード種別",
+    ("access-card", "status"): "カード状態",
+    ("access-card", "status_badge"): "ステータス",
+    ("access-card", "current_borrower"): "保持者",
+    ("access-card", "note"): "備考",
+    ("card-loan", "card"): "ICカード",
+    ("card-loan", "borrowed_at"): "貸出日時",
+    ("card-loan", "expected_return_at"): "返却予定日",
+    ("card-loan", "returned_at"): "返却日時",
+    ("assignment", "asset"): "対象機器",
+    ("assignment", "person"): "担当社員",
+    ("assignment", "borrowed_at"): "割当日時",
+    ("assignment", "returned_at"): "返却日時",
+    ("person", "staff_code"): "社員番号",
+    ("person", "full_name"): "氏名",
+    ("person", "department"): "所属部署",
+    ("person", "status"): "就業状態",
+    ("person", "start_working_date"): "入社日",
+    ("asset", "asset_code"): "資産番号 (GA)",
+    ("asset", "vendor_code"): "ベンダーコード",
+    ("asset", "category"): "機器カテゴリ",
+    ("asset", "model"): "モデル",
+    ("asset", "serial"): "シリアル番号",
+    ("asset", "status"): "機器状態",
+}
+
+# Tự động nạp dữ liệu bản dịch tiếng Nhật vào từ điển hệ thống
+for _k, _v in JA_TRANSLATIONS.items():
+    if _k in TRANSLATIONS:
+        TRANSLATIONS[_k]["ja"] = _v
+    else:
+        TRANSLATIONS[_k] = {"vi": _k, "en": _k, "ja": _v}
+
+for _k, _v in JA_PROPERTY_LABELS.items():
+    if _k in PROPERTY_LABELS:
+        PROPERTY_LABELS[_k]["ja"] = _v
+
+for _k, _v in JA_MODEL_SPECIFIC_LABELS.items():
+    if _k in MODEL_SPECIFIC_LABELS:
+        MODEL_SPECIFIC_LABELS[_k]["ja"] = _v
 
 DEFAULT_ADMIN_COLUMN_LABELS: Final[dict[str, str]] = {
     prop: labels["vi"] for prop, labels in PROPERTY_LABELS.items()
@@ -622,15 +1201,15 @@ def translate(key: str, lang: str = DEFAULT_LANGUAGE) -> str:
         if lang in rec:
             return rec[lang]
 
-    # Tra cứu đảo chiều theo nhãn vi hoặc en trong PROPERTY_LABELS
+    # Tra cứu đảo chiều theo nhãn vi, en hoặc ja trong PROPERTY_LABELS
     for rec in PROPERTY_LABELS.values():
-        if key in (rec.get("vi"), rec.get("en")):
+        if key in (rec.get("vi"), rec.get("en"), rec.get("ja")):
             if lang in rec:
                 return rec[lang]
 
     # Tra cứu đảo chiều theo MODEL_SPECIFIC_LABELS
     for rec in MODEL_SPECIFIC_LABELS.values():
-        if key in (rec.get("vi"), rec.get("en")):
+        if key in (rec.get("vi"), rec.get("en"), rec.get("ja")):
             if lang in rec:
                 return rec[lang]
 

@@ -9,7 +9,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
 
-from app.admin import setup_admin
+from app.admin import RequestContextMiddleware, setup_admin
 from app.config import settings
 from app.core.security import SESSION_SECRET
 from app.db import engine
@@ -33,7 +33,8 @@ app = FastAPI(
     redoc_url=None if is_prod else "/redoc",
 )
 
-# 1. Session Middleware (hỗ trợ SQLAdmin và phiên làm việc web)
+# 1. Middlewares (Session và Request Context lưu trữ vào ContextVar)
+app.add_middleware(RequestContextMiddleware)
 app.add_middleware(
     SessionMiddleware,
     secret_key=SESSION_SECRET,

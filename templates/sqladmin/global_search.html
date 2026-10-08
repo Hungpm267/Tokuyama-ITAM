@@ -12,24 +12,24 @@
           <i class="fa-solid fa-magnifying-glass fs-5 text-primary"></i>
         </span>
         <input type="search" name="q" id="globalSearchInput" class="form-control form-control-lg border-start-0 ps-0"
-               placeholder="{{ 'Nhập mã GA, serial, model, MAC, tên nhân sự, mã HĐ, số extension...' if current_lang != 'en' else 'Search by GA code, serial, model, MAC, person name, contract code, extension...' }}"
+               placeholder="{{ 'GAコード、シリアル、モデル、MAC、社員名、契約番号、内線...' if current_lang == 'ja' else ('Search by GA code, serial, model, MAC, person name, contract code, extension...' if current_lang == 'en' else 'Nhập mã GA, serial, model, MAC, tên nhân sự, mã HĐ, số extension...') }}"
                value="{{ query }}" autofocus style="border-radius: 0 10px 10px 0; font-size: 15px;">
       </div>
     </div>
     <div class="col-md-2 d-grid">
       <button type="submit" class="btn btn-primary btn-lg" style="border-radius: 10px;">
-        <i class="fa-solid fa-search me-1"></i> {{ 'Tìm kiếm' if current_lang != 'en' else 'Search' }}
+        <i class="fa-solid fa-search me-1"></i> {{ '検索' if current_lang == 'ja' else ('Search' if current_lang == 'en' else 'Tìm kiếm') }}
       </button>
     </div>
   </form>
 
   <div class="d-flex flex-wrap align-items-center gap-2 mt-3 pt-2 border-top text-muted small">
-    <span class="fw-bold text-dark"><i class="fa-regular fa-lightbulb me-1"></i>{{ 'Gợi ý từ khóa:' if current_lang != 'en' else 'Suggestions:' }}</span>
+    <span class="fw-bold text-dark"><i class="fa-regular fa-lightbulb me-1"></i>{{ '検索キーワードのヒント:' if current_lang == 'ja' else ('Suggestions:' if current_lang == 'en' else 'Gợi ý từ khóa:') }}</span>
     <a href="/admin/global-search?q=GA-" class="badge bg-secondary text-decoration-none">GA-</a>
     <a href="/admin/global-search?q=Dell" class="badge bg-secondary text-decoration-none">Dell</a>
     <a href="/admin/global-search?q=KHCM" class="badge bg-secondary text-decoration-none">KHCM-</a>
     <a href="/admin/global-search?q=Office" class="badge bg-secondary text-decoration-none">Office</a>
-    <span class="ms-auto text-muted">{{ total_count }} {{ 'kết quả được tìm thấy' if current_lang != 'en' else 'results found' }}</span>
+    <span class="ms-auto text-muted">{{ total_count }} {{ '件の結果が見つかりました' if current_lang == 'ja' else ('results found' if current_lang == 'en' else 'kết quả được tìm thấy') }}</span>
   </div>
 </div>
 
@@ -42,10 +42,10 @@
           <i class="fa-solid fa-folder-open"></i>
         </span>
       </div>
-      <h4 class="fw-bold text-dark mb-2">{{ 'Không tìm thấy kết quả phù hợp' if current_lang != 'en' else 'No matching results found' }}</h4>
+      <h4 class="fw-bold text-dark mb-2">{{ '検索結果が見つかりませんでした' if current_lang == 'ja' else ('No matching results found' if current_lang == 'en' else 'Không tìm thấy kết quả phù hợp') }}</h4>
       <p class="text-muted mx-auto" style="max-width: 480px; font-size: 13.5px;">
-        {{ 'Không có bản ghi nào khớp với từ khóa' if current_lang != 'en' else 'No records matched query' }} <strong>"{{ query }}"</strong>.
-        {{ 'Vui lòng kiểm tra lại chính tả hoặc thử tìm bằng Serial, mã tem GA, tên nhân viên viết không dấu.' if current_lang != 'en' else 'Please verify your spelling or try searching by serial number, GA code, or staff name.' }}
+        {{ 'キーワードに一致するデータはありません:' if current_lang == 'ja' else ('No records matched query' if current_lang == 'en' else 'Không có bản ghi nào khớp với từ khóa') }} <strong>"{{ query }}"</strong>.
+        {{ '入力内容を確認するか、シリアル番号、GAコード、社員名で検索してください。' if current_lang == 'ja' else ('Please verify your spelling or try searching by serial number, GA code, or staff name.' if current_lang == 'en' else 'Vui lòng kiểm tra lại chính tả hoặc thử tìm bằng Serial, mã tem GA, tên nhân viên viết không dấu.') }}
       </p>
     </div>
   {% else %}
@@ -58,11 +58,11 @@
           <span style="width: 28px; height: 28px; border-radius: 8px; background-color: #EEF2FF; color: #4D5CB0; display: inline-flex; align-items: center; justify-content: center; font-size: 13px;">
             <i class="fa-solid fa-laptop"></i>
           </span>
-          <h5 class="fw-bold m-0" style="font-size: 15px;">{{ 'Thiết bị IT & Phần cứng' if current_lang != 'en' else 'IT Assets & Hardware' }}</h5>
+          <h5 class="fw-bold m-0" style="font-size: 15px;">{{ 'IT機器・ハードウェア' if current_lang == 'ja' else ('IT Assets & Hardware' if current_lang == 'en' else 'Thiết bị IT & Phần cứng') }}</h5>
           <span class="badge bg-primary ms-1">{{ results.assets | length }}</span>
         </div>
         <a href="{{ url_for('admin:list', identity='asset') }}?search={{ query }}" class="btn btn-outline-secondary btn-sm py-1 px-3" style="font-size: 12px;">
-          {{ 'Xem trong tab Tài sản' if current_lang != 'en' else 'View in Assets' }} &rarr;
+          {{ '機器一覧で開く' if current_lang == 'ja' else ('View in Assets' if current_lang == 'en' else 'Xem trong tab Tài sản') }} &rarr;
         </a>
       </div>
       <div class="table-responsive">
@@ -99,14 +99,19 @@
                 {% if not item.mac_ethernet and not item.mac_wifi and not item.hwid %}—{% endif %}
               </td>
               <td>
-                {% if item.status.value == 'IN_STOCK' %}
-                <span class="badge bg-success">{{ t('Trong kho', current_lang) }}</span>
-                {% elif item.status.value == 'IN_USE' %}
-                <span class="badge bg-primary">{{ t('Đang dùng', current_lang) }}</span>
-                {% elif item.status.value == 'REPAIRING' %}
-                <span class="badge bg-warning">{{ t('Đang sửa', current_lang) }}</span>
+                {% set ast = item.status.value if item.status and item.status.value is defined else item.status %}
+                {% if ast == 'IN_STOCK' %}
+                <span class="badge bg-success-subtle text-success border border-success-subtle">{{ t('Trong kho', current_lang) }}</span>
+                {% elif ast == 'IN_USE' %}
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle">{{ t('Đang dùng', current_lang) }}</span>
+                {% elif ast == 'REPAIR' %}
+                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">{{ t('Đang sửa', current_lang) }}</span>
+                {% elif ast == 'DISPOSED' %}
+                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">{{ t('Đã thanh lý', current_lang) }}</span>
+                {% elif ast == 'LOST' %}
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle">{{ t('Mất', current_lang) }}</span>
                 {% else %}
-                <span class="badge bg-secondary">{{ item.status.value }}</span>
+                <span class="badge bg-light text-dark border">{{ ast }}</span>
                 {% endif %}
               </td>
               <td class="text-end">
@@ -130,11 +135,11 @@
           <span style="width: 28px; height: 28px; border-radius: 8px; background-color: #f0fdf4; color: #16a34a; display: inline-flex; align-items: center; justify-content: center; font-size: 13px;">
             <i class="fa-solid fa-users"></i>
           </span>
-          <h5 class="fw-bold m-0" style="font-size: 15px;">{{ 'Nhân sự & Người dùng' if current_lang != 'en' else 'Personnel & Employees' }}</h5>
+          <h5 class="fw-bold m-0" style="font-size: 15px;">{{ '社員・ユーザー' if current_lang == 'ja' else ('Personnel & Employees' if current_lang == 'en' else 'Nhân sự & Người dùng') }}</h5>
           <span class="badge bg-success ms-1">{{ results.persons | length }}</span>
         </div>
         <a href="{{ url_for('admin:list', identity='person') }}?search={{ query }}" class="btn btn-outline-secondary btn-sm py-1 px-3" style="font-size: 12px;">
-          {{ 'Xem trong tab Nhân sự' if current_lang != 'en' else 'View in Personnel' }} &rarr;
+          {{ '社員一覧で開く' if current_lang == 'ja' else ('View in Personnel' if current_lang == 'en' else 'Xem trong tab Nhân sự') }} &rarr;
         </a>
       </div>
       <div class="table-responsive">
@@ -167,12 +172,15 @@
                 {% else %}—{% endif %}
               </td>
               <td>
-                {% if item.status.value == 'ACTIVE' %}
-                <span class="badge bg-success">{{ t('Đang làm việc', current_lang) }}</span>
-                {% elif item.status.value == 'ONBOARDING' %}
-                <span class="badge bg-info">{{ t('Sắp vào làm', current_lang) }}</span>
+                {% set pst = item.status.value if item.status and item.status.value is defined else item.status %}
+                {% if pst == 'ACTIVE' %}
+                <span class="badge bg-success-subtle text-success border border-success-subtle">{{ t('Đang làm việc', current_lang) }}</span>
+                {% elif pst == 'SCHEDULED' %}
+                <span class="badge bg-info-subtle text-info border border-info-subtle">{{ t('Sắp vào làm', current_lang) }}</span>
+                {% elif pst == 'RESIGNED' %}
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle">{{ t('Đã nghỉ việc', current_lang) }}</span>
                 {% else %}
-                <span class="badge bg-danger">{{ t('Đã nghỉ việc', current_lang) }}</span>
+                <span class="badge bg-light text-dark border">{{ pst }}</span>
                 {% endif %}
               </td>
               <td class="text-end">
@@ -196,11 +204,11 @@
           <span style="width: 28px; height: 28px; border-radius: 8px; background-color: #eff6ff; color: #2563eb; display: inline-flex; align-items: center; justify-content: center; font-size: 13px;">
             <i class="fa-solid fa-file-contract"></i>
           </span>
-          <h5 class="fw-bold m-0" style="font-size: 15px;">{{ 'Hợp đồng mua sắm' if current_lang != 'en' else 'Procurement Contracts' }}</h5>
+          <h5 class="fw-bold m-0" style="font-size: 15px;">{{ '調達契約' if current_lang == 'ja' else ('Procurement Contracts' if current_lang == 'en' else 'Hợp đồng mua sắm') }}</h5>
           <span class="badge bg-info ms-1">{{ results.contracts | length }}</span>
         </div>
         <a href="{{ url_for('admin:list', identity='contract') }}?search={{ query }}" class="btn btn-outline-secondary btn-sm py-1 px-3" style="font-size: 12px;">
-          {{ 'Xem trong tab Hợp đồng' if current_lang != 'en' else 'View in Contracts' }} &rarr;
+          {{ '契約一覧で開く' if current_lang == 'ja' else ('View in Contracts' if current_lang == 'en' else 'Xem trong tab Hợp đồng') }} &rarr;
         </a>
       </div>
       <div class="table-responsive">
@@ -249,9 +257,20 @@
           <div class="p-3">
             <div class="list-group list-group-flush">
               {% for item in results.cards %}
+              {% set cst = item.status.value if item.status and item.status.value is defined else item.status %}
               <a href="{{ url_for('admin:details', identity='access-card', pk=item.id) }}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between px-2 py-2 border-0 rounded mb-1">
                 <span class="font-monospace fw-bold text-dark">{{ item.card_no }}</span>
-                <span class="badge bg-light text-dark border">{{ item.status.value }}</span>
+                {% if cst == 'IN_STOCK' %}
+                <span class="badge bg-success-subtle text-success border border-success-subtle">{{ t('Sẵn sàng', current_lang) }}</span>
+                {% elif cst == 'BORROWED' %}
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle">{{ t('Đang mượn', current_lang) }}</span>
+                {% elif cst == 'LOST' %}
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle">{{ t('Bị mất', current_lang) }}</span>
+                {% elif cst == 'DAMAGED' %}
+                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">{{ t('Hỏng', current_lang) }}</span>
+                {% else %}
+                <span class="badge bg-light text-dark border">{{ cst }}</span>
+                {% endif %}
               </a>
               {% endfor %}
             </div>
@@ -271,12 +290,23 @@
           <div class="p-3">
             <div class="list-group list-group-flush">
               {% for item in results.phones %}
+              {% set pdt = item.device_type.value if item.device_type and item.device_type.value is defined else item.device_type %}
               <a href="{{ url_for('admin:details', identity='phone', pk=item.id) }}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between px-2 py-2 border-0 rounded mb-1">
                 <div>
                   <span class="font-monospace fw-bold text-dark fs-6">{{ item.extension_number }}</span>
                   <div class="text-muted small">{{ item.device_name }}</div>
                 </div>
-                <span class="badge bg-light text-secondary border">{{ item.device_type.value }}</span>
+                {% if pdt == 'IP_PHONE' %}
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle">IP Phone</span>
+                {% elif pdt == 'DECT_STATION' %}
+                <span class="badge bg-success-subtle text-success border border-success-subtle">DECT Base</span>
+                {% elif pdt == 'PBX' %}
+                <span class="badge bg-purple-subtle text-purple border border-purple-subtle">PBX</span>
+                {% elif pdt == 'WIFI_PHONE' %}
+                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">WiFi Phone</span>
+                {% else %}
+                <span class="badge bg-light text-secondary border">{{ pdt }}</span>
+                {% endif %}
               </a>
               {% endfor %}
             </div>

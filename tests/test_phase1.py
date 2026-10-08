@@ -342,11 +342,18 @@ def test_api_login_failure(db: Session, rbac_roles_and_users):
 # 5. SQLADMIN ACCESS CONTROL (CHỈ ADMIN MỚI VÀO ĐƯỢC)
 # --------------------------------------------------------------------------
 
-def test_sqladmin_only_accessible_by_admin(db: Session, rbac_roles_and_users):
+def test_sqladmin_unified_portal_rbac(db: Session, rbac_roles_and_users):
     admin = rbac_roles_and_users["admin"]
     ga = rbac_roles_and_users["ga"]
-    
-    # 1. Client của Admin
+    exec_user = rbac_roles_and_users["exec"]
+
+    # 1. Chưa đăng nhập -> Chuyển hướng về /admin/login
+    client_anon = TestClient(app)
+    res_anon = client_anon.get("/admin/", follow_redirects=False)
+    assert res_anon.status_code in (302, 307)
+    assert "/admin/login" in res_anon.headers.get("location", "")
+
+    # 2. Client của Admin -> Vào được /admin/ và các bảng bảo mật
     client_admin = TestClient(app)
     admin_token = create_session_token({"user_id": admin.id, "role": "ADMIN", "username": admin.username})
     client_admin.cookies.set("itam_session", admin_token)
@@ -354,13 +361,45 @@ def test_sqladmin_only_accessible_by_admin(db: Session, rbac_roles_and_users):
     assert res_admin.status_code == 200
     assert "Tokuyama IT Portal" in res_admin.text
 
-    # 2. Client của GA Manager -> Bị chặn (Redirect về /admin/login do không phải ADMIN)
+    res_admin_users = client_admin.get("/admin/user/list", follow_redirects=False)
+    assert res_admin_users.status_code == 200
+
+    # 3. Client của GA Manager -> Vào được /admin/, nhưng bị 403 ở Users và PersonSecrets
     client_ga = TestClient(app)
     ga_token = create_session_token({"user_id": ga.id, "role": "GA_MANAGER", "username": ga.username})
     client_ga.cookies.set("itam_session", ga_token)
     res_ga = client_ga.get("/admin/", follow_redirects=False)
-    assert res_ga.status_code in (302, 307)
-    assert "/admin/login" in res_ga.headers.get("location", "")
+    assert res_ga.status_code == 200
+
+    res_ga_users = client_ga.get("/admin/user/list", follow_redirects=False)
+    assert res_ga_users.status_code == 403
+
+    res_ga_secrets = client_ga.get("/admin/person-secret/list", follow_redirects=False)
+    assert res_ga_secrets.status_code == 403
+
+    # GA Manager vào được Person list
+    res_ga_persons = client_ga.get("/admin/person/list", follow_redirects=False)
+    assert res_ga_persons.status_code == 200
+
+    # 4. Client của Executive -> Vào được /admin/, nhưng bị 403 ở Users và Create Asset
+    client_exec = TestClient(app)
+    exec_token = create_session_token({"user_id": exec_user.id, "role": "EXECUTIVE", "username": exec_user.username})
+    client_exec.cookies.set("itam_session", exec_token)
+    res_exec = client_exec.get("/admin/", follow_redirects=False)
+    assert res_exec.status_code == 200
+
+    res_exec_users = client_exec.get("/admin/user/list", follow_redirects=False)
+    assert res_exec_users.status_code == 403
+
+    # Executive chỉ có quyền View, không có quyền Add
+    res_exec_add_asset = client_exec.get("/admin/asset/create", follow_redirects=False)
+    assert res_exec_add_asset.status_code == 403
+
+    # 5. Đăng xuất SQLAdmin -> Xoá cookie và redirect về /admin/login
+    res_logout = client_admin.get("/admin/logout", follow_redirects=False)
+    assert res_logout.status_code in (302, 307)
+    assert "/admin/login" in res_logout.headers.get("location", "")
+    assert "itam_session" in res_logout.headers.get("set-cookie", "")
 
 
 def test_sqladmin_soft_delete_and_protections(db: Session, rbac_roles_and_users):

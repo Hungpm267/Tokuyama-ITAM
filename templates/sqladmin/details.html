@@ -5,32 +5,32 @@
   <div class="card shadow-sm border" style="border-color: var(--toku-border) !important; border-radius: 20px;">
     <div class="card-header bg-white py-3 d-flex align-items-center justify-content-between" style="border-bottom: 1px solid var(--toku-border) !important;">
       <h3 class="card-title fw-bold text-dark m-0" style="font-size: 16px;">
-        {{ t('Chi tiết', current_lang) if current_lang != 'en' else 'Details' }}: {{ model }}
+        {{ ('詳細: ' if current_lang == 'ja' else ('Details: ' if current_lang == 'en' else 'Chi tiết: ')) ~ model }}
       </h3>
       <div class="d-flex align-items-center gap-2">
-        {% if model_view.identity == 'person' %}
+        {% if model_view.identity == 'person' and (request.session.get('role') == 'ADMIN' or request.session.get('role_code') == 'ADMIN') %}
         <a href="/admin/person-secret/list" class="btn btn-outline-success btn-sm" style="font-size: 13px;">
-          <i class="fa-solid fa-user-lock me-1"></i> {{ 'Kho Mật khẩu Nhân sự' if current_lang != 'en' else 'Password Vault' }}
+          <i class="fa-solid fa-user-lock me-1"></i> {{ '人事パスワード保管庫' if current_lang == 'ja' else ('Password Vault' if current_lang == 'en' else 'Kho Mật khẩu Nhân sự') }}
         </a>
         {% endif %}
-        {% if model_view.identity == 'contract-line' %}
+        {% if model_view.identity == 'contract-line' and (request.session.get('role') == 'ADMIN' or request.session.get('role_code') == 'ADMIN') %}
         <a href="/admin/contract-line/{{ get_object_identifier(model) }}/receive" class="btn btn-primary btn-sm text-white" style="font-size: 13px;">
-          <i class="fa-solid fa-boxes-packing me-1"></i> {{ 'Nhập kho theo lô' if current_lang != 'en' else 'Batch Receive' }}
+          <i class="fa-solid fa-boxes-packing me-1"></i> {{ '一括受入' if current_lang == 'ja' else ('Batch Receive' if current_lang == 'en' else 'Nhập kho theo lô') }}
         </a>
         {% endif %}
-        {% if model_view.identity == 'asset' %}
+        {% if model_view.identity == 'asset' and (request.session.get('role') == 'ADMIN' or request.session.get('role_code') == 'ADMIN') %}
           {% if model.status and model.status.value == 'IN_STOCK' %}
           <button type="button" class="btn btn-primary btn-sm text-white" onclick="openAssignModal({{ get_object_identifier(model) }}, '{{ model.asset_code or model.serial or '' }}', '{{ model.model or '' }}')" style="font-size: 13px;">
-            <i class="fa-solid fa-handshake me-1"></i> {{ 'Bàn giao thiết bị' if current_lang != 'en' else 'Assign Asset' }}
+            <i class="fa-solid fa-handshake me-1"></i> {{ '機器割当' if current_lang == 'ja' else ('Assign Asset' if current_lang == 'en' else 'Bàn giao thiết bị') }}
           </button>
           {% elif model.status and model.status.value == 'IN_USE' %}
           <button type="button" class="btn btn-warning btn-sm text-dark fw-bold" onclick="openReturnModal({{ get_object_identifier(model) }}, '{{ model.asset_code or model.serial or '' }}', '{{ model.current_holder or '' }}')" style="font-size: 13px;">
-            <i class="fa-solid fa-arrow-rotate-left me-1"></i> {{ 'Thu hồi thiết bị' if current_lang != 'en' else 'Return Asset' }}
+            <i class="fa-solid fa-arrow-rotate-left me-1"></i> {{ '機器返却' if current_lang == 'ja' else ('Return Asset' if current_lang == 'en' else 'Thu hồi thiết bị') }}
           </button>
           {% endif %}
         {% endif %}
         <a href="{{ url_for('admin:list', identity=model_view.identity) }}" class="btn btn-outline-secondary btn-sm" style="font-size: 13px;">
-          <i class="fa-solid fa-arrow-left me-1"></i> {{ 'Back to list' if current_lang == 'en' else 'Quay lại danh sách' }}
+          <i class="fa-solid fa-arrow-left me-1"></i> {{ '一覧に戻る' if current_lang == 'ja' else ('Back to list' if current_lang == 'en' else 'Quay lại danh sách') }}
         </a>
       </div>
     </div>
@@ -40,10 +40,10 @@
           <thead>
             <tr style="background-color: #f8fafc; border-bottom: 1px solid var(--toku-border) !important;">
               <th class="w-25" style="font-size: 12px; font-weight: 700; color: #475569; letter-spacing: 0.04em;">
-                {{ 'PROPERTY' if current_lang == 'en' else 'THUỘC TÍNH' }}
+                {{ '項目' if current_lang == 'ja' else ('PROPERTY' if current_lang == 'en' else 'THUỘC TÍNH') }}
               </th>
               <th style="font-size: 12px; font-weight: 700; color: #475569; letter-spacing: 0.04em;">
-                {{ 'VALUE' if current_lang == 'en' else 'GIÁ TRỊ' }}
+                {{ '設定値' if current_lang == 'ja' else ('VALUE' if current_lang == 'en' else 'GIÁ TRỊ') }}
               </th>
             </tr>
           </thead>
@@ -403,18 +403,18 @@
       <div class="card-footer bg-light py-3 px-4 d-flex align-items-center justify-content-between" style="border-top: 1px solid var(--toku-border) !important;">
         <div>
           <a href="{{ url_for('admin:list', identity=model_view.identity) }}" class="btn btn-outline-secondary btn-sm" style="font-size: 13px; font-weight: 600;">
-            <i class="fa-solid fa-arrow-left me-1"></i> {{ 'Go Back' if current_lang == 'en' else 'Quay lại' }}
+            <i class="fa-solid fa-arrow-left me-1"></i> {{ '戻る' if current_lang == 'ja' else ('Go Back' if current_lang == 'en' else 'Quay lại') }}
           </a>
         </div>
         <div class="d-flex align-items-center gap-2">
-          {% if model_view.identity == 'contract-line' %}
+          {% if model_view.identity == 'contract-line' and (request.session.get('role') == 'ADMIN' or request.session.get('role_code') == 'ADMIN') %}
           <a href="/admin/contract-line/{{ get_object_identifier(model) }}/receive" class="btn btn-primary btn-sm text-white px-3" style="font-size: 13px; font-weight: 600;">
-            <i class="fa-solid fa-boxes-packing me-1"></i> {{ 'Nhập kho theo lô' if current_lang != 'en' else 'Batch Receive' }}
+            <i class="fa-solid fa-boxes-packing me-1"></i> {{ '一括受入' if current_lang == 'ja' else ('Batch Receive' if current_lang == 'en' else 'Nhập kho theo lô') }}
           </a>
           {% endif %}
           {% if model_view.can_edit %}
           <a href="{{ model_view._build_url_for('admin:edit', request, model) }}" class="btn btn-primary btn-sm px-3" style="font-size: 13px; font-weight: 600;">
-            <i class="fa-solid fa-pen-to-square me-1"></i> {{ 'Edit' if current_lang == 'en' else 'Chỉnh sửa' }}
+            <i class="fa-solid fa-pen-to-square me-1"></i> {{ '編集' if current_lang == 'ja' else ('Edit' if current_lang == 'en' else 'Chỉnh sửa') }}
           </a>
           {% endif %}
           {% if model_view.can_delete %}
@@ -422,7 +422,7 @@
             data-label="{{ model }}"
             data-url="{{ model_view._url_for_delete(request, model) }}" data-bs-toggle="modal"
             data-bs-target="#modal-delete" class="btn btn-danger btn-sm px-3" style="font-size: 13px; font-weight: 600; background-color: #dc2626; border-color: #dc2626;">
-            <i class="fa-solid fa-trash-can me-1"></i> {{ 'Delete' if current_lang == 'en' else 'Xóa' }}
+            <i class="fa-solid fa-trash-can me-1"></i> {{ '削除' if current_lang == 'ja' else ('Delete' if current_lang == 'en' else 'Xóa') }}
           </a>
           {% endif %}
           {% for custom_action,label in model_view._custom_actions_in_detail.items() %}
@@ -454,11 +454,11 @@
           <i class="fa-solid fa-clock-rotate-left"></i>
         </span>
         <h4 class="card-title fw-bold text-dark m-0" style="font-size: 15px;">
-          {{ 'Lịch sử Bàn giao & Thu hồi Thiết bị' if current_lang != 'en' else 'Device Assignment History' }}
+          {{ '機器の貸出・回収履歴' if current_lang == 'ja' else ('Device Assignment History' if current_lang == 'en' else 'Lịch sử Bàn giao & Thu hồi Thiết bị') }}
         </h4>
       </div>
       <span class="badge bg-light text-secondary border px-2 py-1">
-        {{ model.assignments | length }} {{ 'lượt bàn giao' if current_lang != 'en' else 'records' }}
+        {{ model.assignments | length }} {{ '件の記録' if current_lang == 'ja' else ('records' if current_lang == 'en' else 'lượt bàn giao') }}
       </span>
     </div>
     <div class="card-body p-0 bg-white">
@@ -468,12 +468,12 @@
           <thead>
             <tr style="background-color: #f8fafc; border-bottom: 1px solid var(--toku-border) !important;">
               <th style="font-size: 12px; font-weight: 700; color: #475569;">#</th>
-              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ 'TRẠNG THÁI' if current_lang != 'en' else 'STATUS' }}</th>
-              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ 'NHÂN VIÊN SỬ DỤNG' if current_lang != 'en' else 'STAFF MEMBER' }}</th>
-              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ 'PHÒNG BAN' if current_lang != 'en' else 'DEPARTMENT' }}</th>
-              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ 'NGÀY NHẬN MÁY' if current_lang != 'en' else 'BORROW DATE' }}</th>
-              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ 'NGÀY THU HỒI' if current_lang != 'en' else 'RETURN DATE' }}</th>
-              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ 'GHI CHÚ' if current_lang != 'en' else 'NOTES' }}</th>
+              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ 'ステータス' if current_lang == 'ja' else ('STATUS' if current_lang == 'en' else 'TRẠNG THÁI') }}</th>
+              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ '使用者' if current_lang == 'ja' else ('STAFF MEMBER' if current_lang == 'en' else 'NHÂN VIÊN SỬ DỤNG') }}</th>
+              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ '部署' if current_lang == 'ja' else ('DEPARTMENT' if current_lang == 'en' else 'PHÒNG BAN') }}</th>
+              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ '貸出日' if current_lang == 'ja' else ('BORROW DATE' if current_lang == 'en' else 'NGÀY NHẬN MÁY') }}</th>
+              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ '回収日' if current_lang == 'ja' else ('RETURN DATE' if current_lang == 'en' else 'NGÀY THU HỒI') }}</th>
+              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ '備考' if current_lang == 'ja' else ('NOTES' if current_lang == 'en' else 'GHI CHÚ') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -483,11 +483,11 @@
               <td>
                 {% if asgn.returned_at %}
                 <span class="badge bg-secondary text-white px-2 py-1">
-                  <i class="fa-solid fa-ban me-1"></i>{{ 'Đã thu hồi' if current_lang != 'en' else 'Returned' }}
+                  <i class="fa-solid fa-ban me-1"></i>{{ '回収済' if current_lang == 'ja' else ('Returned' if current_lang == 'en' else 'Đã thu hồi') }}
                 </span>
                 {% else %}
                 <span class="badge bg-success text-white px-2 py-1">
-                  <i class="fa-solid fa-circle-check me-1"></i>{{ 'Đang sử dụng' if current_lang != 'en' else 'Active' }}
+                  <i class="fa-solid fa-circle-check me-1"></i>{{ '使用中' if current_lang == 'ja' else ('Active' if current_lang == 'en' else 'Đang sử dụng') }}
                 </span>
                 {% endif %}
               </td>
@@ -512,7 +512,7 @@
                 <span class="text-dark">{{ asgn.returned_at.strftime('%d/%m/%Y') }}</span>
                 {% else %}
                 <span class="badge bg-light text-primary border border-primary-subtle px-2 py-1">
-                  {{ 'Hiện tại (Chưa trả)' if current_lang != 'en' else 'Present' }}
+                  {{ '現在利用中' if current_lang == 'ja' else ('Present' if current_lang == 'en' else 'Hiện tại (Chưa trả)') }}
                 </span>
                 {% endif %}
               </td>
@@ -527,7 +527,7 @@
       {% else %}
       <div class="p-4 text-center text-muted">
         <i class="fa-regular fa-folder-open fs-3 d-block mb-2"></i>
-        <span>{{ 'Chưa có lịch sử bàn giao nào cho thiết bị này.' if current_lang != 'en' else 'No assignment history found for this device.' }}</span>
+        <span>{{ 'この機器の貸出履歴はありません。' if current_lang == 'ja' else ('No assignment history found for this device.' if current_lang == 'en' else 'Chưa có lịch sử bàn giao nào cho thiết bị này.') }}</span>
       </div>
       {% endif %}
     </div>
@@ -548,15 +548,15 @@
           <i class="fa-solid fa-laptop"></i>
         </span>
         <h4 class="card-title fw-bold text-dark m-0" style="font-size: 15px;">
-          {{ 'Thiết bị IT đang sử dụng & Lịch sử cấp phát (FR-11)' if current_lang != 'en' else 'Assigned IT Assets & History (FR-11)' }}
+          {{ '利用中のIT機器および貸出履歴 (FR-11)' if current_lang == 'ja' else ('Assigned IT Assets & History (FR-11)' if current_lang == 'en' else 'Thiết bị IT đang sử dụng & Lịch sử cấp phát (FR-11)') }}
         </h4>
       </div>
       <div class="d-flex align-items-center gap-2">
         <a href="/admin/assignment/create" class="btn btn-outline-primary btn-sm" style="font-size: 12.5px;">
-          <i class="fa-solid fa-plus me-1"></i> {{ 'Bàn giao thiết bị' if current_lang != 'en' else 'Assign Asset' }}
+          <i class="fa-solid fa-plus me-1"></i> {{ '機器割当' if current_lang == 'ja' else ('Assign Asset' if current_lang == 'en' else 'Bàn giao thiết bị') }}
         </a>
         <a href="/admin/person-secret/list" class="btn btn-outline-success btn-sm" style="font-size: 12.5px;">
-          <i class="fa-solid fa-user-lock me-1"></i> {{ 'Kho Mật khẩu Nhân sự' if current_lang != 'en' else 'Password Vault' }}
+          <i class="fa-solid fa-user-lock me-1"></i> {{ '人事パスワード保管庫' if current_lang == 'ja' else ('Password Vault' if current_lang == 'en' else 'Kho Mật khẩu Nhân sự') }}
         </a>
       </div>
     </div>
@@ -568,13 +568,13 @@
           <thead>
             <tr style="background-color: #f8fafc; border-bottom: 1px solid var(--toku-border) !important;">
               <th style="width: 45px; font-size: 12px; font-weight: 700; color: #475569;">#</th>
-              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ 'THIẾT BỊ' if current_lang != 'en' else 'ASSET' }}</th>
-              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ 'SERIAL / MÃ GA' if current_lang != 'en' else 'SERIAL / GA CODE' }}</th>
-              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ 'NGÀY NHẬN MÁY' if current_lang != 'en' else 'ASSIGNED DATE' }}</th>
-              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ 'NGÀY THU HỒI' if current_lang != 'en' else 'RETURNED DATE' }}</th>
-              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ 'TRẠNG THÁI' if current_lang != 'en' else 'STATUS' }}</th>
-              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ 'GHI CHÚ' if current_lang != 'en' else 'NOTES' }}</th>
-              <th style="font-size: 12px; font-weight: 700; color: #475569;" class="text-end">{{ 'THAO TÁC' if current_lang != 'en' else 'ACTIONS' }}</th>
+              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ '機器' if current_lang == 'ja' else ('ASSET' if current_lang == 'en' else 'THIẾT BỊ') }}</th>
+              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ 'シリアル / GAコード' if current_lang == 'ja' else ('SERIAL / GA CODE' if current_lang == 'en' else 'SERIAL / MÃ GA') }}</th>
+              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ '貸出日' if current_lang == 'ja' else ('ASSIGNED DATE' if current_lang == 'en' else 'NGÀY NHẬN MÁY') }}</th>
+              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ '回収日' if current_lang == 'ja' else ('RETURNED DATE' if current_lang == 'en' else 'NGÀY THU HỒI') }}</th>
+              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ 'ステータス' if current_lang == 'ja' else ('STATUS' if current_lang == 'en' else 'TRẠNG THÁI') }}</th>
+              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ '備考' if current_lang == 'ja' else ('NOTES' if current_lang == 'en' else 'GHI CHÚ') }}</th>
+              <th style="font-size: 12px; font-weight: 700; color: #475569;" class="text-end">{{ '操作' if current_lang == 'ja' else ('ACTIONS' if current_lang == 'en' else 'THAO TÁC') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -602,11 +602,11 @@
               <td>
                 {% if a.returned_at is none %}
                 <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
-                  <i class="fa-solid fa-circle-check me-1"></i>{{ 'Đang sử dụng' if current_lang != 'en' else 'In Use' }}
+                  <i class="fa-solid fa-circle-check me-1"></i>{{ '使用中' if current_lang == 'ja' else ('In Use' if current_lang == 'en' else 'Đang sử dụng') }}
                 </span>
                 {% else %}
                 <span class="badge bg-secondary-subtle text-secondary border px-2 py-1">
-                  <i class="fa-solid fa-clock-rotate-left me-1"></i>{{ 'Đã thu hồi' if current_lang != 'en' else 'Returned' }}
+                  <i class="fa-solid fa-clock-rotate-left me-1"></i>{{ '回収済' if current_lang == 'ja' else ('Returned' if current_lang == 'en' else 'Đã thu hồi') }}
                 </span>
                 {% endif %}
               </td>
@@ -616,11 +616,11 @@
               <td class="text-end">
                 {% if a.returned_at is none and a.asset %}
                 <button type="button" class="btn btn-sm btn-outline-warning text-dark py-0 px-2 fw-bold" onclick="openReturnModal({{ a.asset.id }}, '{{ a.asset.asset_code or a.asset.serial or '' }}', '{{ model.full_name }}')" style="font-size: 12px;">
-                  <i class="fa-solid fa-arrow-rotate-left me-1"></i> {{ 'Thu hồi' if current_lang != 'en' else 'Return' }}
+                  <i class="fa-solid fa-arrow-rotate-left me-1"></i> {{ '回収' if current_lang == 'ja' else ('Return' if current_lang == 'en' else 'Thu hồi') }}
                 </button>
                 {% else %}
                 <a href="/admin/assignment/details/{{ a.id }}" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size: 11.5px;">
-                  <i class="fa-solid fa-eye me-1"></i>{{ 'Chi tiết' if current_lang != 'en' else 'View' }}
+                  <i class="fa-solid fa-eye me-1"></i>{{ '詳細' if current_lang == 'ja' else ('View' if current_lang == 'en' else 'Chi tiết') }}
                 </a>
                 {% endif %}
               </td>
@@ -632,7 +632,7 @@
       {% else %}
       <div class="p-4 text-center text-muted">
         <i class="fa-solid fa-box-open text-secondary fs-3 d-block mb-2"></i>
-        <span>{{ 'Nhân viên này chưa từng được bàn giao thiết bị IT nào.' if current_lang != 'en' else 'No IT assets have been assigned to this staff member yet.' }}</span>
+        <span>{{ 'この社員に貸出されたIT機器はありません。' if current_lang == 'ja' else ('No IT assets have been assigned to this staff member yet.' if current_lang == 'en' else 'Nhân viên này chưa từng được bàn giao thiết bị IT nào.') }}</span>
       </div>
       {% endif %}
     </div>
@@ -646,12 +646,12 @@
           <i class="fa-solid fa-certificate"></i>
         </span>
         <h4 class="card-title fw-bold text-dark m-0" style="font-size: 15px;">
-          {{ 'Bản quyền Phần mềm & License đang giữ (FR-11)' if current_lang != 'en' else 'Assigned Software Licenses (FR-11)' }}
+          {{ '割り当て済みソフトウェアライセンス (FR-11)' if current_lang == 'ja' else ('Assigned Software Licenses (FR-11)' if current_lang == 'en' else 'Bản quyền Phần mềm & License đang giữ (FR-11)') }}
         </h4>
       </div>
       <div class="d-flex align-items-center gap-2">
         <a href="/admin/license-assignment/create" class="btn btn-outline-success btn-sm" style="font-size: 12.5px;">
-          <i class="fa-solid fa-plus me-1"></i> {{ 'Cấp License mới' if current_lang != 'en' else 'Assign License' }}
+          <i class="fa-solid fa-plus me-1"></i> {{ 'ライセンス付与' if current_lang == 'ja' else ('Assign License' if current_lang == 'en' else 'Cấp License mới') }}
         </a>
       </div>
     </div>
@@ -663,13 +663,13 @@
           <thead>
             <tr style="background-color: #f8fafc; border-bottom: 1px solid var(--toku-border) !important;">
               <th style="width: 45px; font-size: 12px; font-weight: 700; color: #475569;">#</th>
-              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ 'PHẦN MỀM / LICENSE' if current_lang != 'en' else 'SOFTWARE / LICENSE' }}</th>
-              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ 'HÌNH THỨC CẤP' if current_lang != 'en' else 'ASSIGNMENT TYPE' }}</th>
-              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ 'NGÀY CẤP PHÁT' if current_lang != 'en' else 'ASSIGNED DATE' }}</th>
-              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ 'HẠN DÙNG' if current_lang != 'en' else 'EXPIRY DATE' }}</th>
-              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ 'TRẠNG THÁI' if current_lang != 'en' else 'STATUS' }}</th>
-              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ 'GHI CHÚ' if current_lang != 'en' else 'NOTES' }}</th>
-              <th style="font-size: 12px; font-weight: 700; color: #475569;" class="text-end">{{ 'THAO TÁC' if current_lang != 'en' else 'ACTIONS' }}</th>
+              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ 'ソフトウェア / ライセンス' if current_lang == 'ja' else ('SOFTWARE / LICENSE' if current_lang == 'en' else 'PHẦN MỀM / LICENSE') }}</th>
+              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ '付与区分' if current_lang == 'ja' else ('ASSIGNMENT TYPE' if current_lang == 'en' else 'HÌNH THỨC CẤP') }}</th>
+              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ '付与日' if current_lang == 'ja' else ('ASSIGNED DATE' if current_lang == 'en' else 'NGÀY CẤP PHÁT') }}</th>
+              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ '有効期限' if current_lang == 'ja' else ('EXPIRY DATE' if current_lang == 'en' else 'HẠN DÙNG') }}</th>
+              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ 'ステータス' if current_lang == 'ja' else ('STATUS' if current_lang == 'en' else 'TRẠNG THÁI') }}</th>
+              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ '備考' if current_lang == 'ja' else ('NOTES' if current_lang == 'en' else 'GHI CHÚ') }}</th>
+              <th style="font-size: 12px; font-weight: 700; color: #475569;" class="text-end">{{ '操作' if current_lang == 'ja' else ('ACTIONS' if current_lang == 'en' else 'THAO TÁC') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -688,11 +688,11 @@
               <td>
                 {% if l.person_id == model.id %}
                 <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">
-                  <i class="fa-solid fa-user me-1"></i>{{ 'Trực tiếp nhân sự' if current_lang != 'en' else 'Direct to Person' }}
+                  <i class="fa-solid fa-user me-1"></i>{{ '社員に直接付与' if current_lang == 'ja' else ('Direct to Person' if current_lang == 'en' else 'Trực tiếp nhân sự') }}
                 </span>
                 {% elif l.asset %}
                 <span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1">
-                  <i class="fa-solid fa-laptop me-1"></i>{{ 'Theo máy' if current_lang != 'en' else 'Via Asset' }}: {{ l.asset.model or l.asset.serial or l.asset.asset_code }}
+                  <i class="fa-solid fa-laptop me-1"></i>{{ '機器経由' if current_lang == 'ja' else ('Via Asset' if current_lang == 'en' else 'Theo máy') }}: {{ l.asset.model or l.asset.serial or l.asset.asset_code }}
                 </span>
                 {% else %}
                 <span class="badge bg-secondary-subtle text-secondary border px-2 py-1">-</span>
@@ -702,16 +702,16 @@
                 {{ l.assigned_at.strftime('%d/%m/%Y') if l.assigned_at else '-' }}
               </td>
               <td class="text-dark">
-                {{ l.expiry_date.strftime('%d/%m/%Y') if l.expiry_date else ('Vĩnh viễn' if current_lang != 'en' else 'Perpetual') }}
+                {{ l.expiry_date.strftime('%d/%m/%Y') if l.expiry_date else ('無期限' if current_lang == 'ja' else ('Perpetual' if current_lang == 'en' else 'Vĩnh viễn')) }}
               </td>
               <td>
                 {% if l.removed_at is none %}
                 <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
-                  <i class="fa-solid fa-circle-check me-1"></i>{{ 'Đang kích hoạt' if current_lang != 'en' else 'Active' }}
+                  <i class="fa-solid fa-circle-check me-1"></i>{{ '有効' if current_lang == 'ja' else ('Active' if current_lang == 'en' else 'Đang kích hoạt') }}
                 </span>
                 {% else %}
                 <span class="badge bg-secondary-subtle text-secondary border px-2 py-1">
-                  <i class="fa-solid fa-ban me-1"></i>{{ 'Đã thu hồi' if current_lang != 'en' else 'Revoked' }} ({{ l.removed_at.strftime('%d/%m/%Y') }})
+                  <i class="fa-solid fa-ban me-1"></i>{{ '失効済' if current_lang == 'ja' else ('Revoked' if current_lang == 'en' else 'Đã thu hồi') }} ({{ l.removed_at.strftime('%d/%m/%Y') }})
                 </span>
                 {% endif %}
               </td>
@@ -720,7 +720,7 @@
               </td>
               <td class="text-end">
                 <a href="/admin/license-assignment/edit/{{ l.id }}" class="btn btn-sm btn-outline-primary py-0 px-2 fw-semibold" style="font-size: 11.5px;">
-                  <i class="fa-solid fa-pen-to-square me-1"></i>{{ 'Sửa/Thu hồi' if current_lang != 'en' else 'Edit' }}
+                  <i class="fa-solid fa-pen-to-square me-1"></i>{{ '編集/失効' if current_lang == 'ja' else ('Edit' if current_lang == 'en' else 'Sửa/Thu hồi') }}
                 </a>
               </td>
             </tr>
@@ -731,7 +731,7 @@
       {% else %}
       <div class="p-4 text-center text-muted">
         <i class="fa-solid fa-file-circle-check text-secondary fs-3 d-block mb-2"></i>
-        <span>{{ 'Nhân viên này hiện chưa được cấp phát bản quyền phần mềm nào.' if current_lang != 'en' else 'No software licenses have been assigned to this staff member.' }}</span>
+        <span>{{ 'この社員に割り当てられたソフトウェアライセンスはありません。' if current_lang == 'ja' else ('No software licenses have been assigned to this staff member.' if current_lang == 'en' else 'Nhân viên này hiện chưa được cấp phát bản quyền phần mềm nào.') }}</span>
       </div>
       {% endif %}
     </div>
@@ -745,12 +745,12 @@
           <i class="fa-solid fa-address-card"></i>
         </span>
         <h4 class="card-title fw-bold text-dark m-0" style="font-size: 15px;">
-          {{ 'Thẻ từ ra vào & Sổ mượn thẻ (FR-11)' if current_lang != 'en' else 'Access Cards & Loan History (FR-11)' }}
+          {{ '入退室カードおよび貸出履歴 (FR-11)' if current_lang == 'ja' else ('Access Cards & Loan History (FR-11)' if current_lang == 'en' else 'Thẻ từ ra vào & Sổ mượn thẻ (FR-11)') }}
         </h4>
       </div>
       <div class="d-flex align-items-center gap-2">
         <a href="/admin/card-loan/create" class="btn btn-outline-warning text-dark fw-bold btn-sm" style="font-size: 12.5px;">
-          <i class="fa-solid fa-plus me-1"></i> {{ 'Cho mượn thẻ' if current_lang != 'en' else 'Loan Card' }}
+          <i class="fa-solid fa-plus me-1"></i> {{ 'カード貸出' if current_lang == 'ja' else ('Loan Card' if current_lang == 'en' else 'Cho mượn thẻ') }}
         </a>
       </div>
     </div>
@@ -762,13 +762,13 @@
           <thead>
             <tr style="background-color: #f8fafc; border-bottom: 1px solid var(--toku-border) !important;">
               <th style="width: 45px; font-size: 12px; font-weight: 700; color: #475569;">#</th>
-              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ 'MÃ SỐ THẺ' if current_lang != 'en' else 'CARD NUMBER' }}</th>
-              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ 'LOẠI THẺ' if current_lang != 'en' else 'CARD TYPE' }}</th>
-              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ 'MỤC ĐÍCH MƯỢN' if current_lang != 'en' else 'PURPOSE' }}</th>
-              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ 'NGÀY MƯỢN' if current_lang != 'en' else 'BORROWED DATE' }}</th>
-              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ 'HẠN TRẢ DỰ KIẾN' if current_lang != 'en' else 'EXPECTED RETURN' }}</th>
-              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ 'TRẠNG THÁI' if current_lang != 'en' else 'STATUS' }}</th>
-              <th style="font-size: 12px; font-weight: 700; color: #475569;" class="text-end">{{ 'THAO TÁC' if current_lang != 'en' else 'ACTIONS' }}</th>
+              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ 'カード番号' if current_lang == 'ja' else ('CARD NUMBER' if current_lang == 'en' else 'MÃ SỐ THẺ') }}</th>
+              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ 'カード種別' if current_lang == 'ja' else ('CARD TYPE' if current_lang == 'en' else 'LOẠI THẺ') }}</th>
+              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ '利用目的' if current_lang == 'ja' else ('PURPOSE' if current_lang == 'en' else 'MỤC ĐÍCH MƯỢN') }}</th>
+              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ '貸出日' if current_lang == 'ja' else ('BORROWED DATE' if current_lang == 'en' else 'NGÀY MƯỢN') }}</th>
+              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ '返却予定日' if current_lang == 'ja' else ('EXPECTED RETURN' if current_lang == 'en' else 'HẠN TRẢ DỰ KIẾN') }}</th>
+              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ 'ステータス' if current_lang == 'ja' else ('STATUS' if current_lang == 'en' else 'TRẠNG THÁI') }}</th>
+              <th style="font-size: 12px; font-weight: 700; color: #475569;" class="text-end">{{ '操作' if current_lang == 'ja' else ('ACTIONS' if current_lang == 'en' else 'THAO TÁC') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -785,7 +785,16 @@
                 {% endif %}
               </td>
               <td>
-                <span class="badge bg-light text-dark border">{{ c.card.card_type.value if (c.card and c.card.card_type and c.card.card_type.value is defined) else (c.card.card_type if c.card else '-') }}</span>
+                {% set c_type = (c.card.card_type.value if (c.card and c.card.card_type and c.card.card_type.value is defined) else (c.card.card_type|string|replace('CardType.', '') if c.card else '-')) %}
+                {% if c_type == 'STAFF' %}
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle">{{ '社員' if current_lang == 'ja' else ('Staff' if current_lang == 'en' else 'Nhân viên') }}</span>
+                {% elif c_type == 'CONTRACTOR' %}
+                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">{{ '業者' if current_lang == 'ja' else ('Contractor' if current_lang == 'en' else 'Nhà thầu') }}</span>
+                {% elif c_type == 'GUEST' %}
+                <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle">{{ '来客' if current_lang == 'ja' else ('Guest' if current_lang == 'en' else 'Khách') }}</span>
+                {% else %}
+                <span class="badge bg-light text-dark border">{{ c_type }}</span>
+                {% endif %}
               </td>
               <td class="text-dark small">
                 {{ c.purpose or '-' }}
@@ -799,17 +808,17 @@
               <td>
                 {% if c.returned_at is none %}
                 <span class="badge bg-warning text-dark px-2 py-1 fw-bold">
-                  <i class="fa-solid fa-clock me-1"></i>{{ 'Đang mượn' if current_lang != 'en' else 'Borrowed' }}
+                  <i class="fa-solid fa-clock me-1"></i>{{ '貸出中' if current_lang == 'ja' else ('Borrowed' if current_lang == 'en' else 'Đang mượn') }}
                 </span>
                 {% else %}
                 <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
-                  <i class="fa-solid fa-circle-check me-1"></i>{{ 'Đã trả' if current_lang != 'en' else 'Returned' }} ({{ c.returned_at.strftime('%d/%m/%Y') }})
+                  <i class="fa-solid fa-circle-check me-1"></i>{{ '返却済' if current_lang == 'ja' else ('Returned' if current_lang == 'en' else 'Đã trả') }} ({{ c.returned_at.strftime('%d/%m/%Y') }})
                 </span>
                 {% endif %}
               </td>
               <td class="text-end">
                 <a href="/admin/card-loan/edit/{{ c.id }}" class="btn btn-sm btn-outline-primary py-0 px-2 fw-semibold" style="font-size: 11.5px;">
-                  <i class="fa-solid fa-pen-to-square me-1"></i>{{ 'Cập nhật/Trả thẻ' if current_lang != 'en' else 'Edit/Return' }}
+                  <i class="fa-solid fa-pen-to-square me-1"></i>{{ '更新/返却' if current_lang == 'ja' else ('Edit/Return' if current_lang == 'en' else 'Cập nhật/Trả thẻ') }}
                 </a>
               </td>
             </tr>
@@ -820,7 +829,7 @@
       {% else %}
       <div class="p-4 text-center text-muted">
         <i class="fa-solid fa-id-badge text-secondary fs-3 d-block mb-2"></i>
-        <span>{{ 'Nhân viên này hiện không mượn thẻ từ nào.' if current_lang != 'en' else 'No access cards currently borrowed by this staff member.' }}</span>
+        <span>{{ 'この社員が現在借りているカードはありません。' if current_lang == 'ja' else ('No access cards currently borrowed by this staff member.' if current_lang == 'en' else 'Nhân viên này hiện không mượn thẻ từ nào.') }}</span>
       </div>
       {% endif %}
     </div>

@@ -20,7 +20,7 @@ from app.services.license_service import (
     revoke_license,
 )
 
-TODAY = dt.date(2026, 10, 8)
+TODAY = dt.date.today()
 YESTERDAY = TODAY - dt.timedelta(days=1)
 
 

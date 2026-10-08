@@ -198,10 +198,10 @@
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
       <div>
         <h2 class="fw-bold m-0" style="font-size: 22px; color: #0f172a; letter-spacing: -0.01em;">
-          {{ 'Nhập kho thiết bị theo lô' if current_lang != 'en' else 'Batch Receive Assets' }}
+          {{ '機器の一括受入・入庫' if current_lang == 'ja' else ('Batch Receive Assets' if current_lang == 'en' else 'Nhập kho thiết bị theo lô') }}
         </h2>
         <div class="text-muted mt-1" style="font-size: 13.5px;">
-          <span class="text-secondary fw-semibold">{{ 'Hạng mục hàng hóa' if current_lang != 'en' else 'Contract Item' }}:</span>
+          <span class="text-secondary fw-semibold">{{ '品目種別' if current_lang == 'ja' else ('Contract Item' if current_lang == 'en' else 'Hạng mục hàng hóa') }}:</span>
           <strong class="text-dark">{{ contract_line.item_type }}</strong>
           {% if contract_line.spec %}
           <span class="mx-1 text-muted">•</span>
@@ -212,7 +212,7 @@
 
       <div>
         <a href="/admin/contract-line/details/{{ contract_line.id }}" class="toku-btn-secondary py-2 px-3" style="font-size: 13px;">
-          <i class="fa-solid fa-arrow-left me-1.5"></i> {{ 'Quay lại Hạng mục' if current_lang != 'en' else 'Back to Item' }}
+          <i class="fa-solid fa-arrow-left me-1.5"></i> {{ '明細詳細に戻る' if current_lang == 'ja' else ('Back to Item' if current_lang == 'en' else 'Quay lại Hạng mục') }}
         </a>
       </div>
     </div>
@@ -222,10 +222,10 @@
       <div class="col-6 col-md-3">
         <div class="toku-metric-box">
           <div class="text-muted small" style="font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em;">
-            {{ 'Số lượng đặt mua' if current_lang != 'en' else 'Quantity Ordered' }}
+            {{ '発注数量' if current_lang == 'ja' else ('Quantity Ordered' if current_lang == 'en' else 'Số lượng đặt mua') }}
           </div>
           <div class="mt-2 fs-3 fw-bold text-dark">
-            {{ contract_line.qty_ordered }} <span class="fs-6 fw-normal text-muted">{{ 'máy' if current_lang != 'en' else 'units' }}</span>
+            {{ contract_line.qty_ordered }} <span class="fs-6 fw-normal text-muted">{{ '台' if current_lang == 'ja' else ('units' if current_lang == 'en' else 'máy') }}</span>
           </div>
         </div>
       </div>
@@ -233,10 +233,10 @@
       <div class="col-6 col-md-3">
         <div class="toku-metric-box">
           <div class="text-muted small" style="font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em;">
-            {{ 'Đã nhận trước đó' if current_lang != 'en' else 'Delivered' }}
+            {{ '受入済み数量' if current_lang == 'ja' else ('Delivered' if current_lang == 'en' else 'Đã nhận trước đó') }}
           </div>
           <div class="mt-2 fs-3 fw-bold text-secondary">
-            {{ contract_line.qty_delivered }} <span class="fs-6 fw-normal text-muted">{{ 'máy' if current_lang != 'en' else 'units' }}</span>
+            {{ contract_line.qty_delivered }} <span class="fs-6 fw-normal text-muted">{{ '台' if current_lang == 'ja' else ('units' if current_lang == 'en' else 'máy') }}</span>
           </div>
         </div>
       </div>
@@ -244,10 +244,10 @@
       <div class="col-6 col-md-3">
         <div class="toku-metric-box" style="background-color: #EEF2FF; border-color: #C7D2FE;">
           <div class="small" style="font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em; color: #4D5CB0;">
-            {{ 'Còn cần nhận' if current_lang != 'en' else 'Remaining' }}
+            {{ '受入残数量' if current_lang == 'ja' else ('Remaining' if current_lang == 'en' else 'Còn cần nhận') }}
           </div>
           <div class="mt-2 fs-3 fw-bold" style="color: #4D5CB0;">
-            {{ contract_line.qty_remaining }} <span class="fs-6 fw-normal" style="color: #6366f1;">{{ 'máy' if current_lang != 'en' else 'units' }}</span>
+            {{ contract_line.qty_remaining }} <span class="fs-6 fw-normal" style="color: #6366f1;">{{ '台' if current_lang == 'ja' else ('units' if current_lang == 'en' else 'máy') }}</span>
           </div>
         </div>
       </div>
@@ -256,7 +256,7 @@
         <div class="toku-metric-box d-flex flex-column justify-content-between">
           <div class="d-flex justify-content-between align-items-center">
             <span class="text-muted small fw-bold" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;">
-              {{ 'Tiến độ giao hàng' if current_lang != 'en' else 'Delivery Progress' }}
+              {{ '納品進捗率' if current_lang == 'ja' else ('Delivery Progress' if current_lang == 'en' else 'Tiến độ giao hàng') }}
             </span>
             {% set pct = (contract_line.qty_delivered / contract_line.qty_ordered * 100) | round(0) | int if contract_line.qty_ordered > 0 else 0 %}
             <span class="badge rounded-pill text-white px-2 py-0.5" style="background-color: #4D5CB0; font-size: 11px;">{{ pct }}%</span>
@@ -287,15 +287,15 @@
           <i class="fa-solid fa-sliders"></i>
         </span>
         <h3 class="fw-bold m-0" style="font-size: 15px; color: #0f172a;">
-          {{ '1. Cấu hình chung cho lô thiết bị' if current_lang != 'en' else '1. Common Asset Specifications' }}
+          {{ '1. ロット共通設定' if current_lang == 'ja' else ('1. Common Asset Specifications' if current_lang == 'en' else '1. Cấu hình chung cho lô thiết bị') }}
         </h3>
-        <span class="text-muted small ms-1" style="font-size: 12px;">({{ 'Tự động áp dụng cho toàn bộ các máy trong đợt nhận này' if current_lang != 'en' else 'Applied to all units in this batch' }})</span>
+        <span class="text-muted small ms-1" style="font-size: 12px;">({{ 'この受入ロットのすべての機器に自動適用されます' if current_lang == 'ja' else ('Applied to all units in this batch' if current_lang == 'en' else 'Tự động áp dụng cho toàn bộ các máy trong đợt nhận này') }})</span>
       </div>
 
       <div class="row g-3">
         <div class="col-md-3">
           <label class="toku-label">
-            {{ 'Loại tài sản' if current_lang != 'en' else 'Asset Category' }} <span class="text-danger ms-1">*</span>
+            {{ '機器カテゴリ' if current_lang == 'ja' else ('Asset Category' if current_lang == 'en' else 'Loại tài sản') }} <span class="text-danger ms-1">*</span>
           </label>
           <select id="batchCategoryId" class="form-select toku-select" required>
             {% for cat in categories %}
@@ -308,32 +308,32 @@
 
         <div class="col-md-3">
           <label class="toku-label">
-            {{ 'Model / Tên dòng máy' if current_lang != 'en' else 'Model Name' }}
+            {{ 'モデル・型番' if current_lang == 'ja' else ('Model Name' if current_lang == 'en' else 'Model / Tên dòng máy') }}
           </label>
           <input type="text" id="batchModel" class="form-control toku-input" value="{{ suggested_model }}" placeholder="vd: Dell Latitude 5440">
         </div>
 
         <div class="col-md-2">
           <label class="toku-label">
-            {{ 'Dạng thiết bị (Form Factor)' if current_lang != 'en' else 'Form Factor' }}
+            {{ '形状・タイプ (Form Factor)' if current_lang == 'ja' else ('Form Factor' if current_lang == 'en' else 'Dạng thiết bị (Form Factor)') }}
           </label>
           <input type="text" id="batchFormFactor" class="form-control toku-input" value="{{ suggested_form_factor }}" placeholder="vd: Laptop / Desktop">
         </div>
 
         <div class="col-md-2">
           <label class="toku-label">
-            {{ 'Trạng thái nhập kho' if current_lang != 'en' else 'Initial Status' }}
+            {{ '入庫ステータス' if current_lang == 'ja' else ('Initial Status' if current_lang == 'en' else 'Trạng thái nhập kho') }}
           </label>
           <div class="pt-1">
             <span class="badge py-2 px-3 fw-bold" style="background-color: #EEF2FF; color: #4D5CB0; border: 1px solid #C7D2FE; border-radius: 8px; font-size: 12px;">
-              <i class="fa-solid fa-boxes-stacked me-1"></i> IN_STOCK ({{ 'Trong kho' if current_lang != 'en' else 'In Stock' }})
+              <i class="fa-solid fa-boxes-stacked me-1"></i> IN_STOCK ({{ '在庫' if current_lang == 'ja' else ('In Stock' if current_lang == 'en' else 'Trong kho') }})
             </span>
           </div>
         </div>
 
         <div class="col-md-2">
           <label class="toku-label">
-            {{ 'Ghi chú chung' if current_lang != 'en' else 'Batch Note' }}
+            {{ '共通備考' if current_lang == 'ja' else ('Batch Note' if current_lang == 'en' else 'Ghi chú chung') }}
           </label>
           <input type="text" id="batchNote" class="form-control toku-input" placeholder="vd: Giao đợt 1 HĐ KDDI">
         </div>
@@ -350,7 +350,7 @@
             <i class="fa-solid fa-list-ol"></i>
           </span>
           <h3 class="fw-bold m-0" style="font-size: 15px; color: #0f172a;">
-            {{ '2. Danh sách thiết bị nhận hàng' if current_lang != 'en' else '2. Asset Serials & Identifiers' }}
+            {{ '2. 受入機器リスト' if current_lang == 'ja' else ('2. Asset Serials & Identifiers' if current_lang == 'en' else '2. Danh sách thiết bị nhận hàng') }}
           </h3>
         </div>
 
@@ -358,12 +358,12 @@
         <ul class="nav nav-pills gap-1" id="inputModeTabs" role="tablist">
           <li class="nav-item" role="presentation">
             <button class="nav-link active toku-pill-tab" id="grid-tab" data-bs-toggle="pill" data-bs-target="#grid-pane" type="button" role="tab">
-              <i class="fa-solid fa-table me-1.5"></i> {{ 'Bảng nhập nhanh (Grid)' if current_lang != 'en' else 'Fast Grid Entry' }}
+              <i class="fa-solid fa-table me-1.5"></i> {{ '高速グリッド入力' if current_lang == 'ja' else ('Fast Grid Entry' if current_lang == 'en' else 'Bảng nhập nhanh (Grid)') }}
             </button>
           </li>
           <li class="nav-item" role="presentation">
             <button class="nav-link toku-pill-tab" id="paste-tab" data-bs-toggle="pill" data-bs-target="#paste-pane" type="button" role="tab">
-              <i class="fa-solid fa-paste me-1.5"></i> {{ 'Dán danh sách (Paste Text)' if current_lang != 'en' else 'Paste Multi-line' }}
+              <i class="fa-solid fa-paste me-1.5"></i> {{ '一括テキスト貼付' if current_lang == 'ja' else ('Paste Multi-line' if current_lang == 'en' else 'Dán danh sách (Paste Text)') }}
             </button>
           </li>
         </ul>
@@ -379,24 +379,24 @@
             <!-- Auto GA generator -->
             <div class="d-flex align-items-center gap-2 flex-wrap">
               <span class="fw-bold small" style="font-size: 12.5px; color: #1e293b;">
-                <i class="fa-solid fa-wand-magic-sparkles me-1" style="color: #4D5CB0;"></i>{{ 'Sinh mã GA tự động:' if current_lang != 'en' else 'Auto-Gen GA Code:' }}
+                <i class="fa-solid fa-wand-magic-sparkles me-1" style="color: #4D5CB0;"></i>{{ 'GAコード自動採番:' if current_lang == 'ja' else ('Auto-Gen GA Code:' if current_lang == 'en' else 'Sinh mã GA tự động:') }}
               </span>
               <input type="text" id="autoGaPrefix" class="form-control form-control-sm text-center font-monospace" style="width: 105px; border-radius: 8px; border: 1px solid #cbd5e1; background: #ffffff;" value="{{ next_asset_code_prefix }}" title="Tiền tố mã GA">
               <span class="text-muted small">-</span>
               <input type="number" id="autoGaStart" class="form-control form-control-sm text-center font-monospace" style="width: 80px; border-radius: 8px; border: 1px solid #cbd5e1; background: #ffffff;" value="{{ next_asset_code_num }}" min="1" title="Số bắt đầu">
               <button type="button" class="btn btn-sm fw-semibold" style="background-color: #EEF2FF; color: #4D5CB0; border: 1px solid #C7D2FE; border-radius: 8px; font-size: 12px; padding: 5px 12px;" onclick="applyAutoGaCodes()">
-                <i class="fa-solid fa-arrow-down-1-9 me-1"></i>{{ 'Điền cột Mã GA' if current_lang != 'en' else 'Fill GA Codes' }}
+                <i class="fa-solid fa-arrow-down-1-9 me-1"></i>{{ 'GAコード列に入力' if current_lang == 'ja' else ('Fill GA Codes' if current_lang == 'en' else 'Điền cột Mã GA') }}
               </button>
             </div>
 
             <!-- Action buttons -->
             <div class="d-flex align-items-center gap-2 flex-wrap">
               <button type="button" class="btn btn-sm fw-semibold" style="background-color: #ffffff; border: 1px solid #cbd5e1; color: #334155; border-radius: 8px; font-size: 12px; padding: 6px 14px;" onclick="addRow()">
-                <i class="fa-solid fa-plus me-1 text-primary"></i>{{ 'Thêm 1 dòng' if current_lang != 'en' else 'Add Row' }}
+                <i class="fa-solid fa-plus me-1 text-primary"></i>{{ '1行追加' if current_lang == 'ja' else ('Add Row' if current_lang == 'en' else 'Thêm 1 dòng') }}
               </button>
               {% if qty_remaining > 0 %}
               <button type="button" class="btn btn-sm fw-semibold" style="background-color: #ffffff; border: 1px solid #cbd5e1; color: #334155; border-radius: 8px; font-size: 12px; padding: 6px 14px;" onclick="addRemainingRows({{ qty_remaining }})">
-                <i class="fa-solid fa-layer-group me-1 text-primary"></i>{{ 'Thêm đủ' if current_lang != 'en' else 'Add' }} {{ qty_remaining }} {{ 'dòng' if current_lang != 'en' else 'rows' }}
+                <i class="fa-solid fa-layer-group me-1 text-primary"></i>{{ '残数分追加' if current_lang == 'ja' else ('Add' if current_lang == 'en' else 'Thêm đủ') }} {{ qty_remaining }} {{ '行' if current_lang == 'ja' else ('rows' if current_lang == 'en' else 'dòng') }}
               </button>
               {% endif %}
               <button type="button" class="btn btn-sm btn-outline-danger" style="border-radius: 8px; font-size: 12px; padding: 6px 12px;" onclick="clearAllRows()" title="Xóa tất cả các dòng">
@@ -408,7 +408,7 @@
           <!-- Tip -->
           <div class="text-muted small mb-2 d-flex align-items-center gap-2" style="font-size: 12px;">
             <i class="fa-solid fa-barcode text-secondary"></i>
-            <span>{{ 'Tương thích súng quét Barcode: Quét mã hoặc bấm Enter tại ô Serial để tự động chuyển sang dòng tiếp theo (hoặc tự tạo dòng mới).' if current_lang != 'en' else 'Barcode Scanner Friendly: Press Enter or scan in the Serial field to advance or auto-create a new row.' }}</span>
+            <span>{{ 'バーコードリーダー対応: シリアル入力欄でスキャンまたはEnterキーを押すと自動で次の行に移動または新規行を追加します。' if current_lang == 'ja' else ('Barcode Scanner Friendly: Press Enter or scan in the Serial field to advance or auto-create a new row.' if current_lang == 'en' else 'Tương thích súng quét Barcode: Quét mã hoặc bấm Enter tại ô Serial để tự động chuyển sang dòng tiếp theo (hoặc tự tạo dòng mới).') }}</span>
           </div>
 
           <!-- Table Container -->
@@ -418,13 +418,13 @@
                 <tr>
                   <th class="text-center" style="width: 44px;">#</th>
                   <th style="min-width: 175px;">
-                    {{ 'Số Serial' if current_lang != 'en' else 'Serial Number' }} <span class="text-danger">*</span>
+                    {{ 'シリアル番号' if current_lang == 'ja' else ('Serial Number' if current_lang == 'en' else 'Số Serial') }} <span class="text-danger">*</span>
                   </th>
                   <th style="min-width: 145px;">
-                    {{ 'Mã tem GA' if current_lang != 'en' else 'GA Asset Code' }}
+                    {{ 'GA資産コード' if current_lang == 'ja' else ('GA Asset Code' if current_lang == 'en' else 'Mã tem GA') }}
                   </th>
                   <th style="min-width: 145px;">
-                    {{ 'Mã KDDI / Vendor' if current_lang != 'en' else 'Vendor Code' }}
+                    {{ 'ベンダーコード' if current_lang == 'ja' else ('Vendor Code' if current_lang == 'en' else 'Mã KDDI / Vendor') }}
                   </th>
                   <th style="min-width: 135px;">
                     MAC LAN (Ethernet)
@@ -433,10 +433,10 @@
                     MAC Wifi
                   </th>
                   <th style="min-width: 155px;">
-                    {{ 'Ghi chú riêng' if current_lang != 'en' else 'Note' }}
+                    {{ '個別備考' if current_lang == 'ja' else ('Note' if current_lang == 'en' else 'Ghi chú riêng') }}
                   </th>
                   <th class="text-center" style="width: 50px;">
-                    {{ 'Xóa' if current_lang != 'en' else 'Del' }}
+                    {{ '削除' if current_lang == 'ja' else ('Del' if current_lang == 'en' else 'Xóa') }}
                   </th>
                 </tr>
               </thead>

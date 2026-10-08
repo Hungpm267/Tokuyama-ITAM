@@ -43,6 +43,7 @@
     </a>
   </div>
 
+  {% if can_view_licenses %}
   <!-- Metric 3: Software Licenses -->
   <div class="col-sm-6 col-lg-3">
     <a href="{{ url_for('admin:list', identity='license') }}" class="text-decoration-none">
@@ -61,6 +62,26 @@
       </div>
     </a>
   </div>
+  {% else %}
+  <!-- Metric 3: Personnel (for GA Manager) -->
+  <div class="col-sm-6 col-lg-3">
+    <a href="{{ url_for('admin:list', identity='person') }}" class="text-decoration-none">
+      <div class="card p-3 h-100 toku-kpi-card">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="text-muted fw-semibold" style="font-size: 11.5px; letter-spacing: 0.03em;">{{ t('Nhân sự', current_lang) }}</span>
+          <span class="toku-kpi-icon"><i class="fa-solid fa-users"></i></span>
+        </div>
+        <div class="d-flex align-items-baseline justify-content-between mt-auto pt-2">
+          <div class="d-flex align-items-baseline gap-1">
+            <span class="num-tabular fw-bold text-dark" style="font-size: 28px; letter-spacing: -0.02em; line-height: 1;">{{ person_count }}</span>
+            <span class="text-muted small ms-1" style="font-size: 12px;">{{ t('người', current_lang) }}</span>
+          </div>
+          <span class="text-muted small toku-kpi-link" style="font-size: 11px; font-weight: 500;">{{ t('Chi tiết', current_lang) }} &rarr;</span>
+        </div>
+      </div>
+    </a>
+  </div>
+  {% endif %}
 
   <!-- Metric 4: Access Cards -->
   <div class="col-sm-6 col-lg-3">
@@ -87,7 +108,7 @@
 <!-- ======================================================== -->
 <div class="row g-3 mb-4">
   <!-- Alert 1: Overdue Card Loans -->
-  <div class="col-lg-6">
+  <div class="{% if can_view_licenses %}col-lg-6{% else %}col-12{% endif %}">
     <div class="card h-100">
       <div class="card-header d-flex justify-content-between align-items-center py-3 px-4">
         <div class="d-flex align-items-center gap-2">
@@ -148,6 +169,7 @@
     </div>
   </div>
 
+  {% if can_view_licenses %}
   <!-- Alert 2: Expiring Software Licenses (Within 60 Days) -->
   <div class="col-lg-6">
     <div class="card h-100">
@@ -218,10 +240,16 @@
       </div>
     </div>
   </div>
+  {% endif %}
 </div>
 
-<!-- Main Operational Layout (Asymmetric 8 / 4 Grid) -->
+<!-- Main Operational Layout (Asymmetric 8 / 4 Grid or Adaptive Layout) -->
+{% set is_admin = (request.session.get('role') == 'ADMIN' or request.session.get('role_code') == 'ADMIN') %}
+{% set is_executive = (request.session.get('role') == 'EXECUTIVE' or request.session.get('role_code') == 'EXECUTIVE') %}
+{% set is_ga_manager = (request.session.get('role') == 'GA_MANAGER' or request.session.get('role_code') == 'GA_MANAGER') %}
+
 <div class="row g-3 mb-4">
+  {% if can_view_audit %}
   <!-- Left Column: Live Activity Audit Table (8 cols) -->
   <div class="col-lg-8">
     <div class="card h-100">
@@ -328,10 +356,12 @@
       </div>
     </div>
 
+    {% if not is_executive %}
     <!-- Direct Quick Actions Card (Clean action rows, zero paragraphs) -->
     <div class="card p-4">
       <div class="card-title fw-bold mb-3" style="font-size: 14px;">{{ t('Thao tác nhanh', current_lang) }}</div>
       <div class="d-flex flex-column gap-2">
+        {% if is_admin %}
         <a href="{{ url_for('admin:create', identity='asset') }}" class="btn btn-outline-secondary d-flex align-items-center justify-content-between py-2 px-3 text-start" style="font-size: 12.5px; font-weight: 600;">
           <span><i class="fa-solid fa-plus text-primary me-2"></i>{{ t('Thêm thiết bị mới', current_lang) }}</span>
           <i class="fa-solid fa-chevron-right text-muted" style="font-size: 10px;"></i>
@@ -340,6 +370,7 @@
           <span><i class="fa-solid fa-arrow-right-arrow-left text-warning me-2"></i>{{ t('Cấp phát tài sản', current_lang) }}</span>
           <i class="fa-solid fa-chevron-right text-muted" style="font-size: 10px;"></i>
         </a>
+        {% endif %}
         <a href="{{ url_for('admin:create', identity='person') }}" class="btn btn-outline-secondary d-flex align-items-center justify-content-between py-2 px-3 text-start" style="font-size: 12.5px; font-weight: 600;">
           <span><i class="fa-solid fa-user-plus text-info me-2"></i>{{ t('Thêm nhân sự', current_lang) }}</span>
           <i class="fa-solid fa-chevron-right text-muted" style="font-size: 10px;"></i>
@@ -348,8 +379,85 @@
           <span><i class="fa-solid fa-id-badge text-secondary me-2"></i>{{ t('Cho mượn thẻ', current_lang) }}</span>
           <i class="fa-solid fa-chevron-right text-muted" style="font-size: 10px;"></i>
         </a>
+        {% if is_ga_manager %}
+        <a href="{{ url_for('admin:create', identity='phone') }}" class="btn btn-outline-secondary d-flex align-items-center justify-content-between py-2 px-3 text-start" style="font-size: 12.5px; font-weight: 600;">
+          <span><i class="fa-solid fa-phone text-success me-2"></i>{{ t('Thêm danh bạ thoại', current_lang) }}</span>
+          <i class="fa-solid fa-chevron-right text-muted" style="font-size: 10px;"></i>
+        </a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  {% else %}
+  <!-- Layout for GA Manager & Executive (can_view_audit is False) -->
+  <div class="{% if is_executive %}col-12{% else %}col-lg-6{% endif %}">
+    <!-- Operational Metrics Summary Card -->
+    <div class="card p-4 h-100">
+      <div class="card-title fw-bold mb-3" style="font-size: 14px;">{{ t('Tổng quan vận hành', current_lang) }}</div>
+      
+      <div class="d-flex flex-column gap-3">
+        <!-- Allocation Ratio -->
+        <div>
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <span class="text-muted small fw-medium">{{ t('Tỷ lệ cấp phát', current_lang) }}</span>
+            <span class="num-tabular fw-bold text-dark" style="font-size: 13px;">{{ allocation_rate }}%</span>
+          </div>
+          <div class="progress" style="height: 5px; background-color: #f1f5f9; border-radius: 3px;">
+            <div class="progress-bar" role="progressbar" style="width: {{ allocation_rate }}%; background-color: #4D5CB0; border-radius: 3px;"></div>
+          </div>
+        </div>
+
+        <div class="border-top" style="border-color: #f1f5f9 !important;"></div>
+
+        <!-- Total Personnel -->
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="text-muted small fw-medium">{{ t('Nhân sự đang làm việc', current_lang) }}</span>
+          <span class="num-tabular fw-bold text-dark" style="font-size: 13px;">{{ person_count }} {{ t('người', current_lang) }}</span>
+        </div>
+
+        <div class="border-top" style="border-color: #f1f5f9 !important;"></div>
+
+        <!-- Procurement Contracts -->
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="text-muted small fw-medium">{{ t('Hợp đồng mua sắm', current_lang) }}</span>
+          <span class="num-tabular fw-bold text-dark" style="font-size: 13px;">{{ contract_count }} {{ t('hợp đồng', current_lang) }}</span>
+        </div>
+
+        <div class="border-top" style="border-color: #f1f5f9 !important;"></div>
+
+        <!-- Cards on Loan -->
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="text-muted small fw-medium">{{ t('Thẻ đang mượn', current_lang) }}</span>
+          <span class="num-tabular fw-bold text-dark" style="font-size: 13px;">{{ active_card_loans }} {{ t('thẻ', current_lang) }}</span>
+        </div>
       </div>
     </div>
   </div>
+
+  {% if not is_executive %}
+  <div class="col-lg-6">
+    <!-- Direct Quick Actions Card for GA Manager -->
+    <div class="card p-4 h-100">
+      <div class="card-title fw-bold mb-3" style="font-size: 14px;">{{ t('Thao tác nhanh', current_lang) }}</div>
+      <div class="d-flex flex-column gap-2">
+        <a href="{{ url_for('admin:create', identity='person') }}" class="btn btn-outline-secondary d-flex align-items-center justify-content-between py-2 px-3 text-start" style="font-size: 12.5px; font-weight: 600;">
+          <span><i class="fa-solid fa-user-plus text-info me-2"></i>{{ t('Thêm nhân sự', current_lang) }}</span>
+          <i class="fa-solid fa-chevron-right text-muted" style="font-size: 10px;"></i>
+        </a>
+        <a href="{{ url_for('admin:create', identity='card-loan') }}" class="btn btn-outline-secondary d-flex align-items-center justify-content-between py-2 px-3 text-start" style="font-size: 12.5px; font-weight: 600;">
+          <span><i class="fa-solid fa-id-badge text-secondary me-2"></i>{{ t('Cho mượn thẻ', current_lang) }}</span>
+          <i class="fa-solid fa-chevron-right text-muted" style="font-size: 10px;"></i>
+        </a>
+        <a href="{{ url_for('admin:create', identity='phone') }}" class="btn btn-outline-secondary d-flex align-items-center justify-content-between py-2 px-3 text-start" style="font-size: 12.5px; font-weight: 600;">
+          <span><i class="fa-solid fa-phone text-success me-2"></i>{{ t('Thêm danh bạ thoại', current_lang) }}</span>
+          <i class="fa-solid fa-chevron-right text-muted" style="font-size: 10px;"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  {% endif %}
 </div>
 {% endblock %}

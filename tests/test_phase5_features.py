@@ -214,3 +214,48 @@ def test_export_endpoint_requires_authentication(db: Session):
     # Không có cookie phiên
     res = client.get("/admin/export/assets")
     assert res.status_code == 401
+
+
+# =============================================================================
+# 3. Trilingual i18n Tests (VI / EN / JA)
+# =============================================================================
+
+def test_i18n_translation_trilingual():
+    from app.core.i18n import SUPPORTED_LANGUAGES, translate
+
+    assert "ja" in SUPPORTED_LANGUAGES
+    assert "en" in SUPPORTED_LANGUAGES
+    assert "vi" in SUPPORTED_LANGUAGES
+
+    # Test translations for all 3 languages
+    assert translate("Tổng quan Quản trị", "vi") == "Tổng quan Quản trị"
+    assert translate("Tổng quan Quản trị", "en") == "Dashboard"
+    assert translate("Tổng quan Quản trị", "ja") == "ダッシュボード"
+
+    assert translate("Đăng xuất", "vi") == "Đăng xuất"
+    assert translate("Đăng xuất", "en") == "Sign Out"
+    assert translate("Đăng xuất", "ja") == "ログアウト"
+
+    assert translate("Nhân sự", "ja") == "社員・人事"
+    assert translate("Tài sản", "ja") == "IT資産・機器"
+    assert translate("Thẻ ra vào", "ja") == "入退室カード"
+
+
+def test_set_language_endpoint_trilingual():
+    client = TestClient(app)
+
+    # Chuyển sang tiếng Nhật
+    res_ja = client.get("/admin/set-lang?lang=ja&next=/admin", follow_redirects=False)
+    assert res_ja.status_code == 303
+    assert "itam_lang=ja" in res_ja.headers.get("set-cookie", "")
+
+    # Chuyển sang tiếng Anh
+    res_en = client.get("/admin/set-lang?lang=en&next=/admin", follow_redirects=False)
+    assert res_en.status_code == 303
+    assert "itam_lang=en" in res_en.headers.get("set-cookie", "")
+
+    # Chuyển sang tiếng Việt
+    res_vi = client.get("/admin/set-lang?lang=vi&next=/admin", follow_redirects=False)
+    assert res_vi.status_code == 303
+    assert "itam_lang=vi" in res_vi.headers.get("set-cookie", "")
+

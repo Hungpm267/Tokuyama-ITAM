@@ -13,12 +13,12 @@
           <span style="width: 32px; height: 32px; border-radius: 6px; background-color: #eff6ff; color: #2563eb; display: inline-flex; align-items: center; justify-content: center; font-size: 15px;">
             <i class="fa-solid fa-key"></i>
           </span>
-          <h3 class="card-title fw-bold text-dark m-0" style="font-size: 17px;">
-            {{ t('Ma trận Quyền Vai trò', current_lang) if current_lang != 'en' else 'Role-Based Permission Matrix' }}
+          <h3 class="card-title fw-bold text-dark m-0" style="font-size: 17px;" title="Ma trận Quyền Vai trò" data-title="Ma trận Quyền Vai trò">
+            {{ 'ロール権限マトリクス' if current_lang == 'ja' else ('Role-Based Permission Matrix' if current_lang == 'en' else 'Ma trận Quyền Vai trò') }}
           </h3>
         </div>
         <p class="text-muted small m-0 mt-1" style="font-size: 12.5px;">
-          {{ 'Quản lý phân quyền trực quan theo Phân hệ và Thao tác cho từng Vai trò trong hệ thống.' if current_lang != 'en' else 'Visually manage role permissions by Module and Action. Changes take effect immediately and are recorded in Audit Trail.' }}
+          {{ 'ロールごとの機能権限をモジュールおよび操作単位で視覚的に設定・管理します。' if current_lang == 'ja' else ('Visually manage role permissions by Module and Action. Changes take effect immediately and are recorded in Audit Trail.' if current_lang == 'en' else 'Quản lý phân quyền trực quan theo Phân hệ và Thao tác cho từng Vai trò trong hệ thống.') }}
         </p>
       </div>
 
@@ -26,10 +26,10 @@
       <div class="d-flex align-items-center gap-2">
         <div class="btn-group p-1 bg-light border rounded" role="group" style="font-size: 12.5px;">
           <a href="{{ request.url.remove_query_params(['mode']) }}" class="btn btn-sm py-1 px-3 {% if not is_raw_mode %}btn-white shadow-sm fw-bold text-primary{% else %}text-secondary{% endif %}" style="font-size: 12px; border-radius: 4px;">
-            <i class="fa-solid fa-table-cells me-1"></i> {{ 'Ma trận trực quan' if current_lang != 'en' else 'Interactive Matrix' }}
+            <i class="fa-solid fa-table-cells me-1"></i> {{ '権限マトリクス' if current_lang == 'ja' else ('Interactive Matrix' if current_lang == 'en' else 'Ma trận trực quan') }}
           </a>
           <a href="{{ request.url.include_query_params(mode='raw') }}" class="btn btn-sm py-1 px-3 {% if is_raw_mode %}btn-white shadow-sm fw-bold text-dark{% else %}text-secondary{% endif %}" style="font-size: 12px; border-radius: 4px;">
-            <i class="fa-solid fa-list me-1"></i> {{ 'Dữ liệu thô (Raw)' if current_lang != 'en' else 'Raw List' }}
+            <i class="fa-solid fa-list me-1"></i> {{ '生データ一覧' if current_lang == 'ja' else ('Raw List' if current_lang == 'en' else 'Dữ liệu thô (Raw)') }}
           </a>
         </div>
       </div>
@@ -41,12 +41,12 @@
       <div class="p-3 bg-light border-bottom d-flex align-items-center justify-content-between">
         <span class="text-muted small">
           <i class="fa-solid fa-circle-info me-1"></i>
-          {{ 'Chế độ dữ liệu thô: Hiển thị danh sách từng bản ghi đơn lẻ trong bảng role_permissions.' if current_lang != 'en' else 'Raw mode: Displays individual records in the role_permissions database table.' }}
+          {{ 'ロール権限テーブルの生データを表示しています。' if current_lang == 'ja' else ('Raw mode: Displays individual records in the role_permissions database table.' if current_lang == 'en' else 'Chế độ dữ liệu thô: Hiển thị danh sách từng bản ghi đơn lẻ trong bảng role_permissions.') }}
         </span>
         {% if model_view.can_export %}
         <div class="dropdown">
           <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
-            <i class="fa-solid fa-file-export me-1"></i> {{ 'Export' if current_lang == 'en' else 'Xuất file' }}
+            <i class="fa-solid fa-file-export me-1"></i> {{ 'エクスポート' if current_lang == 'ja' else ('Export' if current_lang == 'en' else 'Xuất file') }}
           </button>
           <ul class="dropdown-menu dropdown-menu-end">
             {% for export_type in model_view.export_types %}

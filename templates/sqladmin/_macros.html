@@ -1,9 +1,12 @@
 {% macro menu_category(menu, request, category_index) %}
 {% set current_lang = current_lang or get_current_lang(request) %}
-{% set ns = namespace(is_active=false) %}
+{% set ns = namespace(is_active=false, has_visible_children=false) %}
 {% for sub_menu in menu.children %}
-  {% if sub_menu.is_active(request) %}
-    {% set ns.is_active = true %}
+  {% if sub_menu.is_visible(request) and sub_menu.is_accessible(request) %}
+    {% set ns.has_visible_children = true %}
+    {% if sub_menu.is_active(request) %}
+      {% set ns.is_active = true %}
+    {% endif %}
   {% endif %}
 {% endfor %}
 
@@ -19,6 +22,7 @@
   'Truy vết': 'fa-solid fa-list-check'
 } %}
 
+{% if ns.has_visible_children %}
 <li class="nav-item mb-1">
   <a class="nav-link category-toggle d-flex align-items-center justify-content-start {% if not ns.is_active %}collapsed{% endif %}" 
      data-bs-toggle="collapse" 
@@ -50,6 +54,7 @@
     </div>
   </div>
 </li>
+{% endif %}
 {% endmacro %}
 
 {% macro menu_item(menu, request) %}
@@ -104,7 +109,7 @@
     </a>
   </li>
 
-  {% if request.session.get('role_code') == 'ADMIN' or request.session.get('username') == 'it.admin' %}
+  {% if request.session.get('role') == 'ADMIN' or request.session.get('role_code') == 'ADMIN' or request.session.get('username') == 'it.admin' %}
   <li class="nav-item mb-1">
     <a class="nav-link d-flex align-items-center justify-content-start {% if request.url.path == '/admin/trash' %}active{% endif %}"
        href="/admin/trash">

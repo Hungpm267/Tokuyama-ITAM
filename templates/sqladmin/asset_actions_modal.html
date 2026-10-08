@@ -9,9 +9,9 @@
           </span>
           <div>
             <h5 class="modal-title fw-bold text-dark m-0" style="font-size: 16px;">
-              {{ 'Bàn giao thiết bị cho nhân sự' if current_lang != 'en' else 'Assign Asset to Staff' }}
+              {{ '社員への機器割当' if current_lang == 'ja' else ('Assign Asset to Staff' if current_lang == 'en' else 'Bàn giao thiết bị cho nhân sự') }}
             </h5>
-            <small class="text-muted" id="assignModalSubtitle">Chọn nhân viên và thời điểm cấp phát</small>
+            <small class="text-muted" id="assignModalSubtitle">{{ '社員と割当日時を選択してください' if current_lang == 'ja' else ('Select staff member and assignment date' if current_lang == 'en' else 'Chọn nhân viên và thời điểm cấp phát') }}</small>
           </div>
         </div>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -24,30 +24,30 @@
           <div class="p-3 mb-3 border rounded-3 bg-light">
             <div class="d-flex justify-content-between align-items-center">
               <div>
-                <span class="text-muted small d-block">{{ 'Thiết bị cấp phát:' if current_lang != 'en' else 'Target Asset:' }}</span>
+                <span class="text-muted small d-block">{{ '対象機器:' if current_lang == 'ja' else ('Target Asset:' if current_lang == 'en' else 'Thiết bị cấp phát:') }}</span>
                 <span class="fw-bold text-dark fs-6" id="assignAssetInfo">-</span>
               </div>
               <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
-                <i class="fa-solid fa-box-archive me-1"></i>{{ 'Sẵn sàng trong kho' if current_lang != 'en' else 'In Stock' }}
+                <i class="fa-solid fa-box-archive me-1"></i>{{ '在庫あり' if current_lang == 'ja' else ('In Stock' if current_lang == 'en' else 'Sẵn sàng trong kho') }}
               </span>
             </div>
           </div>
 
           <div class="mb-3">
             <label class="form-label fw-semibold text-secondary small">
-              {{ 'Nhân viên nhận máy' if current_lang != 'en' else 'Receiving Staff' }} <span class="text-danger">*</span>
+              {{ '受取社員' if current_lang == 'ja' else ('Receiving Staff' if current_lang == 'en' else 'Nhân viên nhận máy') }} <span class="text-danger">*</span>
             </label>
             <div class="input-group">
               <span class="input-group-text bg-white border-end-0 text-muted"><i class="fa-solid fa-user"></i></span>
               <select class="form-select border-start-0" id="assignPersonSelect" required style="font-size: 14px;">
-                <option value="">-- {{ 'Đang tải danh sách nhân sự...' if current_lang != 'en' else 'Loading staff list...' }} --</option>
+                <option value="">-- {{ '社員一覧を読み込み中...' if current_lang == 'ja' else ('Loading staff list...' if current_lang == 'en' else 'Đang tải danh sách nhân sự...') }} --</option>
               </select>
             </div>
           </div>
 
           <div class="mb-3">
             <label class="form-label fw-semibold text-secondary small">
-              {{ 'Ngày bàn giao' if current_lang != 'en' else 'Borrow Date' }} <span class="text-danger">*</span>
+              {{ '割当日' if current_lang == 'ja' else ('Borrow Date' if current_lang == 'en' else 'Ngày bàn giao') }} <span class="text-danger">*</span>
             </label>
             <div class="input-group">
               <span class="input-group-text bg-white border-end-0 text-muted"><i class="fa-regular fa-calendar"></i></span>
@@ -57,9 +57,9 @@
 
           <div class="mb-2">
             <label class="form-label fw-semibold text-secondary small">
-              {{ 'Ghi chú bàn giao & phụ kiện đi kèm' if current_lang != 'en' else 'Notes & Accessories' }}
+              {{ '割当備考・付属品' if current_lang == 'ja' else ('Notes & Accessories' if current_lang == 'en' else 'Ghi chú bàn giao & phụ kiện đi kèm') }}
             </label>
-            <textarea class="form-control" id="assignNote" rows="2" placeholder="{{ 'Vd: Kèm sạc type-C, chuột không dây, balo laptop...' if current_lang != 'en' else 'E.g., Include charger, wireless mouse...' }}" style="font-size: 13.5px; border-radius: 10px;"></textarea>
+            <textarea class="form-control" id="assignNote" rows="2" placeholder="{{ '例：充電器、ワイヤレスマウス、PCバッグ付属...' if current_lang == 'ja' else ('E.g., Include charger, wireless mouse...' if current_lang == 'en' else 'Vd: Kèm sạc type-C, chuột không dây, balo laptop...') }}" style="font-size: 13.5px; border-radius: 10px;"></textarea>
           </div>
 
           <div id="assignErrorMessage" class="alert alert-danger py-2 small d-none mt-3 mb-0"></div>
@@ -67,10 +67,10 @@
 
         <div class="modal-footer bg-light px-4 py-3 border-top">
           <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" style="font-size: 13.5px;">
-            {{ 'Hủy bỏ' if current_lang != 'en' else 'Cancel' }}
+            {{ 'キャンセル' if current_lang == 'ja' else ('Cancel' if current_lang == 'en' else 'Hủy bỏ') }}
           </button>
           <button type="submit" class="btn btn-primary text-white px-4 fw-semibold" id="btnSubmitAssign" style="font-size: 13.5px;">
-            <i class="fa-solid fa-check me-1"></i> {{ 'Xác nhận Bàn giao' if current_lang != 'en' else 'Confirm Assignment' }}
+            <i class="fa-solid fa-check me-1"></i> {{ '割当の確定' if current_lang == 'ja' else ('Confirm Assignment' if current_lang == 'en' else 'Xác nhận Bàn giao') }}
           </button>
         </div>
       </form>
@@ -89,9 +89,9 @@
           </span>
           <div>
             <h5 class="modal-title fw-bold text-dark m-0" style="font-size: 16px;">
-              {{ 'Thu hồi thiết bị về kho' if current_lang != 'en' else 'Return Asset to Inventory' }}
+              {{ '機器の回収（倉庫戻入）' if current_lang == 'ja' else ('Return Asset to Inventory' if current_lang == 'en' else 'Thu hồi thiết bị về kho') }}
             </h5>
-            <small class="text-muted">Đóng đợt cấp phát và cập nhật trạng thái thiết bị</small>
+            <small class="text-muted">{{ '割当を終了し機器ステータスを更新' if current_lang == 'ja' else ('Close assignment and update asset status' if current_lang == 'en' else 'Đóng đợt cấp phát và cập nhật trạng thái thiết bị') }}</small>
           </div>
         </div>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -104,11 +104,11 @@
           <div class="p-3 mb-3 border rounded-3 bg-light">
             <div class="d-flex justify-content-between align-items-center">
               <div>
-                <span class="text-muted small d-block">{{ 'Thiết bị thu hồi:' if current_lang != 'en' else 'Asset:' }}</span>
+                <span class="text-muted small d-block">{{ '回収機器:' if current_lang == 'ja' else ('Asset:' if current_lang == 'en' else 'Thiết bị thu hồi:') }}</span>
                 <span class="fw-bold text-dark fs-6" id="returnAssetInfo">-</span>
               </div>
               <div class="text-end">
-                <span class="text-muted small d-block">{{ 'Người đang giữ:' if current_lang != 'en' else 'Current Holder:' }}</span>
+                <span class="text-muted small d-block">{{ '現在の保持者:' if current_lang == 'ja' else ('Current Holder:' if current_lang == 'en' else 'Người đang giữ:') }}</span>
                 <span class="fw-semibold text-primary" id="returnHolderInfo">-</span>
               </div>
             </div>
@@ -116,7 +116,7 @@
 
           <div class="mb-3">
             <label class="form-label fw-semibold text-secondary small">
-              {{ 'Ngày thu hồi thực tế' if current_lang != 'en' else 'Return Date' }} <span class="text-danger">*</span>
+              {{ '回収日' if current_lang == 'ja' else ('Return Date' if current_lang == 'en' else 'Ngày thu hồi thực tế') }} <span class="text-danger">*</span>
             </label>
             <div class="input-group">
               <span class="input-group-text bg-white border-end-0 text-muted"><i class="fa-regular fa-calendar"></i></span>
@@ -126,19 +126,19 @@
 
           <div class="mb-3">
             <label class="form-label fw-semibold text-secondary small">
-              {{ 'Trạng thái sau thu hồi' if current_lang != 'en' else 'Status After Return' }} <span class="text-danger">*</span>
+              {{ '回収後のステータス' if current_lang == 'ja' else ('Status After Return' if current_lang == 'en' else 'Trạng thái sau thu hồi') }} <span class="text-danger">*</span>
             </label>
             <select class="form-select" id="returnTargetStatus" style="font-size: 14px;">
-              <option value="IN_STOCK">📦 {{ 'Nhập lại kho (Sẵn sàng cấp phát - IN_STOCK)' if current_lang != 'en' else 'In Stock (Ready for reassignment)' }}</option>
-              <option value="REPAIR">🔧 {{ 'Máy lỗi / hỏng (Cần bảo trì sửa chữa - REPAIR)' if current_lang != 'en' else 'Faulty / Damaged (Needs Repair)' }}</option>
+              <option value="IN_STOCK">📦 {{ '在庫に戻す (割当可能 - IN_STOCK)' if current_lang == 'ja' else ('In Stock (Ready for reassignment)' if current_lang == 'en' else 'Nhập lại kho (Sẵn sàng cấp phát - IN_STOCK)') }}</option>
+              <option value="REPAIR">🔧 {{ '故障・修理中 (要メンテナンス - REPAIR)' if current_lang == 'ja' else ('Faulty / Damaged (Needs Repair)' if current_lang == 'en' else 'Máy lỗi / hỏng (Cần bảo trì sửa chữa - REPAIR)') }}</option>
             </select>
           </div>
 
           <div class="mb-2">
             <label class="form-label fw-semibold text-secondary small">
-              {{ 'Ghi chú tình trạng máy khi nhận lại' if current_lang != 'en' else 'Condition Notes' }}
+              {{ '機器状態の備考' if current_lang == 'ja' else ('Condition Notes' if current_lang == 'en' else 'Ghi chú tình trạng máy khi nhận lại') }}
             </label>
-            <textarea class="form-control" id="returnNote" rows="2" placeholder="{{ 'Vd: Đã thu hồi đủ sạc, màn hình trầy nhẹ, phím hoạt động tốt...' if current_lang != 'en' else 'E.g., Returned with charger, good condition...' }}" style="font-size: 13.5px; border-radius: 10px;"></textarea>
+            <textarea class="form-control" id="returnNote" rows="2" placeholder="{{ '例：充電器回収済み、正常動作...' if current_lang == 'ja' else ('E.g., Returned with charger, good condition...' if current_lang == 'en' else 'Vd: Đã thu hồi đủ sạc, màn hình trầy nhẹ, phím hoạt động tốt...') }}" style="font-size: 13.5px; border-radius: 10px;"></textarea>
           </div>
 
           <div id="returnErrorMessage" class="alert alert-danger py-2 small d-none mt-3 mb-0"></div>
@@ -146,10 +146,10 @@
 
         <div class="modal-footer bg-light px-4 py-3 border-top">
           <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" style="font-size: 13.5px;">
-            {{ 'Hủy bỏ' if current_lang != 'en' else 'Cancel' }}
+            {{ 'キャンセル' if current_lang == 'ja' else ('Cancel' if current_lang == 'en' else 'Hủy bỏ') }}
           </button>
           <button type="submit" class="btn btn-warning text-dark px-4 fw-bold" id="btnSubmitReturn" style="font-size: 13.5px;">
-            <i class="fa-solid fa-arrow-rotate-left me-1"></i> {{ 'Hoàn tất Thu hồi' if current_lang != 'en' else 'Complete Return' }}
+            <i class="fa-solid fa-arrow-rotate-left me-1"></i> {{ '回収完了' if current_lang == 'ja' else ('Complete Return' if current_lang == 'en' else 'Hoàn tất Thu hồi') }}
           </button>
         </div>
       </form>
@@ -167,7 +167,7 @@ function loadPersonsDropdown() {
     .then(data => {
       cachedPersons = data;
       const select = document.getElementById('assignPersonSelect');
-      select.innerHTML = '<option value="">-- {{ "Chọn nhân viên nhận máy" if current_lang != "en" else "Select staff member" }} --</option>';
+      select.innerHTML = '<option value="">-- {{ "社員を選択してください" if current_lang == "ja" else ("Select staff member" if current_lang == "en" else "Chọn nhân viên nhận máy") }} --</option>';
       data.forEach(p => {
         const opt = document.createElement('option');
         opt.value = p.id;
