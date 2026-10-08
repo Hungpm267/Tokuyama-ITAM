@@ -82,6 +82,144 @@
   </div>
 </div>
 
+<!-- ======================================================== -->
+<!-- OPERATIONAL ALERTS STRIP (FR-17: Overdue Cards & Expiring Licenses) -->
+<!-- ======================================================== -->
+<div class="row g-3 mb-4">
+  <!-- Alert 1: Overdue Card Loans -->
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center py-3 px-4">
+        <div class="d-flex align-items-center gap-2">
+          <span style="width: 28px; height: 28px; border-radius: 8px; background-color: {% if overdue_card_loans %}#fef2f2{% else %}#f0fdf4{% endif %}; color: {% if overdue_card_loans %}#dc2626{% else %}#16a34a{% endif %}; display: inline-flex; align-items: center; justify-content: center; font-size: 13px;">
+            <i class="fa-solid {% if overdue_card_loans %}fa-triangle-exclamation{% else %}fa-circle-check{% endif %}"></i>
+          </span>
+          <span class="card-title fw-bold" style="font-size: 14.5px;">{{ t('Thẻ mượn quá hạn hẹn trả', current_lang) }}</span>
+          {% if overdue_card_loans %}
+          <span class="badge bg-danger ms-1">{{ overdue_card_loans | length }}</span>
+          {% endif %}
+        </div>
+        <a href="{{ url_for('admin:list', identity='card-loan') }}" class="btn btn-outline-secondary btn-sm py-1 px-3" style="font-size: 11.5px; font-weight: 600;">
+          {{ t('Sổ mượn thẻ', current_lang) }} &rarr;
+        </a>
+      </div>
+      <div class="table-responsive">
+        <table class="table card-table table-vcenter mb-0">
+          <thead>
+            <tr>
+              <th style="width: 90px;">{{ t('Mã thẻ', current_lang) }}</th>
+              <th>{{ t('Người mượn', current_lang) }}</th>
+              <th style="width: 110px;">{{ t('Hẹn trả', current_lang) }}</th>
+              <th style="width: 120px;" class="text-end">{{ t('Tình trạng', current_lang) }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if overdue_card_loans %}
+              {% for loan in overdue_card_loans %}
+              <tr>
+                <td>
+                  <a href="{{ url_for('admin:details', identity='access-card', pk=loan.card_id) }}" class="fw-bold text-dark text-decoration-none font-monospace" style="font-size: 12.5px;">
+                    {{ loan.card_number }}
+                  </a>
+                </td>
+                <td>
+                  <span class="fw-medium text-dark" style="font-size: 12.5px;">{{ loan.borrower }}</span>
+                </td>
+                <td class="num-tabular text-muted" style="font-size: 12px;">
+                  {{ loan.expected_return_at.strftime('%Y-%m-%d') if loan.expected_return_at else '—' }}
+                </td>
+                <td class="text-end">
+                  <span class="badge bg-danger fw-bold" style="font-size: 11px;">
+                    <i class="fa-solid fa-clock me-1"></i>{{ t('Trễ', current_lang) }} {{ loan.days_overdue }} {{ t('ngày', current_lang) }}
+                  </span>
+                </td>
+              </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="4" class="text-center py-4 text-muted" style="font-size: 12.5px;">
+                  <i class="fa-solid fa-shield-check text-success me-1"></i> {{ t('Hiện không có thẻ nào bị quá hạn hẹn trả.', current_lang) }}
+                </td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alert 2: Expiring Software Licenses (Within 60 Days) -->
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center py-3 px-4">
+        <div class="d-flex align-items-center gap-2">
+          <span style="width: 28px; height: 28px; border-radius: 8px; background-color: {% if expiring_licenses %}#fffbeb{% else %}#f0fdf4{% endif %}; color: {% if expiring_licenses %}#d97706{% else %}#16a34a{% endif %}; display: inline-flex; align-items: center; justify-content: center; font-size: 13px;">
+            <i class="fa-solid {% if expiring_licenses %}fa-hourglass-half{% else %}fa-circle-check{% endif %}"></i>
+          </span>
+          <span class="card-title fw-bold" style="font-size: 14.5px;">{{ t('Bản quyền sắp hết hạn (≤ 60 ngày)', current_lang) }}</span>
+          {% if expiring_licenses %}
+          <span class="badge bg-warning ms-1">{{ expiring_licenses | length }}</span>
+          {% endif %}
+        </div>
+        <a href="{{ url_for('admin:list', identity='license') }}" class="btn btn-outline-secondary btn-sm py-1 px-3" style="font-size: 11.5px; font-weight: 600;">
+          {{ t('Xem tất cả', current_lang) }} &rarr;
+        </a>
+      </div>
+      <div class="table-responsive">
+        <table class="table card-table table-vcenter mb-0">
+          <thead>
+            <tr>
+              <th>{{ t('Phần mềm', current_lang) }}</th>
+              <th style="width: 90px;">{{ t('Seat', current_lang) }}</th>
+              <th style="width: 110px;">{{ t('Hạn dùng', current_lang) }}</th>
+              <th style="width: 120px;" class="text-end">{{ t('Còn lại', current_lang) }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if expiring_licenses %}
+              {% for lic in expiring_licenses %}
+              <tr>
+                <td>
+                  <a href="{{ url_for('admin:details', identity='license', pk=lic.id) }}" class="fw-bold text-dark text-decoration-none" style="font-size: 12.5px;">
+                    {{ lic.product_name }}
+                  </a>
+                  {% if lic.note %}
+                  <div class="text-muted text-truncate" style="font-size: 11px; max-width: 180px;">{{ lic.note }}</div>
+                  {% endif %}
+                </td>
+                <td class="num-tabular text-dark" style="font-size: 12px;">
+                  {{ lic.seats_used }}
+                </td>
+                <td class="num-tabular text-muted" style="font-size: 12px;">
+                  {{ lic.expiry_date.strftime('%Y-%m-%d') if lic.expiry_date else '—' }}
+                </td>
+                <td class="text-end">
+                  {% if lic.is_expired %}
+                  <span class="badge bg-danger fw-bold" style="font-size: 11px;">
+                    <i class="fa-solid fa-circle-exclamation me-1"></i>{{ t('Đã hết hạn', current_lang) }}
+                  </span>
+                  {% else %}
+                  <span class="badge bg-warning fw-bold" style="font-size: 11px;">
+                    <i class="fa-solid fa-clock me-1"></i>{{ lic.days_left }} {{ t('ngày', current_lang) }}
+                  </span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="4" class="text-center py-4 text-muted" style="font-size: 12.5px;">
+                  <i class="fa-solid fa-shield-check text-success me-1"></i> {{ t('Tất cả bản quyền đều đang trong thời hạn an toàn.', current_lang) }}
+                </td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Main Operational Layout (Asymmetric 8 / 4 Grid) -->
 <div class="row g-3 mb-4">
   <!-- Left Column: Live Activity Audit Table (8 cols) -->

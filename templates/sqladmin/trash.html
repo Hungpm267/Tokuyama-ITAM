@@ -1,0 +1,241 @@
+{% extends "sqladmin/layout.html" %}
+
+{% block content %}
+{% set current_lang = current_lang or get_current_lang(request) %}
+
+<!-- Top Controls Strip -->
+<div class="card mb-4 p-3 shadow-sm">
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+    <!-- Category Filter Tabs -->
+    <div class="d-flex flex-wrap align-items-center gap-1">
+      <a href="/admin/trash?entity=all{% if query %}&q={{ query }}{% endif %}" class="btn btn-sm {% if current_entity == 'all' %}btn-primary fw-bold{% else %}btn-outline-secondary{% endif %}" style="border-radius: 8px;">
+        {{ 'Tất cả' if current_lang != 'en' else 'All' }} ({{ total_in_trash }})
+      </a>
+      {% if counts.get('asset', 0) > 0 %}
+      <a href="/admin/trash?entity=asset{% if query %}&q={{ query }}{% endif %}" class="btn btn-sm {% if current_entity == 'asset' %}btn-primary fw-bold{% else %}btn-outline-secondary{% endif %}" style="border-radius: 8px;">
+        <i class="fa-solid fa-laptop me-1"></i>{{ 'Thiết bị' if current_lang != 'en' else 'Assets' }} ({{ counts.get('asset', 0) }})
+      </a>
+      {% endif %}
+      {% if counts.get('person', 0) > 0 %}
+      <a href="/admin/trash?entity=person{% if query %}&q={{ query }}{% endif %}" class="btn btn-sm {% if current_entity == 'person' %}btn-primary fw-bold{% else %}btn-outline-secondary{% endif %}" style="border-radius: 8px;">
+        <i class="fa-solid fa-users me-1"></i>{{ 'Nhân sự' if current_lang != 'en' else 'Personnel' }} ({{ counts.get('person', 0) }})
+      </a>
+      {% endif %}
+      {% if counts.get('contract', 0) > 0 %}
+      <a href="/admin/trash?entity=contract{% if query %}&q={{ query }}{% endif %}" class="btn btn-sm {% if current_entity == 'contract' %}btn-primary fw-bold{% else %}btn-outline-secondary{% endif %}" style="border-radius: 8px;">
+        <i class="fa-solid fa-file-contract me-1"></i>{{ 'Hợp đồng' if current_lang != 'en' else 'Contracts' }} ({{ counts.get('contract', 0) }})
+      </a>
+      {% endif %}
+      {% if counts.get('card', 0) > 0 %}
+      <a href="/admin/trash?entity=card{% if query %}&q={{ query }}{% endif %}" class="btn btn-sm {% if current_entity == 'card' %}btn-primary fw-bold{% else %}btn-outline-secondary{% endif %}" style="border-radius: 8px;">
+        <i class="fa-solid fa-id-card me-1"></i>{{ 'Thẻ' if current_lang != 'en' else 'Cards' }} ({{ counts.get('card', 0) }})
+      </a>
+      {% endif %}
+      {% if counts.get('phone', 0) > 0 %}
+      <a href="/admin/trash?entity=phone{% if query %}&q={{ query }}{% endif %}" class="btn btn-sm {% if current_entity == 'phone' %}btn-primary fw-bold{% else %}btn-outline-secondary{% endif %}" style="border-radius: 8px;">
+        <i class="fa-solid fa-phone me-1"></i>{{ 'Phone' if current_lang != 'en' else 'Phones' }} ({{ counts.get('phone', 0) }})
+      </a>
+      {% endif %}
+      {% if counts.get('license', 0) > 0 %}
+      <a href="/admin/trash?entity=license{% if query %}&q={{ query }}{% endif %}" class="btn btn-sm {% if current_entity == 'license' %}btn-primary fw-bold{% else %}btn-outline-secondary{% endif %}" style="border-radius: 8px;">
+        <i class="fa-solid fa-key me-1"></i>{{ 'License' }} ({{ counts.get('license', 0) }})
+      </a>
+      {% endif %}
+    </div>
+
+    <!-- Quick Search within Trash -->
+    <form action="/admin/trash" method="GET" class="d-flex align-items-center" style="max-width: 280px; width: 100%;">
+      <input type="hidden" name="entity" value="{{ current_entity }}" />
+      <div class="input-group input-group-sm">
+        <input type="search" name="q" class="form-control" placeholder="{{ 'Lọc lý do, mã, tên...' if current_lang != 'en' else 'Filter reason, code, name...' }}" value="{{ query }}" style="border-radius: 8px 0 0 8px;" />
+        <button class="btn btn-outline-secondary" type="submit" style="border-radius: 0 8px 8px 0;">
+          <i class="fa-solid fa-search"></i>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Deleted Records List Card -->
+<div class="card shadow-sm">
+  <div class="card-header bg-white py-3 px-4 d-flex align-items-center justify-content-between border-bottom">
+    <div class="d-flex align-items-center gap-2">
+      <span style="width: 28px; height: 28px; border-radius: 8px; background-color: #fee2e2; color: #dc2626; display: inline-flex; align-items: center; justify-content: center; font-size: 13px;">
+        <i class="fa-solid fa-trash-can"></i>
+      </span>
+      <h4 class="card-title fw-bold m-0" style="font-size: 15px;">{{ 'Danh sách bản ghi đã xóa mềm' if current_lang != 'en' else 'Soft-Deleted Records' }}</h4>
+      <span class="badge bg-secondary ms-1">{{ items | length }}</span>
+    </div>
+    <div class="text-muted small">
+      <i class="fa-solid fa-circle-info me-1"></i>{{ 'Chỉ Admin mới có quyền xem và khôi phục' if current_lang != 'en' else 'Admin-only restore permissions' }}
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table card-table table-vcenter mb-0">
+      <thead>
+        <tr>
+          <th style="width: 120px;">{{ t('Phân hệ', current_lang) }}</th>
+          <th style="width: 140px;">{{ t('Mã / Định danh', current_lang) }}</th>
+          <th>{{ t('Thông tin đối tượng', current_lang) }}</th>
+          <th style="width: 160px;">{{ t('Thời điểm xóa', current_lang) }}</th>
+          <th style="width: 130px;">{{ t('Người xóa', current_lang) }}</th>
+          <th>{{ t('Lý do xóa', current_lang) }}</th>
+          <th style="width: 120px;" class="text-end">{{ t('Thao tác', current_lang) }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if items %}
+          {% for item in items %}
+          <tr id="row-{{ item.entity_type }}-{{ item.id }}">
+            <td>
+              {% if item.entity_type == 'asset' %}
+              <span class="badge bg-primary" style="font-size: 10.5px;">Thiết bị IT</span>
+              {% elif item.entity_type == 'person' %}
+              <span class="badge bg-success" style="font-size: 10.5px;">Nhân sự</span>
+              {% elif item.entity_type == 'contract' %}
+              <span class="badge bg-info" style="font-size: 10.5px;">Hợp đồng</span>
+              {% elif item.entity_type == 'card' %}
+              <span class="badge bg-secondary" style="font-size: 10.5px;">Thẻ ra vào</span>
+              {% elif item.entity_type == 'phone' %}
+              <span class="badge bg-secondary" style="font-size: 10.5px;">Phone</span>
+              {% elif item.entity_type == 'license' %}
+              <span class="badge bg-warning" style="font-size: 10.5px;">License</span>
+              {% elif item.entity_type == 'user' %}
+              <span class="badge bg-danger" style="font-size: 10.5px;">Người dùng</span>
+              {% else %}
+              <span class="badge bg-light text-dark border" style="font-size: 10.5px;">{{ item.entity_type }}</span>
+              {% endif %}
+            </td>
+            <td>
+              <span class="font-monospace fw-bold text-dark" style="font-size: 12.5px;">
+                {{ item.identifier }}
+              </span>
+            </td>
+            <td>
+              <div class="fw-semibold text-dark" style="font-size: 13px;">{{ item.display_name }}</div>
+              <div class="text-muted small">{{ item.details }}</div>
+            </td>
+            <td class="num-tabular text-muted" style="font-size: 12px;">
+              {{ item.deleted_at.strftime('%Y-%m-%d %H:%M') if item.deleted_at else '—' }}
+            </td>
+            <td class="text-secondary fw-medium" style="font-size: 12.5px;">
+              {{ item.deleter }}
+            </td>
+            <td>
+              <span class="text-danger fw-medium" style="font-size: 12.5px;">
+                <i class="fa-solid fa-comment-dots me-1 text-muted"></i>{{ item.reason }}
+              </span>
+            </td>
+            <td class="text-end">
+              <button type="button" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1"
+                      onclick="openRestoreModal('{{ item.entity_type }}', {{ item.id }}, '{{ item.display_name | escape }}', '{{ item.identifier | escape }}')"
+                      style="border-radius: 8px; font-size: 12px; font-weight: 600; padding: 4px 10px;">
+                <i class="fa-solid fa-rotate-left"></i>
+                <span>{{ 'Khôi phục' if current_lang != 'en' else 'Restore' }}</span>
+              </button>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="7" class="text-center py-5 text-muted" style="font-size: 13.5px;">
+              <div class="mb-2">
+                <i class="fa-solid fa-recycle text-success fs-2"></i>
+              </div>
+              <div class="fw-bold text-dark">{{ 'Thùng rác đang trống' if current_lang != 'en' else 'Recycle Bin is empty' }}</div>
+              <p class="text-muted small mt-1 mb-0">{{ 'Không có bản ghi nào bị xóa mềm trong danh mục này.' if current_lang != 'en' else 'No soft-deleted records found in this category.' }}</p>
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal Xác nhận Khôi phục -->
+<div class="modal fade" id="restoreModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" style="max-width: 440px;">
+    <div class="modal-content shadow-lg border-0" style="border-radius: 20px; overflow: hidden;">
+      <div class="modal-header py-3 px-4 bg-white border-bottom">
+        <h5 class="modal-title d-flex align-items-center gap-2 m-0" style="font-size: 15px; font-weight: 700; color: #0f172a;">
+          <span style="width: 28px; height: 28px; border-radius: 8px; background-color: #EEF2FF; color: #4D5CB0; display: inline-flex; align-items: center; justify-content: center; font-size: 13px;">
+            <i class="fa-solid fa-rotate-left"></i>
+          </span>
+          <span>{{ 'Xác nhận khôi phục bản ghi' if current_lang != 'en' else 'Confirm Record Restore' }}</span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body py-4 px-4 bg-white">
+        <p class="text-secondary mb-3" style="font-size: 13.5px; line-height: 1.6;">
+          {{ 'Bạn có chắc chắn muốn khôi phục bản ghi' if current_lang != 'en' else 'Are you sure you want to restore' }}
+          <strong id="restoreTargetLabel" class="text-dark"></strong>
+          {{ 'trở lại trạng thái hoạt động bình thường?' if current_lang != 'en' else 'back to active state?' }}
+        </p>
+        <div class="p-3 rounded-3" style="background-color: #f8fafc; border: 1px solid #e2e8f0; font-size: 12px; color: #475569;">
+          <i class="fa-solid fa-shield-check text-primary me-1"></i>
+          {{ 'Hệ thống sẽ kiểm tra ràng buộc duy nhất (Serial, Mã số, ID) và tự động ghi vết hành động RESTORE vào Audit Log.' if current_lang != 'en' else 'System will enforce unique constraints and log a RESTORE event to Audit Trail.' }}
+        </div>
+        <div id="restoreErrorAlert" class="alert alert-danger py-2 px-3 mt-3 d-none small mb-0" style="border-radius: 8px;"></div>
+      </div>
+      <div class="modal-footer py-2 px-4 bg-light border-top d-flex justify-content-end gap-2">
+        <button type="button" class="btn btn-outline-secondary px-3 py-1 btn-sm" data-bs-dismiss="modal" style="font-size: 13px; font-weight: 600; border-radius: 8px;">
+          {{ 'Hủy bỏ' if current_lang != 'en' else 'Cancel' }}
+        </button>
+        <button type="button" id="confirmRestoreBtn" class="btn btn-primary px-3 py-1 btn-sm" style="font-size: 13px; font-weight: 600; border-radius: 8px;" onclick="executeRestore()">
+          <i class="fa-solid fa-rotate-left me-1"></i> {{ 'Khôi phục ngay' if current_lang != 'en' else 'Restore Now' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let activeRestoreTarget = { entity_type: '', id: 0 };
+
+  function openRestoreModal(entityType, id, name, identifier) {
+    activeRestoreTarget = { entity_type: entityType, id: id };
+    const label = `${identifier} (${name})`;
+    document.getElementById('restoreTargetLabel').textContent = label;
+    document.getElementById('restoreErrorAlert').classList.add('d-none');
+    document.getElementById('restoreErrorAlert').textContent = '';
+    const modal = new bootstrap.Modal(document.getElementById('restoreModal'));
+    modal.show();
+  }
+
+  function executeRestore() {
+    const btn = document.getElementById('confirmRestoreBtn');
+    const errBox = document.getElementById('restoreErrorAlert');
+    btn.disabled = true;
+    errBox.classList.add('d-none');
+
+    const formData = new FormData();
+    formData.append('entity_type', activeRestoreTarget.entity_type);
+    formData.append('item_id', activeRestoreTarget.id);
+
+    fetch('/admin/trash/restore', {
+      method: 'POST',
+      body: formData
+    })
+    .then(async response => {
+      const data = await response.json().catch(() => ({ detail: 'Lỗi không xác định từ máy chủ.' }));
+      if (!response.ok) {
+        throw new Error(data.detail || 'Không thể khôi phục bản ghi.');
+      }
+      return data;
+    })
+    .then(data => {
+      // Thành công -> Đóng modal và reload trang
+      const modalEl = document.getElementById('restoreModal');
+      const modal = bootstrap.Modal.getInstance(modalEl);
+      if (modal) modal.hide();
+      window.location.reload();
+    })
+    .catch(err => {
+      btn.disabled = false;
+      errBox.textContent = err.message;
+      errBox.classList.remove('d-none');
+    });
+  }
+</script>
+{% endblock %}

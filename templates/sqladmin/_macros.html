@@ -90,6 +90,31 @@
   {{ menu_category(item, request, loop.index) }}
   {% endif %}
   {% endfor %}
+
+  <div class="my-2 border-bottom" style="border-color: #f1f5f9 !important;"></div>
+
+  <!-- Global Search & Recycle Bin Utility Links (FR-04 & FR-02) -->
+  <li class="nav-item mb-1">
+    <a class="nav-link d-flex align-items-center justify-content-start {% if request.url.path == '/admin/global-search' %}active{% endif %}"
+       href="/admin/global-search">
+      <span class="nav-link-icon me-2 flex-shrink-0" style="width: 20px; text-align: center; font-size: 13px; color: {% if request.url.path == '/admin/global-search' %}#4D5CB0{% else %}#64748b{% endif %};">
+        <i class="fa-solid fa-magnifying-glass"></i>
+      </span>
+      <span class="nav-link-title flex-grow-1 text-truncate" style="font-size: 13px; font-weight: 600;">{{ t('Tìm kiếm toàn cục', current_lang) }}</span>
+    </a>
+  </li>
+
+  {% if request.session.get('role_code') == 'ADMIN' or request.session.get('username') == 'it.admin' %}
+  <li class="nav-item mb-1">
+    <a class="nav-link d-flex align-items-center justify-content-start {% if request.url.path == '/admin/trash' %}active{% endif %}"
+       href="/admin/trash">
+      <span class="nav-link-icon me-2 flex-shrink-0" style="width: 20px; text-align: center; font-size: 13px; color: {% if request.url.path == '/admin/trash' %}#4D5CB0{% else %}#64748b{% endif %};">
+        <i class="fa-solid fa-trash-can"></i>
+      </span>
+      <span class="nav-link-title flex-grow-1 text-truncate" style="font-size: 13px; font-weight: 600;">{{ t('Thùng rác & Khôi phục', current_lang) }}</span>
+    </a>
+  </li>
+  {% endif %}
 </ul>
 {% endmacro %}
 

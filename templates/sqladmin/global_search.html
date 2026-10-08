@@ -1,0 +1,327 @@
+{% extends "sqladmin/layout.html" %}
+
+{% block content %}
+{% set current_lang = current_lang or get_current_lang(request) %}
+
+<!-- Search Input Strip -->
+<div class="card mb-4 p-4 shadow-sm">
+  <form action="/admin/global-search" method="GET" class="row g-2 align-items-center">
+    <div class="col-md-10">
+      <div class="input-group">
+        <span class="input-group-text bg-white text-muted border-end-0" style="border-radius: 10px 0 0 10px;">
+          <i class="fa-solid fa-magnifying-glass fs-5 text-primary"></i>
+        </span>
+        <input type="search" name="q" id="globalSearchInput" class="form-control form-control-lg border-start-0 ps-0"
+               placeholder="{{ 'Nhập mã GA, serial, model, MAC, tên nhân sự, mã HĐ, số extension...' if current_lang != 'en' else 'Search by GA code, serial, model, MAC, person name, contract code, extension...' }}"
+               value="{{ query }}" autofocus style="border-radius: 0 10px 10px 0; font-size: 15px;">
+      </div>
+    </div>
+    <div class="col-md-2 d-grid">
+      <button type="submit" class="btn btn-primary btn-lg" style="border-radius: 10px;">
+        <i class="fa-solid fa-search me-1"></i> {{ 'Tìm kiếm' if current_lang != 'en' else 'Search' }}
+      </button>
+    </div>
+  </form>
+
+  <div class="d-flex flex-wrap align-items-center gap-2 mt-3 pt-2 border-top text-muted small">
+    <span class="fw-bold text-dark"><i class="fa-regular fa-lightbulb me-1"></i>{{ 'Gợi ý từ khóa:' if current_lang != 'en' else 'Suggestions:' }}</span>
+    <a href="/admin/global-search?q=GA-" class="badge bg-secondary text-decoration-none">GA-</a>
+    <a href="/admin/global-search?q=Dell" class="badge bg-secondary text-decoration-none">Dell</a>
+    <a href="/admin/global-search?q=KHCM" class="badge bg-secondary text-decoration-none">KHCM-</a>
+    <a href="/admin/global-search?q=Office" class="badge bg-secondary text-decoration-none">Office</a>
+    <span class="ms-auto text-muted">{{ total_count }} {{ 'kết quả được tìm thấy' if current_lang != 'en' else 'results found' }}</span>
+  </div>
+</div>
+
+{% if query %}
+  {% if total_count == 0 %}
+    <!-- Empty State -->
+    <div class="card p-5 text-center shadow-sm">
+      <div class="mb-3 text-muted">
+        <span style="width: 64px; height: 64px; border-radius: 50%; background-color: #f1f5f9; display: inline-flex; align-items: center; justify-content: center; font-size: 28px; color: #94a3b8;">
+          <i class="fa-solid fa-folder-open"></i>
+        </span>
+      </div>
+      <h4 class="fw-bold text-dark mb-2">{{ 'Không tìm thấy kết quả phù hợp' if current_lang != 'en' else 'No matching results found' }}</h4>
+      <p class="text-muted mx-auto" style="max-width: 480px; font-size: 13.5px;">
+        {{ 'Không có bản ghi nào khớp với từ khóa' if current_lang != 'en' else 'No records matched query' }} <strong>"{{ query }}"</strong>.
+        {{ 'Vui lòng kiểm tra lại chính tả hoặc thử tìm bằng Serial, mã tem GA, tên nhân viên viết không dấu.' if current_lang != 'en' else 'Please verify your spelling or try searching by serial number, GA code, or staff name.' }}
+      </p>
+    </div>
+  {% else %}
+
+    <!-- 1. Assets Results -->
+    {% if results.assets %}
+    <div class="card mb-4 shadow-sm">
+      <div class="card-header d-flex align-items-center justify-content-between py-3 px-4 bg-white border-bottom">
+        <div class="d-flex align-items-center gap-2">
+          <span style="width: 28px; height: 28px; border-radius: 8px; background-color: #EEF2FF; color: #4D5CB0; display: inline-flex; align-items: center; justify-content: center; font-size: 13px;">
+            <i class="fa-solid fa-laptop"></i>
+          </span>
+          <h5 class="fw-bold m-0" style="font-size: 15px;">{{ 'Thiết bị IT & Phần cứng' if current_lang != 'en' else 'IT Assets & Hardware' }}</h5>
+          <span class="badge bg-primary ms-1">{{ results.assets | length }}</span>
+        </div>
+        <a href="{{ url_for('admin:list', identity='asset') }}?search={{ query }}" class="btn btn-outline-secondary btn-sm py-1 px-3" style="font-size: 12px;">
+          {{ 'Xem trong tab Tài sản' if current_lang != 'en' else 'View in Assets' }} &rarr;
+        </a>
+      </div>
+      <div class="table-responsive">
+        <table class="table card-table table-vcenter mb-0">
+          <thead>
+            <tr>
+              <th style="width: 110px;">{{ t('Mã GA', current_lang) }}</th>
+              <th style="width: 140px;">{{ t('Mã Vendor', current_lang) }}</th>
+              <th>{{ t('Model / Chủng loại', current_lang) }}</th>
+              <th style="width: 150px;">{{ t('Serial Number', current_lang) }}</th>
+              <th style="width: 150px;">MAC / HWID</th>
+              <th style="width: 110px;">{{ t('Trạng thái', current_lang) }}</th>
+              <th style="width: 80px;" class="text-end">{{ t('Thao tác', current_lang) }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in results.assets %}
+            <tr>
+              <td>
+                <a href="{{ url_for('admin:details', identity='asset', pk=item.id) }}" class="fw-bold font-monospace text-dark text-decoration-none">
+                  {{ item.asset_code }}
+                </a>
+              </td>
+              <td class="font-monospace text-secondary" style="font-size: 12px;">{{ item.vendor_code or '—' }}</td>
+              <td>
+                <div class="fw-bold text-dark" style="font-size: 13px;">{{ item.model }}</div>
+                <div class="text-muted small">{{ item.category.name_ja if (current_lang == 'ja' and item.category.name_ja) else item.category.name_en }}</div>
+              </td>
+              <td class="font-monospace text-dark fw-bold" style="font-size: 12.5px;">{{ item.serial }}</td>
+              <td class="small text-muted font-monospace" style="font-size: 11.5px;">
+                {% if item.mac_ethernet %}<div>LAN: {{ item.mac_ethernet }}</div>{% endif %}
+                {% if item.mac_wifi %}<div>Wi-Fi: {{ item.mac_wifi }}</div>{% endif %}
+                {% if item.hwid %}<div>HWID: {{ item.hwid }}</div>{% endif %}
+                {% if not item.mac_ethernet and not item.mac_wifi and not item.hwid %}—{% endif %}
+              </td>
+              <td>
+                {% if item.status.value == 'IN_STOCK' %}
+                <span class="badge bg-success">{{ t('Trong kho', current_lang) }}</span>
+                {% elif item.status.value == 'IN_USE' %}
+                <span class="badge bg-primary">{{ t('Đang dùng', current_lang) }}</span>
+                {% elif item.status.value == 'REPAIRING' %}
+                <span class="badge bg-warning">{{ t('Đang sửa', current_lang) }}</span>
+                {% else %}
+                <span class="badge bg-secondary">{{ item.status.value }}</span>
+                {% endif %}
+              </td>
+              <td class="text-end">
+                <a href="{{ url_for('admin:details', identity='asset', pk=item.id) }}" class="btn btn-outline-secondary btn-sm py-1 px-2" style="font-size: 11.5px;">
+                  <i class="fa-solid fa-eye"></i>
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- 2. Persons Results -->
+    {% if results.persons %}
+    <div class="card mb-4 shadow-sm">
+      <div class="card-header d-flex align-items-center justify-content-between py-3 px-4 bg-white border-bottom">
+        <div class="d-flex align-items-center gap-2">
+          <span style="width: 28px; height: 28px; border-radius: 8px; background-color: #f0fdf4; color: #16a34a; display: inline-flex; align-items: center; justify-content: center; font-size: 13px;">
+            <i class="fa-solid fa-users"></i>
+          </span>
+          <h5 class="fw-bold m-0" style="font-size: 15px;">{{ 'Nhân sự & Người dùng' if current_lang != 'en' else 'Personnel & Employees' }}</h5>
+          <span class="badge bg-success ms-1">{{ results.persons | length }}</span>
+        </div>
+        <a href="{{ url_for('admin:list', identity='person') }}?search={{ query }}" class="btn btn-outline-secondary btn-sm py-1 px-3" style="font-size: 12px;">
+          {{ 'Xem trong tab Nhân sự' if current_lang != 'en' else 'View in Personnel' }} &rarr;
+        </a>
+      </div>
+      <div class="table-responsive">
+        <table class="table card-table table-vcenter mb-0">
+          <thead>
+            <tr>
+              <th style="width: 110px;">{{ t('Mã NV', current_lang) }}</th>
+              <th>{{ t('Họ và tên', current_lang) }}</th>
+              <th style="width: 130px;">User ID</th>
+              <th>Email</th>
+              <th style="width: 160px;">{{ t('Phòng ban', current_lang) }}</th>
+              <th style="width: 120px;">{{ t('Trạng thái', current_lang) }}</th>
+              <th style="width: 80px;" class="text-end">{{ t('Thao tác', current_lang) }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in results.persons %}
+            <tr>
+              <td class="font-monospace fw-bold text-dark">{{ item.staff_code }}</td>
+              <td>
+                <a href="{{ url_for('admin:details', identity='person', pk=item.id) }}" class="fw-bold text-dark text-decoration-none">
+                  {{ item.full_name }}
+                </a>
+              </td>
+              <td class="font-monospace text-secondary" style="font-size: 12px;">{{ item.user_login_id or '—' }}</td>
+              <td class="text-muted" style="font-size: 12.5px;">{{ item.email or '—' }}</td>
+              <td>
+                {% if item.department %}
+                <span class="badge bg-secondary">{{ item.department.name_ja if (current_lang == 'ja' and item.department.name_ja) else item.department.name_en }}</span>
+                {% else %}—{% endif %}
+              </td>
+              <td>
+                {% if item.status.value == 'ACTIVE' %}
+                <span class="badge bg-success">{{ t('Đang làm việc', current_lang) }}</span>
+                {% elif item.status.value == 'ONBOARDING' %}
+                <span class="badge bg-info">{{ t('Sắp vào làm', current_lang) }}</span>
+                {% else %}
+                <span class="badge bg-danger">{{ t('Đã nghỉ việc', current_lang) }}</span>
+                {% endif %}
+              </td>
+              <td class="text-end">
+                <a href="{{ url_for('admin:details', identity='person', pk=item.id) }}" class="btn btn-outline-secondary btn-sm py-1 px-2" style="font-size: 11.5px;">
+                  <i class="fa-solid fa-eye"></i>
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- 3. Contracts Results -->
+    {% if results.contracts %}
+    <div class="card mb-4 shadow-sm">
+      <div class="card-header d-flex align-items-center justify-content-between py-3 px-4 bg-white border-bottom">
+        <div class="d-flex align-items-center gap-2">
+          <span style="width: 28px; height: 28px; border-radius: 8px; background-color: #eff6ff; color: #2563eb; display: inline-flex; align-items: center; justify-content: center; font-size: 13px;">
+            <i class="fa-solid fa-file-contract"></i>
+          </span>
+          <h5 class="fw-bold m-0" style="font-size: 15px;">{{ 'Hợp đồng mua sắm' if current_lang != 'en' else 'Procurement Contracts' }}</h5>
+          <span class="badge bg-info ms-1">{{ results.contracts | length }}</span>
+        </div>
+        <a href="{{ url_for('admin:list', identity='contract') }}?search={{ query }}" class="btn btn-outline-secondary btn-sm py-1 px-3" style="font-size: 12px;">
+          {{ 'Xem trong tab Hợp đồng' if current_lang != 'en' else 'View in Contracts' }} &rarr;
+        </a>
+      </div>
+      <div class="table-responsive">
+        <table class="table card-table table-vcenter mb-0">
+          <thead>
+            <tr>
+              <th style="width: 160px;">{{ t('Mã hợp đồng', current_lang) }}</th>
+              <th>{{ t('Nhà cung cấp (Vendor)', current_lang) }}</th>
+              <th style="width: 130px;">{{ t('Ngày ký', current_lang) }}</th>
+              <th style="width: 80px;" class="text-end">{{ t('Thao tác', current_lang) }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in results.contracts %}
+            <tr>
+              <td>
+                <a href="{{ url_for('admin:details', identity='contract', pk=item.id) }}" class="fw-bold font-monospace text-primary text-decoration-none">
+                  {{ item.code }}
+                </a>
+              </td>
+              <td class="fw-semibold text-dark">{{ item.vendor_name }}</td>
+              <td class="num-tabular text-muted">{{ item.signed_date.strftime('%Y-%m-%d') if item.signed_date else '—' }}</td>
+              <td class="text-end">
+                <a href="{{ url_for('admin:details', identity='contract', pk=item.id) }}" class="btn btn-outline-secondary btn-sm py-1 px-2" style="font-size: 11.5px;">
+                  <i class="fa-solid fa-eye"></i>
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- 4. Other Entities Row (Cards, Phones, Licenses) -->
+    <div class="row g-3 mb-4">
+      <!-- Access Cards -->
+      {% if results.cards %}
+      <div class="col-md-4">
+        <div class="card h-100 shadow-sm">
+          <div class="card-header py-3 px-4 bg-white border-bottom d-flex align-items-center justify-content-between">
+            <span class="fw-bold" style="font-size: 14px;"><i class="fa-solid fa-id-card text-muted me-2"></i>{{ t('Thẻ ra vào', current_lang) }}</span>
+            <span class="badge bg-secondary">{{ results.cards | length }}</span>
+          </div>
+          <div class="p-3">
+            <div class="list-group list-group-flush">
+              {% for item in results.cards %}
+              <a href="{{ url_for('admin:details', identity='access-card', pk=item.id) }}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between px-2 py-2 border-0 rounded mb-1">
+                <span class="font-monospace fw-bold text-dark">{{ item.card_no }}</span>
+                <span class="badge bg-light text-dark border">{{ item.status.value }}</span>
+              </a>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Phones -->
+      {% if results.phones %}
+      <div class="col-md-4">
+        <div class="card h-100 shadow-sm">
+          <div class="card-header py-3 px-4 bg-white border-bottom d-flex align-items-center justify-content-between">
+            <span class="fw-bold" style="font-size: 14px;"><i class="fa-solid fa-phone text-muted me-2"></i>{{ t('Máy nhánh / Phone', current_lang) }}</span>
+            <span class="badge bg-secondary">{{ results.phones | length }}</span>
+          </div>
+          <div class="p-3">
+            <div class="list-group list-group-flush">
+              {% for item in results.phones %}
+              <a href="{{ url_for('admin:details', identity='phone', pk=item.id) }}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between px-2 py-2 border-0 rounded mb-1">
+                <div>
+                  <span class="font-monospace fw-bold text-dark fs-6">{{ item.extension_number }}</span>
+                  <div class="text-muted small">{{ item.device_name }}</div>
+                </div>
+                <span class="badge bg-light text-secondary border">{{ item.device_type.value }}</span>
+              </a>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Licenses -->
+      {% if results.licenses %}
+      <div class="col-md-4">
+        <div class="card h-100 shadow-sm">
+          <div class="card-header py-3 px-4 bg-white border-bottom d-flex align-items-center justify-content-between">
+            <span class="fw-bold" style="font-size: 14px;"><i class="fa-solid fa-key text-muted me-2"></i>{{ t('Bản quyền License', current_lang) }}</span>
+            <span class="badge bg-secondary">{{ results.licenses | length }}</span>
+          </div>
+          <div class="p-3">
+            <div class="list-group list-group-flush">
+              {% for item in results.licenses %}
+              <a href="{{ url_for('admin:details', identity='license', pk=item.id) }}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between px-2 py-2 border-0 rounded mb-1">
+                <div>
+                  <div class="fw-bold text-dark">{{ item.product.name if item.product else 'License' }}</div>
+                  <div class="text-muted small">{{ item.note or (item.expiry_date.strftime('%Y-%m-%d') if item.expiry_date else 'Perpetual') }}</div>
+                </div>
+                <span class="badge bg-primary">{{ item.seats }} seats</span>
+              </a>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+  {% endif %}
+{% endif %}
+
+<script>
+  // Shortcut phím nóng Ctrl+K hoặc / để focus nhanh vào ô search
+  document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      e.preventDefault();
+      const input = document.getElementById('globalSearchInput');
+      if (input) input.focus();
+    }
+  });
+</script>
+{% endblock %}

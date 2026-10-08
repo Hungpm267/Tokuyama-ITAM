@@ -72,6 +72,19 @@
         <span class="text-secondary" style="font-size: 12px; font-weight: 500;">{{ t('IT Asset Management System', current_lang) }}</span>
       </div>
 
+      <!-- Global Quick Search Bar (FR-04) -->
+      <form action="/admin/global-search" method="GET" class="d-none d-md-flex align-items-center mx-3 my-0 flex-grow-1" style="max-width: 440px;">
+        <div class="input-group input-group-sm w-100" style="background-color: #f8fafc; border-radius: 8px; border: 1px solid var(--toku-border); height: 28px;">
+          <span class="input-group-text bg-transparent border-0 text-muted ps-2.5 pe-1 py-0" style="font-size: 11px;">
+            <i class="fa-solid fa-magnifying-glass"></i>
+          </span>
+          <input type="search" name="q" id="topbarSearchInput" class="form-control bg-transparent border-0 shadow-none py-0 text-dark" placeholder="{{ 'Tìm kiếm (GA code, Serial, MAC, Nhân sự, HĐ...)' if current_lang != 'en' else 'Quick Search (GA code, Serial, MAC, Person, Contract...)' }}" value="{{ request.query_params.get('q', '') }}" style="font-size: 11.5px; height: 26px;" />
+          <span class="input-group-text bg-transparent border-0 pe-2 py-0">
+            <kbd class="border text-muted bg-white fw-bold" style="font-size: 9px; padding: 1px 4px; border-radius: 3px;">Ctrl K</kbd>
+          </span>
+        </div>
+      </form>
+
       <!-- Swiss Segmented Language Switcher -->
       <div class="d-flex align-items-center gap-2">
         <span class="text-muted me-1" style="font-size: 11px; font-weight: 500;"><i class="fa-solid fa-globe me-1"></i>Ngôn ngữ / Language:</span>
@@ -115,4 +128,18 @@
     </div>
   </div>
 </div>
+
+<script>
+  // Phím tắt toàn cục Ctrl+K (hoặc Cmd+K trên Mac) để tìm kiếm nhanh
+  document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      var input = document.getElementById('topbarSearchInput') || document.getElementById('globalSearchInput');
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    }
+  });
+</script>
 {% endblock %}

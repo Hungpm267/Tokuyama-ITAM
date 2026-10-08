@@ -1607,6 +1607,9 @@ class TokuyamaAdmin(Admin):
         from app.core.i18n import get_current_lang, translate
 
         current_lang = get_current_lang(request)
+        today = dt.date.today()
+        sixty_days_later = today + dt.timedelta(days=60)
+
         with SessionLocal() as db:
             asset_count = db.scalar(
                 select(func.count()).select_from(Asset).where(Asset.is_deleted.is_(False))
@@ -1633,6 +1636,69 @@ class TokuyamaAdmin(Admin):
                 select(AuditLog).order_by(AuditLog.id.desc()).limit(8)
             ).all()
 
+            # Overdue card loans (FR-17)
+            overdue_loans_raw = db.scalars(
+                select(CardLoan)
+                .options(
+                    selectinload(CardLoan.card),
+                    selectinload(CardLoan.person),
+                )
+                .where(
+                    CardLoan.returned_at.is_(None),
+                    CardLoan.expected_return_at.is_not(None),
+                    CardLoan.expected_return_at < today,
+                )
+                .order_by(CardLoan.expected_return_at.asc())
+                .limit(8)
+            ).all()
+
+            overdue_card_loans = []
+            for loan in overdue_loans_raw:
+                days_overdue = (today - loan.expected_return_at).days if loan.expected_return_at else 0
+                borrower = loan.person.full_name if loan.person else (loan.external_name or "N/A")
+                company = f" [{loan.external_company}]" if loan.external_company else ""
+                overdue_card_loans.append({
+                    "id": loan.id,
+                    "card_id": loan.card_id,
+                    "card_number": loan.card.card_no if loan.card else f"#{loan.card_id}",
+                    "borrower": f"{borrower}{company}",
+                    "borrowed_at": loan.borrowed_at,
+                    "expected_return_at": loan.expected_return_at,
+                    "days_overdue": days_overdue,
+                })
+
+            # Expiring licenses within 60 days (FR-17)
+            expiring_lics_raw = db.scalars(
+                select(License)
+                .options(
+                    selectinload(License.product),
+                    selectinload(License.assignments),
+                )
+                .where(
+                    License.is_deleted.is_(False),
+                    License.expiry_date.is_not(None),
+                    License.expiry_date <= sixty_days_later,
+                )
+                .order_by(License.expiry_date.asc())
+                .limit(8)
+            ).all()
+
+            expiring_licenses = []
+            for lic in expiring_lics_raw:
+                days_left = (lic.expiry_date - today).days if lic.expiry_date else 0
+                active_assignments = len([a for a in lic.assignments if a.removed_at is None])
+                product_name = lic.product.name if lic.product else "N/A"
+                expiring_licenses.append({
+                    "id": lic.id,
+                    "product_name": product_name,
+                    "license_type": lic.product.license_type.value if (lic.product and lic.product.license_type) else "",
+                    "expiry_date": lic.expiry_date,
+                    "days_left": days_left,
+                    "is_expired": days_left < 0,
+                    "seats_used": f"{active_assignments}/{lic.seats}",
+                    "note": lic.note or "",
+                })
+
         allocation_rate = int(round((assignment_count / asset_count) * 100)) if asset_count > 0 else 0
 
         context = {
@@ -1650,6 +1716,8 @@ class TokuyamaAdmin(Admin):
             "active_card_loans": active_card_loans,
             "allocation_rate": allocation_rate,
             "recent_logs": recent_logs,
+            "overdue_card_loans": overdue_card_loans,
+            "expiring_licenses": expiring_licenses,
         }
         return await self.templates.TemplateResponse(request, "sqladmin/index.html", context)
 

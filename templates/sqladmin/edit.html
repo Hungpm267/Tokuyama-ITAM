@@ -3,7 +3,7 @@
 {% block content %}
 {% set current_lang = current_lang or get_current_lang(request) %}
 <div class="col-12">
-  <div class="card shadow-sm border" style="border-color: var(--toku-border) !important; border-radius: 8px;">
+  <div class="card shadow-sm border" style="border-color: var(--toku-border) !important; border-radius: 20px;">
     <div class="card-header bg-white py-3 d-flex align-items-center justify-content-between" style="border-bottom: 1px solid var(--toku-border) !important;">
       <h3 class="card-title fw-bold text-dark m-0" style="font-size: 16px;">
         {{ 'Chỉnh sửa' if current_lang != 'en' else 'Edit' }} {{ t(model_view.name, current_lang) }}: {{ obj }}
