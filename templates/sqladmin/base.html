@@ -77,8 +77,8 @@
       border: 1px solid var(--toku-border) !important;
       border-radius: 20px !important;
       box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.05), 0 4px 10px -2px rgba(15, 23, 42, 0.02) !important;
-      overflow: hidden !important;
       transition: box-shadow 0.2s ease, border-color 0.2s ease !important;
+      position: relative;
     }
     .card:hover {
       box-shadow: 0 14px 35px -5px rgba(15, 23, 42, 0.07), 0 6px 12px -2px rgba(15, 23, 42, 0.03) !important;
@@ -526,11 +526,65 @@
       overflow: hidden !important;
     }
 
-    /* Table within Card styling */
-    .card > .table-responsive {
-      border-bottom-left-radius: 20px !important;
-      border-bottom-right-radius: 20px !important;
-      overflow: hidden !important;
+    /* High-Density Data Tables with Full Horizontal Scrollability */
+    .table-responsive, .card > .table-responsive {
+      display: block !important;
+      width: 100% !important;
+      overflow-x: auto !important;
+      overflow-y: visible !important;
+      -webkit-overflow-scrolling: touch;
+      position: relative;
+    }
+
+    /* Elegant Custom Scrollbar for Smooth Table Scrolling */
+    .table-responsive::-webkit-scrollbar {
+      height: 8px !important;
+      width: 8px !important;
+    }
+    .table-responsive::-webkit-scrollbar-track {
+      background: #f1f5f9 !important;
+      border-radius: 4px !important;
+    }
+    .table-responsive::-webkit-scrollbar-thumb {
+      background: #cbd5e1 !important;
+      border-radius: 4px !important;
+    }
+    .table-responsive::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8 !important;
+    }
+
+    .table-responsive {
+      scrollbar-width: thin !important;
+      scrollbar-color: #cbd5e1 #f1f5f9 !important;
+    }
+
+    /* Prevent table columns from squishing so horizontal scroll is smooth and clean */
+    .table.text-nowrap {
+      white-space: nowrap !important;
+    }
+    .table.text-nowrap th,
+    .table.text-nowrap td {
+      white-space: nowrap !important;
+    }
+
+    /* Dropdown and Dropup Menus: Always visible, never clipped or covered */
+    .dropdown, .dropup {
+      position: relative;
+    }
+    .dropdown-menu {
+      z-index: 1060 !important;
+      border-radius: 10px !important;
+      border: 1px solid var(--toku-border) !important;
+      box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.15), 0 8px 10px -6px rgba(15, 23, 42, 0.1) !important;
+    }
+    .dropup .dropdown-menu {
+      z-index: 1060 !important;
+    }
+    .dropup .dropdown-menu:not([data-bs-popper]) {
+      top: auto !important;
+      bottom: 100% !important;
+      margin-top: 0 !important;
+      margin-bottom: 6px !important;
     }
   </style>
 
