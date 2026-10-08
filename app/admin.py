@@ -626,7 +626,9 @@ class PersonAdmin(BaseAdminView, model=Person):
             selectinload(Person.assignments).selectinload(Assignment.asset),
             selectinload(Person.secret),
         )
-        return await self._run_query(stmt)
+        for relation in self._details_relations:
+            stmt = stmt.options(selectinload(relation))
+        return await self._get_object_by_pk(stmt)
 
 
 class PersonSecretAdmin(BaseAdminView, model=PersonSecret):
@@ -756,9 +758,11 @@ class AssetAdmin(BaseAdminView, model=Asset):
         stmt = stmt.options(
             selectinload(Asset.category),
             selectinload(Asset.contract_line),
-            selectinload(Asset.assignments).selectinload(Assignment.person),
+            selectinload(Asset.assignments).selectinload(Assignment.person).selectinload(Person.department),
         )
-        return await self._run_query(stmt)
+        for relation in self._details_relations:
+            stmt = stmt.options(selectinload(relation))
+        return await self._get_object_by_pk(stmt)
 
 
 class AssignmentAdmin(BaseAdminView, model=Assignment):
