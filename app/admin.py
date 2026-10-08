@@ -20,6 +20,8 @@ from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
 from sqlalchemy import Select, func, select
 from sqlalchemy.orm import selectinload
+from markupsafe import Markup
+
 
 from app.core.audit import audit_login, record_audit
 from app.core.i18n import DEFAULT_ADMIN_COLUMN_LABELS
@@ -163,52 +165,90 @@ authentication_backend = AdminAuth(secret_key=SESSION_SECRET)
 
 
 def humanize_error_str(msg: str, lang: str = "vi") -> str:
-    """Chuyển đổi các thông báo lỗi kỹ thuật/SQL/Constraint thành thông báo tiếng Việt/Anh thân thiện."""
+    """Chuyển đổi các thông báo lỗi kỹ thuật/SQL/Constraint thành thông báo tiếng Việt/Anh/Nhật thân thiện."""
     if not msg:
         return ""
     m = str(msg)
     is_en = (lang == "en")
+    is_ja = (lang == "ja")
+
+    def _tr(vi: str, en: str, ja: str) -> str:
+        if is_ja:
+            return ja
+        if is_en:
+            return en
+        return vi
 
     if "expiry_after_start" in m:
-        return "Expiry date cannot be before start date." if is_en else "Ngày hết hạn không được trước ngày bắt đầu."
+        return _tr("Ngày hết hạn không được trước ngày bắt đầu.", "Expiry date cannot be before start date.", "有効期限を開始日より前にすることはできません。")
     if "returned_after_borrowed" in m:
-        return "Return date cannot be before borrow date." if is_en else "Ngày trả không được trước ngày mượn."
+        return _tr("Ngày trả không được trước ngày mượn.", "Return date cannot be before borrow date.", "返却日を貸出日より前にすることはできません。")
     if "removed_after_assigned" in m:
-        return "Removal date cannot be before assignment date." if is_en else "Ngày thu hồi bản quyền không được trước ngày cấp phát."
+        return _tr("Ngày thu hồi bản quyền không được trước ngày cấp phát.", "Removal date cannot be before assignment date.", "ライセンス回収日を割当日より前にすることはできません。")
     if "seats_positive" in m:
-        return "Seats count must be greater than 0." if is_en else "Số lượng bản quyền (Seats) phải lớn hơn 0."
+        return _tr("Số lượng bản quyền (Seats) phải lớn hơn 0.", "Seats count must be greater than 0.", "ライセンス数（Seats）は1以上である必要があります。")
     if "qty_positive" in m:
-        return "Ordered quantity must be greater than 0." if is_en else "Số lượng đặt hàng phải lớn hơn 0."
+        return _tr("Số lượng đặt hàng phải lớn hơn 0.", "Ordered quantity must be greater than 0.", "発注数量は1以上である必要があります。")
     if "has_some_identifier" in m:
-        return "Asset must have at least one identifier (GA code, Vendor code or Serial)." if is_en else "Tài sản phải có ít nhất một mã định danh (Mã GA, Mã Vendor hoặc Số Serial)."
+        return _tr("Tài sản phải có ít nhất một mã định danh (Mã GA, Mã Vendor hoặc Số Serial).", "Asset must have at least one identifier (GA code, Vendor code or Serial).", "資産には少なくとも1つの識別子（GAコード、ベンダーコード、またはシリアル）が必要です。")
     if "target_required" in m:
-        return "License must be assigned to either an asset or a person." if is_en else "Bản quyền phải được gán cho thiết bị hoặc nhân viên."
+        return _tr("Bản quyền phải được gán cho thiết bị hoặc nhân viên.", "License must be assigned to either an asset or a person.", "ライセンスは機器または担当者のいずれかに割り当てる必要があります。")
     if "borrower_required" in m:
-        return "Must select a person or enter external borrower name." if is_en else "Mượn thẻ phải chọn nhân viên hoặc nhập tên người mượn ngoài."
+        return _tr("Mượn thẻ phải chọn nhân viên hoặc nhập tên người mượn ngoài.", "Must select a person or enter external borrower name.", "担当者を選択するか、外部借用者名を入力してください。")
     if "staff_code_format" in m:
-        return "Staff code does not match standard TVC format (e.g. TVC00001)." if is_en else "Mã nhân viên không đúng định dạng chuẩn TVC (Ví dụ: TVC00001)."
+        return _tr("Mã nhân viên không đúng định dạng chuẩn TVC (Ví dụ: TVC00001).", "Staff code does not match standard TVC format (e.g. TVC00001).", "社員番号の形式が正しくありません（例：TVC00001）。")
     if "smallint out of range" in m or "numericvalueoutofrange" in m.lower():
-        return "Numeric value is out of allowable range." if is_en else "Giá trị số nhập vào vượt quá giới hạn cho phép."
+        return _tr("Giá trị số nhập vào vượt quá giới hạn cho phép.", "Numeric value is out of allowable range.", "入力された数値が許容範囲を超えています。")
 
-    if "unique constraint" in m.lower() or "uniqueviolation" in m.lower():
+    if "unique constraint" in m.lower() or "uniqueviolation" in m.lower() or "uq_" in m:
+        # Kiểm tra các ràng buộc one_open_per (đang có hiệu lực chưa kết thúc)
+        if "uq_open_license_assignments_license_id_asset_id" in m or ("license_assignments" in m and "asset_id" in m):
+            return _tr(
+                "Thiết bị này đã được gán gói bản quyền này từ trước (chưa thu hồi). Một thiết bị không thể nhận 2 bản quyền cùng loại cùng lúc. Vui lòng cập nhật Ngày thu hồi (removed_at) ở lượt gán trước trước khi gán lại.",
+                "This device already has an active assignment for this license. Please record the removal date on the existing assignment before reassigning.",
+                "この機器にはすでにこのライセンスが割り当てられています（未返却）。再割り当てする前に回収日を入力してください。",
+            )
+        if "uq_open_license_assignments_license_id_person_id" in m or ("license_assignments" in m and "person_id" in m):
+            return _tr(
+                "Nhân sự này đã được gán gói bản quyền này từ trước (chưa thu hồi). Một nhân sự không thể nhận 2 bản quyền cùng loại cùng lúc. Vui lòng cập nhật Ngày thu hồi (removed_at) ở lượt gán trước trước khi gán lại.",
+                "This person already has an active assignment for this license. Please record the removal date on the existing assignment before reassigning.",
+                "この担当者にはすでにこのライセンスが割り当てられています（未返却）。再割り当てする前に回収日を入力してください。",
+            )
+        if "uq_open_assignments_asset_id" in m or ("assignments" in m and "asset_id" in m):
+            return _tr(
+                "Thiết bị này hiện đang được bàn giao cho nhân viên khác sử dụng (chưa thu hồi). Vui lòng cập nhật Ngày thu hồi ở lượt bàn giao trước đó trước khi bàn giao lại.",
+                "This asset is currently in use and has not been returned yet. Please record the return date before reassigning.",
+                "この機器は現在他の担当者に貸出中です（未返却）。再貸出する前に前回の返却日を入力してください。",
+            )
+        if "uq_open_card_loans_card_id" in m or ("card_loans" in m and "card_id" in m):
+            return _tr(
+                "Thẻ này hiện đang có người mượn chưa trả. Vui lòng cập nhật Ngày trả ở lượt mượn trước đó trước khi cho người khác mượn.",
+                "This access card is currently borrowed and has not been returned yet. Please record the return date before loaning it out again.",
+                "このカードは現在貸出中です（未返却）。再貸出する前に前回の返却日を入力してください。",
+            )
+
         if "serial" in m:
-            return "Serial number already exists in system." if is_en else "Số Serial này đã tồn tại trong hệ thống (bị trùng lặp)."
+            return _tr("Số Serial này đã tồn tại trong hệ thống (bị trùng lặp).", "Serial number already exists in system.", "このシリアル番号はすでにシステムに存在します。")
         if "asset_code" in m:
-            return "Asset code already exists in system." if is_en else "Mã tài sản này đã tồn tại trong hệ thống (bị trùng lặp)."
+            return _tr("Mã tài sản này đã tồn tại trong hệ thống (bị trùng lặp).", "Asset code already exists in system.", "この資産コードはすでにシステムに存在します。")
         if "vendor_code" in m:
-            return "Vendor code already exists in system." if is_en else "Mã Vendor này đã tồn tại trong hệ thống (bị trùng lặp)."
+            return _tr("Mã Vendor này đã tồn tại trong hệ thống (bị trùng lặp).", "Vendor code already exists in system.", "このベンダーコードはすでにシステムに存在します。")
         if "card_no" in m:
-            return "Card number already exists in system." if is_en else "Số thẻ này đã tồn tại trong hệ thống (bị trùng lặp)."
+            return _tr("Số thẻ này đã tồn tại trong hệ thống (bị trùng lặp).", "Card number already exists in system.", "このカード番号はすでにシステムに存在します。")
         if "staff_code" in m:
-            return "Staff code already exists in system." if is_en else "Mã nhân viên này đã tồn tại trong hệ thống (bị trùng lặp)."
+            return _tr("Mã nhân viên này đã tồn tại trong hệ thống (bị trùng lặp).", "Staff code already exists in system.", "この社員番号はすでにシステムに存在します。")
+        if "user_login_id" in m:
+            return _tr("Tài khoản đăng nhập này đã được liên kết với nhân sự khác.", "Login account already linked to another person.", "このログインアカウントはすでに別の社員に紐付けられています。")
         if "username" in m:
-            return "Username already exists in system." if is_en else "Tên đăng nhập này đã tồn tại trong hệ thống (bị trùng lặp)."
-        return "Record already exists in system (duplicate)." if is_en else "Dữ liệu bị trùng lặp với bản ghi đã tồn tại trong hệ thống."
+            return _tr("Tên đăng nhập này đã tồn tại trong hệ thống (bị trùng lặp).", "Username already exists in system.", "このユーザー名はすでにシステムに存在します。")
+        if "device_name" in m:
+            return _tr("Tên thiết bị thoại này đã tồn tại trong hệ thống (bị trùng lặp).", "Phone device name already exists in system.", "この電話機器名はすでにシステムに存在します。")
+        return _tr("Dữ liệu bị trùng lặp với bản ghi đã tồn tại trong hệ thống.", "Record already exists in system (duplicate).", "システム内に重複するデータが存在します。")
 
     if "foreign key" in m.lower() or "foreignkeyviolation" in m.lower():
-        return "Cannot save or delete because data is referenced elsewhere." if is_en else "Không thể lưu hoặc xóa vì dữ liệu đang được liên kết với bản ghi khác."
+        return _tr("Không thể lưu hoặc xóa vì dữ liệu đang được liên kết với bản ghi khác.", "Cannot save or delete because data is referenced elsewhere.", "他のデータから参照されているため、保存または削除できません。")
     if "not-null constraint" in m.lower() or "notnullviolation" in m.lower():
-        return "Please fill in all required fields." if is_en else "Vui lòng nhập đầy đủ các trường thông tin bắt buộc."
+        return _tr("Vui lòng nhập đầy đủ các trường thông tin bắt buộc.", "Please fill in all required fields.", "必須項目をすべて入力してください。")
 
     if "(psycopg." in m or "[SQL:" in m:
         clean = m.split("[SQL:")[0].strip()
@@ -721,16 +761,84 @@ class LicenseAdmin(BaseAdminView, model=License):
     name_plural = "Kho License Phần mềm"
     icon = "fa-solid fa-certificate"
     category = "License"
-    column_list = [License.id, License.product, License.seats, License.start_date, License.expiry_date]
+    column_list = [
+        License.id,
+        License.product,
+        License.seats,
+        "assigned_seats",
+        "remaining_seats",
+        License.start_date,
+        License.expiry_date,
+    ]
+    column_details_list = [
+        License.id,
+        License.product,
+        License.seats,
+        "assigned_seats",
+        "remaining_seats",
+        License.start_date,
+        License.expiry_date,
+        License.contract_id,
+        License.note,
+    ]
     column_labels = {
         "product": "Sản phẩm phần mềm",
-        "seats": "Số lượng bản quyền (Seats)",
+        "seats": "Tổng số bản quyền (Seats)",
+        "assigned_seats": "Đã cấp phát",
+        "remaining_seats": "Còn trống",
         "start_date": "Ngày kích hoạt",
         "expiry_date": "Ngày hết hạn",
-        "contract": "Hợp đồng mua sắm",
+        "contract_id": "Hợp đồng mua sắm",
         "note": "Ghi chú",
     }
+    column_formatters = {
+        "assigned_seats": lambda m, a: Markup(
+            f'<span class="badge bg-primary text-white fs-6 px-2 py-1"><i class="fa-solid fa-user-check me-1"></i>{m.assigned_seats}</span>'
+        ),
+        "remaining_seats": lambda m, a: (
+            Markup(
+                f'<span class="badge bg-danger text-white fs-6 px-2 py-1"><i class="fa-solid fa-triangle-exclamation me-1"></i>{m.remaining_seats} (Vượt định mức)</span>'
+            )
+            if m.remaining_seats < 0
+            else Markup(
+                '<span class="badge bg-secondary text-white fs-6 px-2 py-1">0 (Hết chỗ)</span>'
+            )
+            if m.remaining_seats == 0
+            else Markup(
+                f'<span class="badge bg-success text-white fs-6 px-2 py-1"><i class="fa-solid fa-check me-1"></i>{m.remaining_seats}</span>'
+            )
+        ),
+    }
+    column_formatters_detail = {
+        "assigned_seats": lambda m, a: Markup(
+            f'<span class="badge bg-primary text-white fs-6 px-2 py-1"><i class="fa-solid fa-user-check me-1"></i>{m.assigned_seats}</span>'
+        ),
+        "remaining_seats": lambda m, a: (
+            Markup(
+                f'<span class="badge bg-danger text-white fs-6 px-2 py-1"><i class="fa-solid fa-triangle-exclamation me-1"></i>{m.remaining_seats} (Vượt định mức)</span>'
+            )
+            if m.remaining_seats < 0
+            else Markup(
+                '<span class="badge bg-secondary text-white fs-6 px-2 py-1">0 (Hết chỗ)</span>'
+            )
+            if m.remaining_seats == 0
+            else Markup(
+                f'<span class="badge bg-success text-white fs-6 px-2 py-1"><i class="fa-solid fa-check me-1"></i>{m.remaining_seats}</span>'
+            )
+        ),
+    }
     form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["license_key_enc", "key_version", "assignments"]
+
+    def list_query(self, request: Request) -> Select:
+        stmt = super().list_query(request)
+        return stmt.options(selectinload(License.assignments))
+
+    async def get_object_for_details(self, value: Any) -> Any:
+        stmt = self._stmt_by_identifier(value)
+        stmt = stmt.options(selectinload(License.assignments))
+        for relation in self._details_relations:
+            stmt = stmt.options(selectinload(relation))
+        return await self._get_object_by_pk(stmt)
 
 
 class LicenseAssignmentAdmin(BaseAdminView, model=LicenseAssignment):
@@ -766,6 +874,14 @@ class LicenseAssignmentAdmin(BaseAdminView, model=LicenseAssignment):
         "removed_at",
         "note",
     ]
+
+    def list_query(self, request: Request) -> Select:
+        stmt = super().list_query(request)
+        return stmt.options(
+            selectinload(LicenseAssignment.license),
+            selectinload(LicenseAssignment.asset),
+            selectinload(LicenseAssignment.person),
+        )
 
 
 class AccessCardAdmin(BaseAdminView, model=AccessCard):

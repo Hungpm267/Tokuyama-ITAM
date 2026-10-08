@@ -529,6 +529,21 @@ class License(BizBase):
             prod = "License"
         return f"{prod} ({self.seats} seats)"
 
+    @property
+    def assigned_seats(self) -> int:
+        try:
+            return sum(
+                1
+                for asgn in self.assignments
+                if asgn.removed_at is None and not asgn.is_deleted
+            )
+        except Exception:
+            return 0
+
+    @property
+    def remaining_seats(self) -> int:
+        return self.seats - self.assigned_seats
+
 
 class LicenseAssignment(BizBase):
     """Gán license cho MỘT máy hoặc MỘT người.
