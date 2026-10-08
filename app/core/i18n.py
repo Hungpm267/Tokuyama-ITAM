@@ -430,6 +430,7 @@ PROPERTY_LABELS: Final[dict[str, dict[str, str]]] = {
     "expiry_date": {"vi": "Ngày hết hạn", "en": "Expiry Date"},
     "assigned_at": {"vi": "Thời điểm cấp phát", "en": "Assigned At"},
     "removed_at": {"vi": "Thời điểm thu hồi", "en": "Revoked At"},
+    "status_badge": {"vi": "Trạng thái", "en": "Status", "ja": "ステータス"},
     "licenses": {"vi": "Danh sách bản quyền", "en": "Licenses"},
 
     # Access Cards & Loans

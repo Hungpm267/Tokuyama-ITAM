@@ -509,7 +509,7 @@ class License(BizBase):
     )
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    product: Mapped[LicenseProduct] = relationship()
+    product: Mapped[LicenseProduct] = relationship(lazy="joined")
     assignments: Mapped[list[LicenseAssignment]] = relationship(
         back_populates="license"
     )

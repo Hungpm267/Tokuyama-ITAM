@@ -852,18 +852,59 @@ class LicenseAssignmentAdmin(BaseAdminView, model=LicenseAssignment):
         LicenseAssignment.license,
         LicenseAssignment.asset,
         LicenseAssignment.person,
+        "status_badge",
         LicenseAssignment.assigned_at,
         LicenseAssignment.expiry_date,
         LicenseAssignment.removed_at,
+    ]
+    column_details_list = [
+        LicenseAssignment.id,
+        LicenseAssignment.license,
+        LicenseAssignment.asset,
+        LicenseAssignment.person,
+        "status_badge",
+        LicenseAssignment.assigned_at,
+        LicenseAssignment.expiry_date,
+        LicenseAssignment.removed_at,
+        LicenseAssignment.note,
     ]
     column_labels = {
         "license": "Bản quyền phần mềm",
         "asset": "Thiết bị được gán",
         "person": "Nhân viên được gán",
+        "status_badge": "Trạng thái",
         "assigned_at": "Thời điểm gán",
         "expiry_date": "Ngày hết hạn",
         "removed_at": "Thời điểm thu hồi",
         "note": "Ghi chú",
+    }
+    column_formatters = {
+        "license": lambda m, a: (
+            Markup(
+                f'<a href="/admin/license/details/{m.license_id}" class="text-decoration-none fw-bold text-primary">'
+                f'<i class="fa-solid fa-compact-disc me-1"></i>{m.license.product.name if m.license and m.license.product else (str(m.license) if m.license else "-")}</a> '
+                f'<span class="badge bg-light text-secondary border ms-1">{m.license.seats if m.license else ""} seats</span>'
+            )
+            if m.license
+            else "-"
+        ),
+        "status_badge": lambda m, a: (
+            Markup('<span class="badge bg-secondary text-white"><i class="fa-solid fa-ban me-1"></i>Đã thu hồi</span>')
+            if m.removed_at
+            else Markup('<span class="badge bg-success text-white"><i class="fa-solid fa-circle-check me-1"></i>Đang sử dụng</span>')
+        ),
+    }
+    column_formatters_detail = {
+        "license": lambda m, a: (
+            f"{m.license.product.name} ({m.license.seats} seats)"
+            if (m.license and m.license.product)
+            else (str(m.license) if m.license else "-")
+        ),
+        "status_badge": lambda m, a: (
+            Markup('<span class="badge bg-secondary text-white"><i class="fa-solid fa-ban me-1"></i>Đã thu hồi</span>')
+            if m.removed_at
+            else Markup('<span class="badge bg-success text-white"><i class="fa-solid fa-circle-check me-1"></i>Đang sử dụng</span>')
+        ),
     }
     form_columns = [
         "license",
@@ -878,10 +919,21 @@ class LicenseAssignmentAdmin(BaseAdminView, model=LicenseAssignment):
     def list_query(self, request: Request) -> Select:
         stmt = super().list_query(request)
         return stmt.options(
-            selectinload(LicenseAssignment.license),
+            selectinload(LicenseAssignment.license).selectinload(License.product),
             selectinload(LicenseAssignment.asset),
             selectinload(LicenseAssignment.person),
         )
+
+    async def get_object_for_details(self, value: Any) -> Any:
+        stmt = self._stmt_by_identifier(value)
+        stmt = stmt.options(
+            selectinload(LicenseAssignment.license).selectinload(License.product),
+            selectinload(LicenseAssignment.asset),
+            selectinload(LicenseAssignment.person),
+        )
+        for relation in self._details_relations:
+            stmt = stmt.options(selectinload(relation))
+        return await self._get_object_by_pk(stmt)
 
 
 class AccessCardAdmin(BaseAdminView, model=AccessCard):
