@@ -1344,20 +1344,111 @@ class ContractAdmin(BaseAdminView, model=Contract):
     }
     form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["lines"]
 
+    def list_query(self, request: Request) -> Select:
+        stmt = super().list_query(request)
+        return stmt.options(
+            selectinload(Contract.lines).selectinload(ContractLine.assets),
+        )
+
 
 class ContractLineAdmin(BaseAdminView, model=ContractLine):
     name = "Hạng mục Hợp đồng"
     name_plural = "Chi tiết Hạng mục"
     icon = "fa-solid fa-list-check"
     category = "Hợp đồng"
-    column_list = [ContractLine.id, ContractLine.contract, ContractLine.item_type, ContractLine.qty_ordered]
+    column_list = [
+        ContractLine.id,
+        ContractLine.contract,
+        ContractLine.item_type,
+        ContractLine.qty_ordered,
+        "qty_delivered",
+        "qty_remaining",
+        "delivery_progress",
+    ]
+    column_details_list = [
+        ContractLine.id,
+        ContractLine.contract,
+        ContractLine.item_type,
+        ContractLine.spec,
+        ContractLine.qty_ordered,
+        "qty_delivered",
+        "qty_remaining",
+        "delivery_progress",
+    ]
     column_labels = {
         "contract": "Hợp đồng",
         "item_type": "Hạng mục hàng hóa",
         "spec": "Thông số kỹ thuật",
-        "qty_ordered": "Số lượng đặt",
+        "qty_ordered": "Số lượng đặt mua",
+        "qty_delivered": "Đã nhận",
+        "qty_remaining": "Còn lại",
+        "delivery_progress": "Tiến độ",
+    }
+    column_formatters = {
+        "qty_delivered": lambda m, a: Markup(
+            f'<span class="badge bg-primary text-white fs-6 px-2 py-1"><i class="fa-solid fa-box-open me-1"></i>{m.qty_delivered}</span>'
+        ),
+        "qty_remaining": lambda m, a: Markup(
+            f'<span class="badge bg-secondary text-white fs-6 px-2 py-1">{m.qty_remaining}</span>'
+        ),
+        "delivery_progress": lambda m, a: (
+            Markup(
+                '<span class="badge bg-success text-white"><i class="fa-solid fa-circle-check me-1"></i>Đã đủ hàng</span>'
+            )
+            if m.qty_delivered >= m.qty_ordered
+            else (
+                Markup(
+                    f'<span class="badge bg-warning text-dark"><i class="fa-solid fa-clock me-1"></i>Giao một phần ({m.qty_delivered}/{m.qty_ordered})</span>'
+                )
+                if m.qty_delivered > 0
+                else Markup(
+                    '<span class="badge bg-light text-secondary border"><i class="fa-regular fa-clock me-1"></i>Chưa nhận</span>'
+                )
+            )
+        ),
+    }
+    column_formatters_detail = {
+        "qty_delivered": lambda m, a: Markup(
+            f'<span class="badge bg-primary text-white fs-6 px-2 py-1"><i class="fa-solid fa-box-open me-1"></i>{m.qty_delivered}</span>'
+        ),
+        "qty_remaining": lambda m, a: Markup(
+            f'<span class="badge bg-secondary text-white fs-6 px-2 py-1">{m.qty_remaining}</span>'
+        ),
+        "delivery_progress": lambda m, a: (
+            Markup(
+                '<span class="badge bg-success text-white"><i class="fa-solid fa-circle-check me-1"></i>Đã đủ hàng</span>'
+            )
+            if m.qty_delivered >= m.qty_ordered
+            else (
+                Markup(
+                    f'<span class="badge bg-warning text-dark"><i class="fa-solid fa-clock me-1"></i>Giao một phần ({m.qty_delivered}/{m.qty_ordered})</span>'
+                )
+                if m.qty_delivered > 0
+                else Markup(
+                    '<span class="badge bg-light text-secondary border"><i class="fa-regular fa-clock me-1"></i>Chưa nhận</span>'
+                )
+            )
+        ),
     }
     form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["assets"]
+
+    def list_query(self, request: Request) -> Select:
+        stmt = super().list_query(request)
+        return stmt.options(
+            selectinload(ContractLine.contract),
+            selectinload(ContractLine.assets),
+        )
+
+    async def get_object_for_details(self, value: Any) -> Any:
+        stmt = self._stmt_by_identifier(value)
+        stmt = stmt.options(
+            selectinload(ContractLine.contract),
+            selectinload(ContractLine.assets),
+        )
+        for relation in self._details_relations:
+            stmt = stmt.options(selectinload(relation))
+        return await self._get_object_by_pk(stmt)
+
 
 
 class PhoneAdmin(BaseAdminView, model=Phone):

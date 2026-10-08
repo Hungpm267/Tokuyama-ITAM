@@ -758,6 +758,17 @@ class ContractLine(BizBase):
     def __str__(self) -> str:
         return f"{self.item_type} (x{self.qty_ordered})"
 
+    @property
+    def qty_delivered(self) -> int:
+        try:
+            return sum(1 for a in self.assets if not a.is_deleted)
+        except Exception:
+            return 0
+
+    @property
+    def qty_remaining(self) -> int:
+        return max(0, self.qty_ordered - self.qty_delivered)
+
 
 # =============================================================================
 # 8. DANH BẠ THOẠI

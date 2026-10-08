@@ -461,8 +461,10 @@ PROPERTY_LABELS: Final[dict[str, dict[str, str]]] = {
     "signed_date": {"vi": "Ngày ký hợp đồng", "en": "Signed Date"},
     "delivery_status": {"vi": "Trạng thái giao hàng", "en": "Delivery Status"},
     "item_type": {"vi": "Hạng mục hàng hóa", "en": "Item Type"},
-    "spec": {"vi": "Thông số kỹ thuật", "en": "Specifications"},
-    "qty_ordered": {"vi": "Số lượng đặt mua", "en": "Ordered Quantity"},
+    "qty_ordered": {"vi": "Số lượng đặt mua", "en": "Ordered Quantity", "ja": "発注数量"},
+    "qty_delivered": {"vi": "Số lượng đã nhận", "en": "Delivered Quantity", "ja": "納品済み数量"},
+    "qty_remaining": {"vi": "Số lượng còn lại", "en": "Remaining Quantity", "ja": "残数量"},
+    "delivery_progress": {"vi": "Tiến độ nhận hàng", "en": "Delivery Progress", "ja": "納品進捗"},
     "lines": {"vi": "Các hạng mục hợp đồng", "en": "Contract Lines"},
 
     # Phone Directory
