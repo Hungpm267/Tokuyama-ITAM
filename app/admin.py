@@ -18,7 +18,7 @@ from starlette.datastructures import FormData, URL
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
-from sqlalchemy import Select, func, select
+from sqlalchemy import Select, func, or_, select
 from sqlalchemy.orm import selectinload
 from markupsafe import Markup, escape
 
@@ -688,7 +688,47 @@ class PersonAdmin(BaseAdminView, model=Person):
         )
         for relation in self._details_relations:
             stmt = stmt.options(selectinload(relation))
-        return await self._get_object_by_pk(stmt)
+        person = await self._get_object_by_pk(stmt)
+        if person:
+            # 1. Truy vấn các gói License đã cấp phát cho nhân sự này (cấp trực tiếp hoặc qua máy đang giữ)
+            active_asset_ids = [
+                a.asset_id for a in person.assignments
+                if a.returned_at is None and a.asset and not a.asset.is_deleted
+            ]
+            lic_cond = (LicenseAssignment.person_id == person.id)
+            if active_asset_ids:
+                lic_cond = or_(
+                    LicenseAssignment.person_id == person.id,
+                    LicenseAssignment.asset_id.in_(active_asset_ids),
+                )
+
+            lic_stmt = (
+                select(LicenseAssignment)
+                .options(
+                    selectinload(LicenseAssignment.license).selectinload(License.product),
+                    selectinload(LicenseAssignment.asset),
+                )
+                .where(
+                    lic_cond,
+                    LicenseAssignment.is_deleted.is_(False),
+                )
+                .order_by(LicenseAssignment.assigned_at.desc())
+            )
+            person.license_assignments = await self._run_query(lic_stmt)
+
+            # 2. Truy vấn các lượt mượn Thẻ ra vào của nhân sự này
+            card_stmt = (
+                select(CardLoan)
+                .options(selectinload(CardLoan.card))
+                .where(
+                    CardLoan.person_id == person.id,
+                    CardLoan.is_deleted.is_(False),
+                )
+                .order_by(CardLoan.borrowed_at.desc())
+            )
+            person.card_loans = await self._run_query(card_stmt)
+
+        return person
 
 
 class PersonSecretAdmin(BaseAdminView, model=PersonSecret):
