@@ -35,7 +35,7 @@ from app.core.security import (
 from wtforms import Form, PasswordField, SelectField
 from wtforms.widgets import PasswordInput
 from app.db import SessionLocal
-from app.enums import AssetStatus, AuditAction, CardStatus, RoleCode
+from app.enums import AssetStatus, AuditAction, CardStatus, PersonStatus, RoleCode
 from app.models import (
     AccessCard,
     Asset,
@@ -442,6 +442,15 @@ class UserAdmin(BaseAdminView, model=User):
     icon = "fa-solid fa-users-gear"
     category = "Hệ thống & Phân quyền"
     column_list = [User.id, User.username, User.display_name, User.role, User.preferred_lang, User.is_active, User.last_login_at]
+    column_details_list = [
+        User.id,
+        User.username,
+        User.display_name,
+        User.role,
+        User.preferred_lang,
+        User.is_active,
+        User.last_login_at,
+    ] + COMMON_EXCLUDED_COLUMNS
     column_searchable_list = [User.username, User.display_name]
     column_labels = {
         "username": "Tên đăng nhập",
@@ -503,6 +512,7 @@ class RoleAdmin(BaseAdminView, model=Role):
     icon = "fa-solid fa-user-shield"
     category = "Hệ thống & Phân quyền"
     column_list = [Role.id, Role.code, Role.name_en, Role.name_ja]
+    column_details_list = [Role.id, Role.code, Role.name_en, Role.name_ja] + COMMON_EXCLUDED_COLUMNS
     column_labels = {
         "code": "Mã vai trò",
         "name_en": "Tên vai trò (Tiếng Anh/Việt)",
@@ -518,6 +528,7 @@ class RolePermissionAdmin(BaseAdminView, model=RolePermission):
     category = "Hệ thống & Phân quyền"
     list_template = "sqladmin/role_permission_matrix.html"
     column_list = [RolePermission.id, RolePermission.role, RolePermission.module, RolePermission.action]
+    column_details_list = [RolePermission.id, RolePermission.role, RolePermission.module, RolePermission.action] + COMMON_EXCLUDED_COLUMNS
     column_labels = {
         "role": "Vai trò",
         "module": "Phân hệ nghiệp vụ",
@@ -538,6 +549,7 @@ class UserPermissionOverrideAdmin(BaseAdminView, model=UserPermissionOverride):
     icon = "fa-solid fa-user-pen"
     category = "Hệ thống & Phân quyền"
     column_list = [UserPermissionOverride.id, UserPermissionOverride.user_id, UserPermissionOverride.module, UserPermissionOverride.action, UserPermissionOverride.granted]
+    column_details_list = [UserPermissionOverride.id, UserPermissionOverride.user_id, UserPermissionOverride.module, UserPermissionOverride.action, UserPermissionOverride.granted] + COMMON_EXCLUDED_COLUMNS
     column_labels = {
         "user_id": "Người dùng",
         "module": "Phân hệ nghiệp vụ",
@@ -552,6 +564,7 @@ class DepartmentAdmin(BaseAdminView, model=Department):
     icon = "fa-solid fa-sitemap"
     category = "Danh mục Dùng chung"
     column_list = [Department.id, Department.code, Department.name_en, Department.name_ja]
+    column_details_list = [Department.id, Department.code, Department.name_en, Department.name_ja] + COMMON_EXCLUDED_COLUMNS
     column_labels = {
         "code": "Mã phòng ban",
         "name_en": "Tên phòng ban (Tiếng Anh/Việt)",
@@ -565,6 +578,7 @@ class AssetCategoryAdmin(BaseAdminView, model=AssetCategory):
     icon = "fa-solid fa-tags"
     category = "Danh mục Dùng chung"
     column_list = [AssetCategory.id, AssetCategory.name_en, AssetCategory.name_ja]
+    column_details_list = [AssetCategory.id, AssetCategory.name_en, AssetCategory.name_ja] + COMMON_EXCLUDED_COLUMNS
     column_labels = {
         "name_en": "Tên loại tài sản (Tiếng Anh/Việt)",
         "name_ja": "Tên loại tài sản (Tiếng Nhật)",
@@ -577,6 +591,7 @@ class AssetTagAdmin(BaseAdminView, model=AssetTag):
     icon = "fa-solid fa-tag"
     category = "Danh mục Dùng chung"
     column_list = [AssetTag.id, AssetTag.code, AssetTag.name_en, AssetTag.color]
+    column_details_list = [AssetTag.id, AssetTag.code, AssetTag.name_en, AssetTag.name_ja, AssetTag.color] + COMMON_EXCLUDED_COLUMNS
     column_labels = {
         "code": "Mã nhãn",
         "name_en": "Tên nhãn (Tiếng Anh/Việt)",
@@ -591,6 +606,15 @@ class LocationAdmin(BaseAdminView, model=Location):
     icon = "fa-solid fa-location-dot"
     category = "Danh mục Dùng chung"
     column_list = [Location.id, Location.building, Location.floor, Location.room_en, Location.room_ja, Location.is_access_controlled]
+    column_details_list = [
+        Location.id,
+        Location.building,
+        Location.floor,
+        Location.room_en,
+        Location.room_ja,
+        Location.is_access_controlled,
+        Location.description,
+    ] + COMMON_EXCLUDED_COLUMNS
     column_labels = {
         "building": "Tòa nhà",
         "floor": "Tầng",
@@ -607,6 +631,17 @@ class PersonAdmin(BaseAdminView, model=Person):
     icon = "fa-solid fa-id-card-clip"
     category = "Nhân sự"
     column_list = [Person.id, Person.staff_code, Person.full_name, Person.department, Person.status, Person.email, Person.start_working_date]
+    column_details_list = [
+        Person.id,
+        Person.staff_code,
+        Person.full_name,
+        Person.department,
+        Person.email,
+        Person.user_login_id,
+        Person.status,
+        Person.start_working_date,
+        Person.note,
+    ] + COMMON_EXCLUDED_COLUMNS
     column_searchable_list = [Person.staff_code, Person.full_name, Person.email]
     column_labels = {
         "staff_code": "Mã nhân viên",
@@ -616,6 +651,29 @@ class PersonAdmin(BaseAdminView, model=Person):
         "email": "Email",
         "start_working_date": "Ngày vào làm việc",
         "user_login_id": "Tài khoản đăng nhập",
+        "note": "Ghi chú",
+    }
+    column_formatters = {
+        "status": lambda m, a: (
+            Markup('<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fa-solid fa-user-check me-1"></i>Đang làm việc</span>')
+            if m.status == PersonStatus.ACTIVE
+            else (
+                Markup('<span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1"><i class="fa-solid fa-user-clock me-1"></i>Sắp vào làm</span>')
+                if m.status == PersonStatus.SCHEDULED
+                else Markup('<span class="badge bg-secondary text-white px-2 py-1"><i class="fa-solid fa-user-slash me-1"></i>Đã nghỉ việc</span>')
+            )
+        ),
+    }
+    column_formatters_detail = {
+        "status": lambda m, a: (
+            Markup('<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fa-solid fa-user-check me-1"></i>Đang làm việc (ACTIVE)</span>')
+            if m.status == PersonStatus.ACTIVE
+            else (
+                Markup('<span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1"><i class="fa-solid fa-user-clock me-1"></i>Sắp vào làm (SCHEDULED)</span>')
+                if m.status == PersonStatus.SCHEDULED
+                else Markup('<span class="badge bg-secondary text-white px-2 py-1"><i class="fa-solid fa-user-slash me-1"></i>Đã nghỉ việc (RESIGNED)</span>')
+            )
+        ),
     }
     form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["secret", "assignments"]
 
@@ -643,6 +701,7 @@ class PersonSecretAdmin(BaseAdminView, model=PersonSecret):
     can_edit = False
     can_delete = False
     can_export = False
+    can_view_details = False
     column_list = [PersonSecret.person_id]
 
     def get_secrets_payload(self) -> list[dict[str, Any]]:
@@ -695,6 +754,22 @@ class AssetAdmin(BaseAdminView, model=Asset):
         Asset.model,
         "actions_quick",
     ]
+    column_details_list = [
+        Asset.id,
+        Asset.asset_code,
+        Asset.vendor_code,
+        Asset.serial,
+        Asset.category,
+        Asset.status,
+        "current_holder",
+        Asset.model,
+        Asset.form_factor,
+        Asset.hwid,
+        Asset.mac_ethernet,
+        Asset.mac_wifi,
+        Asset.contract_line,
+        Asset.note,
+    ] + COMMON_EXCLUDED_COLUMNS
     column_labels = {
         "status_badge": "Trạng thái",
         "current_holder": "Người đang sử dụng",
@@ -746,6 +821,30 @@ class AssetAdmin(BaseAdminView, model=Asset):
             )
         ),
     }
+    column_formatters_detail = {
+        "status": lambda m, a: (
+            Markup('<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fa-solid fa-box-archive me-1"></i>Trong kho (IN_STOCK)</span>')
+            if m.status == AssetStatus.IN_STOCK
+            else (
+                Markup('<span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1"><i class="fa-solid fa-user-check me-1"></i>Đang sử dụng (IN_USE)</span>')
+                if m.status == AssetStatus.IN_USE
+                else (
+                    Markup('<span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1"><i class="fa-solid fa-wrench me-1"></i>Đang sửa chữa (REPAIR)</span>')
+                    if m.status == AssetStatus.REPAIR
+                    else (
+                        Markup('<span class="badge bg-secondary text-white px-2 py-1"><i class="fa-solid fa-trash-can me-1"></i>Đã thanh lý (DISPOSED)</span>')
+                        if m.status == AssetStatus.DISPOSED
+                        else Markup(f'<span class="badge bg-danger text-white px-2 py-1">{escape(m.status.value if m.status else "-")}</span>')
+                    )
+                )
+            )
+        ),
+        "current_holder": lambda m, a: (
+            Markup(f'<span class="fw-semibold text-dark"><i class="fa-solid fa-user me-1 text-primary"></i>{escape(m.current_holder)}</span>')
+            if m.current_holder
+            else Markup('<span class="text-muted fst-italic">- (Trong kho)</span>')
+        ),
+    }
     column_searchable_list = [Asset.asset_code, Asset.serial, Asset.vendor_code, Asset.model]
     form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["assignments"]
 
@@ -790,7 +889,7 @@ class AssignmentAdmin(BaseAdminView, model=Assignment):
         Assignment.borrowed_at,
         Assignment.returned_at,
         Assignment.note,
-    ]
+    ] + ["created_at", "created_by", "updated_at", "updated_by"]
     column_labels = {
         "asset": "Thiết bị",
         "person": "Nhân viên nhận máy",
@@ -956,6 +1055,12 @@ class LicenseProductAdmin(BaseAdminView, model=LicenseProduct):
     icon = "fa-solid fa-compact-disc"
     category = "License"
     column_list = [LicenseProduct.id, LicenseProduct.name, LicenseProduct.vendor]
+    column_details_list = [
+        LicenseProduct.id,
+        LicenseProduct.name,
+        LicenseProduct.vendor,
+        LicenseProduct.license_type,
+    ] + COMMON_EXCLUDED_COLUMNS
     column_labels = {
         "name": "Tên phần mềm",
         "vendor": "Hãng phát triển / Nhà cung cấp",
@@ -987,7 +1092,7 @@ class LicenseAdmin(BaseAdminView, model=License):
         License.expiry_date,
         License.contract_id,
         License.note,
-    ]
+    ] + COMMON_EXCLUDED_COLUMNS
     column_labels = {
         "product": "Sản phẩm phần mềm",
         "seats": "Tổng số bản quyền (Seats)",
@@ -1074,7 +1179,7 @@ class LicenseAssignmentAdmin(BaseAdminView, model=LicenseAssignment):
         LicenseAssignment.expiry_date,
         LicenseAssignment.removed_at,
         LicenseAssignment.note,
-    ]
+    ] + ["created_at", "created_by", "updated_at", "updated_by"]
     column_labels = {
         "license": "Bản quyền phần mềm",
         "asset": "Thiết bị được gán",
@@ -1152,19 +1257,60 @@ class AccessCardAdmin(BaseAdminView, model=AccessCard):
         AccessCard.id,
         AccessCard.card_no,
         AccessCard.card_type,
-        AccessCard.status,
+        "status_badge",
         "current_borrower",
         AccessCard.note,
     ]
+    column_details_list = [
+        AccessCard.id,
+        AccessCard.card_no,
+        AccessCard.card_type,
+        AccessCard.status,
+        "current_borrower",
+        AccessCard.note,
+    ] + COMMON_EXCLUDED_COLUMNS
     column_labels = {
         "current_borrower": "Người đang giữ thẻ",
         "card_no": "Số thẻ",
         "card_type": "Loại thẻ",
-        "status": "Trạng thái",
+        "status_badge": "Trạng thái",
         "note": "Ghi chú",
     }
     column_formatters = {
+        "status_badge": lambda m, a: (
+            Markup('<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fa-solid fa-box-archive me-1"></i>Trong kho</span>')
+            if m.status == CardStatus.IN_STOCK
+            else (
+                Markup('<span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1"><i class="fa-solid fa-user-check me-1"></i>Đang cho mượn</span>')
+                if m.status == CardStatus.BORROWED
+                else (
+                    Markup('<span class="badge bg-danger text-white px-2 py-1"><i class="fa-solid fa-triangle-exclamation me-1"></i>Bị mất</span>')
+                    if m.status == CardStatus.LOST
+                    else Markup('<span class="badge bg-secondary text-white px-2 py-1">Đã hủy</span>')
+                )
+            )
+        ),
         "current_borrower": lambda m, a: m.current_borrower or "-",
+    }
+    column_formatters_detail = {
+        "status": lambda m, a: (
+            Markup('<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fa-solid fa-box-archive me-1"></i>Trong kho (IN_STOCK)</span>')
+            if m.status == CardStatus.IN_STOCK
+            else (
+                Markup('<span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1"><i class="fa-solid fa-user-check me-1"></i>Đang cho mượn (BORROWED)</span>')
+                if m.status == CardStatus.BORROWED
+                else (
+                    Markup('<span class="badge bg-danger text-white px-2 py-1"><i class="fa-solid fa-triangle-exclamation me-1"></i>Bị mất (LOST)</span>')
+                    if m.status == CardStatus.LOST
+                    else Markup('<span class="badge bg-secondary text-white px-2 py-1">Đã hủy (DECOMMISSIONED)</span>')
+                )
+            )
+        ),
+        "current_borrower": lambda m, a: (
+            Markup(f'<span class="fw-semibold text-dark"><i class="fa-solid fa-user me-1 text-primary"></i>{escape(m.current_borrower)}</span>')
+            if m.current_borrower
+            else Markup('<span class="text-muted fst-italic">- (Trong kho)</span>')
+        ),
     }
     form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["loans"]
 
@@ -1246,7 +1392,7 @@ class CardLoanAdmin(BaseAdminView, model=CardLoan):
         CardLoan.expected_return_at,
         CardLoan.returned_at,
         CardLoan.purpose,
-    ]
+    ] + ["created_at", "created_by", "updated_at", "updated_by"]
     column_labels = {
         "card": "Thẻ mượn",
         "person": "Nhân viên mượn",
@@ -1413,11 +1559,20 @@ class ContractAdmin(BaseAdminView, model=Contract):
     icon = "fa-solid fa-file-contract"
     category = "Hợp đồng"
     column_list = [Contract.id, Contract.code, Contract.vendor_name, Contract.signed_date, Contract.delivery_status]
+    column_details_list = [
+        Contract.id,
+        Contract.code,
+        Contract.vendor_name,
+        Contract.signed_date,
+        Contract.delivery_status,
+        Contract.note,
+    ] + COMMON_EXCLUDED_COLUMNS
     column_labels = {
         "code": "Số hợp đồng",
         "vendor_name": "Nhà cung cấp",
         "signed_date": "Ngày ký hợp đồng",
         "delivery_status": "Tiến độ giao hàng",
+        "note": "Ghi chú",
     }
     form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["lines"]
 
@@ -1451,7 +1606,7 @@ class ContractLineAdmin(BaseAdminView, model=ContractLine):
         "qty_delivered",
         "qty_remaining",
         "delivery_progress",
-    ]
+    ] + COMMON_EXCLUDED_COLUMNS
     column_labels = {
         "contract": "Hợp đồng",
         "item_type": "Hạng mục hàng hóa",
@@ -1538,6 +1693,15 @@ class PhoneAdmin(BaseAdminView, model=Phone):
     icon = "fa-solid fa-phone"
     category = "Danh bạ thoại"
     column_list = [Phone.id, Phone.extension_number, Phone.device_name, Phone.device_type, Phone.location, Phone.is_active]
+    column_details_list = [
+        Phone.id,
+        Phone.extension_number,
+        Phone.device_name,
+        Phone.device_type,
+        Phone.location,
+        Phone.is_active,
+        Phone.remarks,
+    ] + COMMON_EXCLUDED_COLUMNS
     column_labels = {
         "device_name": "Tên máy điện thoại",
         "device_type": "Loại điện thoại",
