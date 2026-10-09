@@ -59,6 +59,7 @@ from app.models import (
     Person,
     PersonSecret,
     Phone,
+    REDACTED_FIELDS,
     Role,
     RolePermission,
     User,
@@ -70,6 +71,7 @@ COMMON_EXCLUDED_COLUMNS = [
     "created_at", "created_by", "updated_at", "updated_by",
     "is_deleted", "deleted_at", "deleted_by", "delete_reason"
 ]
+REDACTED_COLUMNS = sorted(list(REDACTED_FIELDS))
 
 current_request_ctx: contextvars.ContextVar[Request | None] = contextvars.ContextVar("current_request_ctx", default=None)
  
@@ -375,7 +377,10 @@ class BaseAdminView(ModelView):
     can_export = True
     page_size = 25
     page_size_options = [10, 25, 50, 100]
-    form_excluded_columns = COMMON_EXCLUDED_COLUMNS
+    form_excluded_columns = COMMON_EXCLUDED_COLUMNS + REDACTED_COLUMNS
+    column_export_exclude_list = REDACTED_COLUMNS
+    column_details_exclude_list = REDACTED_COLUMNS
+    column_exclude_list = REDACTED_COLUMNS
 
     def __init__(self) -> None:
         merged = {**DEFAULT_ADMIN_COLUMN_LABELS, **(getattr(self, "column_labels", None) or {})}
@@ -1015,6 +1020,13 @@ class PersonSecretAdmin(BaseAdminView, model=PersonSecret):
     can_export = False
     can_view_details = False
     column_list = [PersonSecret.person_id]
+    column_details_list = [PersonSecret.person_id]
+    column_export_list = [PersonSecret.person_id]
+    form_excluded_columns = COMMON_EXCLUDED_COLUMNS + REDACTED_COLUMNS + [
+        "key_version",
+        "pc_password_note",
+        "email_password_note",
+    ]
 
     def get_secrets_payload(self) -> list[dict[str, Any]]:
         """Trả về danh sách nhân sự và trạng thái mật khẩu (tuyệt đối không chứa dữ liệu mã hoá *_enc)."""
@@ -2228,6 +2240,7 @@ class TokuyamaAdmin(Admin):
                 value=sess_token,
                 httponly=True,
                 samesite="lax",
+                secure=(request.url.scheme == "https"),
                 max_age=1800,
             )
         return response

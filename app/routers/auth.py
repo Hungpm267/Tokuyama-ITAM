@@ -124,6 +124,7 @@ def login(
         value=token,
         httponly=True,
         samesite="lax",
+        secure=(request.url.scheme == "https"),
         max_age=1800,  # 30 phút
     )
 
