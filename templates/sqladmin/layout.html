@@ -3,6 +3,33 @@
 
 {% block body %}
 {% set current_lang = current_lang or get_current_lang(request) %}
+<style>
+  .toku-ghost-btn {
+    transition: all 0.15s ease;
+  }
+  .toku-ghost-btn:hover {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+  }
+  .toku-user-pill-btn {
+    transition: all 0.15s ease;
+  }
+  .toku-user-pill-btn:hover {
+    background-color: #f8fafc !important;
+    border-color: #cbd5e1 !important;
+  }
+  .toku-topbar-crumb:hover {
+    color: var(--toku-primary) !important;
+  }
+  .toku-topbar-search {
+    transition: all 0.15s ease;
+  }
+  .toku-topbar-search:focus-within {
+    background-color: #ffffff !important;
+    border-color: var(--toku-primary) !important;
+    box-shadow: 0 0 0 3px rgba(77, 92, 176, 0.12) !important;
+  }
+</style>
 <div class="page d-flex flex-row min-vh-100" style="background-color: var(--toku-canvas);">
   
   <!-- Swiss Sidebar (Pure White Surface, 1px Hairline Border, Zero Jitter) -->
@@ -10,16 +37,16 @@
     <div class="d-flex flex-column h-100 w-100 p-0" style="overflow: hidden;">
       
       <!-- Brand Masthead (Clean Swiss Alignment with Tokuyama Brand Colors) -->
-      <div class="py-3 px-3 w-100 border-bottom bg-white" style="border-color: var(--toku-border) !important;">
-        <a href="{{ url_for('admin:index') }}" class="d-block text-decoration-none">
-          {% if admin.logo_url %}
-          <img src="{{ admin.logo_url }}" alt="Tokuyama" style="height: 38px; width: auto; max-width: 100%; object-fit: contain; display: block;" />
-          <div class="mt-1" style="font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: #595B61; text-transform: uppercase;">
-            {{ t('IT Asset Management', current_lang) }}
+      <div class="px-3 w-100 border-bottom bg-white d-flex align-items-center justify-content-between flex-shrink-0" style="height: 56px; border-color: var(--toku-border) !important;">
+        <a href="{{ url_for('admin:index') }}" class="d-flex align-items-center justify-content-between text-decoration-none w-100">
+          <div class="d-flex align-items-center gap-2">
+            {% if admin.logo_url %}
+            <img src="{{ admin.logo_url }}" alt="Tokuyama" style="height: 28px; width: auto; max-width: 145px; object-fit: contain; display: block;" />
+            {% else %}
+            <span style="font-size: 15px; font-weight: 800; color: #0f172a; letter-spacing: -0.01em;">Tokuyama</span>
+            {% endif %}
           </div>
-          {% else %}
-          <div style="font-size: 16px; font-weight: 800; color: #0f172a;">{{ admin.title }}</div>
-          {% endif %}
+          <span class="badge" style="font-size: 9px; font-weight: 700; background-color: #EEF2FF; color: #4D5CB0; border: 1px solid #C7D2FE; padding: 2px 6px; border-radius: 4px; letter-spacing: 0.05em;">ITAM</span>
         </a>
       </div>
 
@@ -65,97 +92,118 @@
   <!-- Main Content Wrapper -->
   <div class="page-wrapper flex-grow-1 d-flex flex-column min-vh-100" style="min-width: 0; background-color: var(--toku-canvas);">
     
-    <!-- Top Utility Bar (Trilingual Switcher & System Posture) - Fixed Sticky Top -->
-    <header class="w-100 bg-white border-bottom px-4 py-2 d-flex align-items-center justify-content-between d-print-none flex-shrink-0" style="position: sticky; top: 0; z-index: 1020; background-color: #ffffff !important; border-color: var(--toku-border) !important; height: 46px; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);">
-      <div class="d-flex align-items-center gap-2">
-        <span style="font-size: 12px; font-weight: 800; color: #4D5CB0; letter-spacing: 0.04em;">TOKUYAMA <span style="color: #FF561D;">VIETNAM</span></span>
+    <!-- Top Utility Bar (Clean Swiss Alignment) - Fixed Sticky Top -->
+    <header class="w-100 bg-white border-bottom px-4 d-flex align-items-center justify-content-between d-print-none flex-shrink-0" style="position: sticky; top: 0; z-index: 1020; height: 56px; background-color: #ffffff !important; border-color: var(--toku-border) !important; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.02);">
+      
+      <!-- Left: Contextual Breadcrumb & Current View -->
+      <div class="d-flex align-items-center gap-2 min-w-0" style="font-size: 13px;">
+        <a href="{{ url_for('admin:index') }}" class="text-decoration-none text-muted d-flex align-items-center gap-1.5 toku-topbar-crumb" style="transition: color 0.15s ease;">
+          <i class="fa-solid fa-house" style="font-size: 11.5px; color: #94a3b8;"></i>
+          <span class="fw-medium d-none d-lg-inline">{{ t('Trang chủ', current_lang) }}</span>
+        </a>
         <span class="text-muted" style="font-size: 11px;">/</span>
-        <span class="text-secondary" style="font-size: 12px; font-weight: 500;">{{ t('IT Asset Management System', current_lang) }}</span>
+        <span class="fw-semibold text-dark text-truncate" style="max-width: 260px; letter-spacing: -0.01em;">
+          {% if model_view and model_view.name %}
+            {{ t(model_view.name, current_lang) }}
+          {% elif title %}
+            {{ t(title, current_lang) }}
+          {% else %}
+            {{ t('Tổng quan Quản trị', current_lang) }}
+          {% endif %}
+        </span>
       </div>
 
-      <!-- Global Quick Search Bar (FR-04) -->
-      <form action="/admin/global-search" method="GET" class="d-none d-md-flex align-items-center mx-3 my-0 flex-grow-1" style="max-width: 440px;">
-        <div class="input-group input-group-sm w-100" style="background-color: #f8fafc; border-radius: 8px; border: 1px solid var(--toku-border); height: 28px;">
-          <span class="input-group-text bg-transparent border-0 text-muted ps-2.5 pe-1 py-0" style="font-size: 11px;">
+      <!-- Center: Global Quick Search Bar (Command Palette style) -->
+      <form action="/admin/global-search" method="GET" class="d-none d-md-flex align-items-center mx-3 my-0 flex-grow-1" style="max-width: 400px;">
+        <div class="input-group w-100 toku-topbar-search" style="background-color: #f8fafc; border-radius: 8px; border: 1px solid var(--toku-border); height: 34px;">
+          <span class="input-group-text bg-transparent border-0 text-muted ps-2.5 pe-1 py-0" style="font-size: 12px;">
             <i class="fa-solid fa-magnifying-glass"></i>
           </span>
-          <input type="search" name="q" id="topbarSearchInput" class="form-control bg-transparent border-0 shadow-none py-0 text-dark" placeholder="{{ 'Tìm kiếm (GA code, Serial, MAC, Nhân sự, HĐ...)' if current_lang == 'vi' else ('Quick Search (GA code, Serial, MAC, Person, Contract...)' if current_lang == 'en' else '検索 (GAコード, シリアル, 社員, 契約...)') }}" value="{{ request.query_params.get('q', '') }}" style="font-size: 11.5px; height: 26px;" />
+          <input type="search" name="q" id="topbarSearchInput" class="form-control bg-transparent border-0 shadow-none py-0 text-dark" placeholder="{{ 'Tìm nhanh (GA, Serial, MAC, Nhân sự...)' if current_lang == 'vi' else ('Quick search (GA, Serial, MAC, Person...)' if current_lang == 'en' else 'クイック検索 (GA, シリアル, 社員...)') }}" value="{{ request.query_params.get('q', '') }}" style="font-size: 12px; height: 32px;" autocomplete="off" />
           <span class="input-group-text bg-transparent border-0 pe-2 py-0">
-            <kbd class="border text-muted bg-white fw-bold" style="font-size: 9px; padding: 1px 4px; border-radius: 3px;">Ctrl K</kbd>
+            <kbd class="border fw-semibold" style="font-size: 9.5px; padding: 2px 5px; border-radius: 4px; background: #ffffff; color: #64748b; font-family: var(--toku-font-mono); border-color: #cbd5e1 !important;">Ctrl K</kbd>
           </span>
         </div>
       </form>
 
       <!-- Right Actions: Language Selector & User Profile Dropdown -->
-      <div class="d-flex align-items-center gap-2">
-        <!-- Sleek Enterprise Language Selector Dropdown -->
+      <div class="d-flex align-items-center gap-1">
+        <!-- Sleek Borderless Language Selector Dropdown -->
         <div class="dropdown">
-          <button class="btn btn-sm d-inline-flex align-items-center gap-1.5 px-2.5 py-1 text-decoration-none shadow-none" 
+          <button class="btn btn-sm d-inline-flex align-items-center gap-2 px-2.5 py-1 text-decoration-none shadow-none toku-ghost-btn" 
                   type="button" id="langDropdown" data-bs-toggle="dropdown" aria-expanded="false"
-                  style="background: #ffffff; border: 1px solid var(--toku-border); border-radius: 8px; font-size: 12px; font-weight: 600; color: #334155; height: 30px; transition: all 0.15s ease;">
+                  style="border: 1px solid transparent; border-radius: 8px; font-size: 12.5px; font-weight: 500; color: #334155; height: 36px; background: transparent; transition: all 0.15s ease;">
             <i class="fa-solid fa-globe" style="color: #4D5CB0; font-size: 13px;"></i>
-            <span>
+            <span class="d-none d-sm-inline" style="font-size: 12.5px; font-weight: 500;">
               {% if current_lang == 'vi' %}Tiếng Việt
               {% elif current_lang == 'ja' %}日本語
               {% else %}English{% endif %}
             </span>
-            <i class="fa-solid fa-chevron-down ms-1" style="font-size: 9px; color: #94a3b8;"></i>
+            <i class="fa-solid fa-chevron-down ms-0.5" style="font-size: 8px; color: #94a3b8;"></i>
           </button>
           <ul class="dropdown-menu dropdown-menu-end shadow-sm border py-1.5" aria-labelledby="langDropdown" 
-              style="border-color: var(--toku-border) !important; border-radius: 10px; min-width: 145px; z-index: 1050; margin-top: 4px;">
+              style="border-color: var(--toku-border) !important; border-radius: 10px; min-width: 150px; z-index: 1050; margin-top: 6px; box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 4px 6px -2px rgba(15, 23, 42, 0.03) !important;">
             <li>
-              <a class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 {% if current_lang == 'vi' %}active fw-bold text-white{% endif %}" 
+              <a class="dropdown-item d-flex align-items-center justify-content-between py-2 px-3 {% if current_lang == 'vi' %}active fw-bold text-white{% endif %}" 
                  href="/admin/set-lang?lang=vi&next={{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}" 
                  style="font-size: 12.5px; {% if current_lang == 'vi' %}background-color: #4D5CB0;{% endif %}">
                 <span>🇻🇳 Tiếng Việt</span>
-                {% if current_lang == 'vi' %}<i class="fa-solid fa-check ms-2" style="font-size: 11px;"></i>{% endif %}
+                {% if current_lang == 'vi' %}<i class="fa-solid fa-check ms-2" style="font-size: 10px;"></i>{% endif %}
               </a>
             </li>
             <li>
-              <a class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 {% if current_lang == 'en' %}active fw-bold text-white{% endif %}" 
+              <a class="dropdown-item d-flex align-items-center justify-content-between py-2 px-3 {% if current_lang == 'en' %}active fw-bold text-white{% endif %}" 
                  href="/admin/set-lang?lang=en&next={{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}" 
                  style="font-size: 12.5px; {% if current_lang == 'en' %}background-color: #4D5CB0;{% endif %}">
                 <span>🇺🇸 English</span>
-                {% if current_lang == 'en' %}<i class="fa-solid fa-check ms-2" style="font-size: 11px;"></i>{% endif %}
+                {% if current_lang == 'en' %}<i class="fa-solid fa-check ms-2" style="font-size: 10px;"></i>{% endif %}
               </a>
             </li>
             <li>
-              <a class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 {% if current_lang == 'ja' %}active fw-bold text-white{% endif %}" 
+              <a class="dropdown-item d-flex align-items-center justify-content-between py-2 px-3 {% if current_lang == 'ja' %}active fw-bold text-white{% endif %}" 
                  href="/admin/set-lang?lang=ja&next={{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}" 
                  style="font-size: 12.5px; {% if current_lang == 'ja' %}background-color: #4D5CB0;{% endif %}">
                 <span>🇯🇵 日本語</span>
-                {% if current_lang == 'ja' %}<i class="fa-solid fa-check ms-2" style="font-size: 11px;"></i>{% endif %}
+                {% if current_lang == 'ja' %}<i class="fa-solid fa-check ms-2" style="font-size: 10px;"></i>{% endif %}
               </a>
             </li>
           </ul>
         </div>
 
-        <div style="width: 1px; height: 18px; background-color: var(--toku-border);" class="d-none d-sm-block"></div>
+        <!-- Vertical Divider -->
+        <div style="width: 1px; height: 18px; background-color: #e2e8f0; margin: 0 4px;" class="d-none d-sm-block"></div>
 
-        <!-- Topbar User Profile Menu -->
+        <!-- Executive User Profile Pill Dropdown -->
         <div class="dropdown">
-          <button class="btn btn-sm d-inline-flex align-items-center gap-1.5 px-2.5 py-1 text-decoration-none shadow-none" 
+          <button class="btn btn-sm d-inline-flex align-items-center gap-2 px-2 py-1 text-decoration-none shadow-none toku-user-pill-btn" 
                   type="button" id="userMenuDropdown" data-bs-toggle="dropdown" aria-expanded="false"
-                  style="background: #ffffff; border: 1px solid var(--toku-border); border-radius: 8px; font-size: 12px; font-weight: 600; color: #1e293b; height: 30px; transition: all 0.15s ease;">
-            <div style="width: 18px; height: 18px; border-radius: 50%; background-color: #EEF2FF; color: #4D5CB0; display: flex; align-items: center; justify-content: center; font-size: 9.5px; font-weight: 700;">
-              <i class="fa-solid fa-user" style="font-size: 9px;"></i>
+                  style="border: 1px solid transparent; border-radius: 9999px; height: 38px; background: transparent; transition: all 0.15s ease;">
+            <!-- Avatar Circle -->
+            <div style="width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%); color: #4D5CB0; border: 1px solid #C7D2FE; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0;">
+              {{ (request.session.get('display_name') or request.session.get('username') or 'U')[:1] | upper }}
             </div>
-            <span class="text-truncate d-none d-md-inline" style="max-width: 130px;">
-              {{ request.session.get("display_name") or request.session.get("username", "it.admin") }}
-            </span>
+            <!-- Name & Role -->
+            <div class="d-none d-md-flex align-items-center gap-2">
+              <span class="text-truncate fw-semibold text-dark" style="font-size: 13px; max-width: 140px;">
+                {{ request.session.get("display_name") or request.session.get("username", "it.admin") }}
+              </span>
+              <span class="badge" style="background-color: #f1f5f9; color: #475569; font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 9999px; border: 1px solid #e2e8f0; letter-spacing: 0.02em;">
+                {{ t(request.session.get('role_title', 'ADMIN'), current_lang) }}
+              </span>
+            </div>
             <i class="fa-solid fa-chevron-down ms-0.5" style="font-size: 8px; color: #94a3b8;"></i>
           </button>
           <ul class="dropdown-menu dropdown-menu-end shadow-sm border py-2" aria-labelledby="userMenuDropdown" 
-              style="border-color: var(--toku-border) !important; border-radius: 10px; min-width: 190px; z-index: 1050; margin-top: 4px;">
-            <li class="px-3 py-1.5 border-bottom mb-1" style="border-color: #f1f5f9 !important;">
-              <div class="fw-bold text-dark text-truncate" style="font-size: 13px;">
+              style="border-color: var(--toku-border) !important; border-radius: 12px; min-width: 210px; z-index: 1050; margin-top: 6px; box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 4px 6px -2px rgba(15, 23, 42, 0.03) !important;">
+            <li class="px-3 py-2 border-bottom mb-1" style="border-color: #f1f5f9 !important;">
+              <div class="fw-bold text-dark text-truncate" style="font-size: 13.5px;">
                 {{ request.session.get("display_name") or request.session.get("username", "it.admin") }}
               </div>
               <div class="d-flex align-items-center gap-1.5 mt-1">
                 <span class="badge" style="background-color: #EEF2FF; color: #4D5CB0; font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 4px;">
                   {{ t(request.session.get('role_title', 'ADMINISTRATOR'), current_lang) }}
                 </span>
-                <span class="text-muted" style="font-size: 10.5px;">@{{ request.session.get('username', 'admin') }}</span>
+                <span class="text-muted" style="font-size: 11px;">@{{ request.session.get('username', 'admin') }}</span>
               </div>
             </li>
             {% if admin.authentication_backend %}
@@ -163,7 +211,7 @@
               <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 text-danger" 
                  href="{{ request.url_for('admin:logout') }}" 
                  style="font-size: 12.5px; font-weight: 600;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
                   <polyline points="16 17 21 12 16 7"></polyline>
                   <line x1="21" y1="12" x2="9" y2="12"></line>

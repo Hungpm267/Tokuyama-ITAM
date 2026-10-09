@@ -2,23 +2,101 @@
 
 {% block content %}
 {% set current_lang = current_lang or get_current_lang(request) %}
+{% set is_admin = (request.session.get('role') == 'ADMIN' or request.session.get('role_code') == 'ADMIN') %}
+{% set is_executive = (request.session.get('role') == 'EXECUTIVE' or request.session.get('role_code') == 'EXECUTIVE') %}
+{% set is_ga_manager = (request.session.get('role') == 'GA_MANAGER' or request.session.get('role_code') == 'GA_MANAGER') %}
+{% set total_alerts = (overdue_card_loans | length) + (expiring_licenses | length) %}
 
-<!-- Top Metrics Strip (Modern Swiss Tabular Cards, Zero Cliché Borders) -->
+<style>
+  .toku-kpi-card {
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  }
+  .toku-kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    border-color: #cbd5e1 !important;
+  }
+  .toku-act-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+  .toku-activity-row {
+    transition: background-color 0.15s ease;
+  }
+  .toku-activity-row:hover {
+    background-color: #f8fafc;
+  }
+  .toku-quick-btn {
+    border-radius: 8px;
+    border: 1px solid var(--toku-border);
+    background-color: #ffffff;
+    color: #1e293b;
+    transition: all 0.15s ease;
+  }
+  .toku-quick-btn:hover {
+    background-color: #f8fafc;
+    border-color: #cbd5e1;
+    color: #0f172a;
+    transform: translateX(2px);
+  }
+</style>
+
+<!-- Minimalist Welcome & Posture Bar -->
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 mb-4">
+  <div>
+    <h3 class="fw-bold mb-1" style="font-size: 20px; color: #0f172a; letter-spacing: -0.01em;">
+      {{ t('Xin chào', current_lang) }}, {{ request.session.get('display_name') or request.session.get('username', 'Admin') }}
+    </h3>
+    <div class="text-muted" style="font-size: 13px;">
+      {{ t('Tổng quan vận hành và tài sản công nghệ thông tin Tokuyama Vietnam', current_lang) }}
+    </div>
+  </div>
+
+  <div>
+    {% if total_alerts == 0 %}
+    <span class="d-inline-flex align-items-center gap-2 px-3 py-1.5 rounded-pill" style="background-color: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; font-size: 12px; font-weight: 600;">
+      <i class="fa-solid fa-circle-check" style="font-size: 12px;"></i>
+      <span>{{ t('Hệ thống vận hành bình thường', current_lang) }}</span>
+    </span>
+    {% else %}
+    <span class="d-inline-flex align-items-center gap-2 px-3 py-1.5 rounded-pill" style="background-color: #fef2f2; color: #dc2626; border: 1px solid #fecaca; font-size: 12px; font-weight: 700;">
+      <i class="fa-solid fa-triangle-exclamation" style="font-size: 12px;"></i>
+      <span>{{ total_alerts }} {{ t('cảnh báo cần chú ý', current_lang) }}</span>
+    </span>
+    {% endif %}
+  </div>
+</div>
+
+<!-- 4 Key Metrics Strip (Modern High-Contrast Tabular Cards) -->
 <div class="row g-3 mb-4">
   <!-- Metric 1: Hardware Assets -->
   <div class="col-sm-6 col-lg-3">
     <a href="{{ url_for('admin:list', identity='asset') }}" class="text-decoration-none">
-      <div class="card p-3 h-100 toku-kpi-card">
+      <div class="card p-3 h-100 toku-kpi-card" style="border: 1px solid var(--toku-border); border-radius: 12px; background: #ffffff;">
         <div class="d-flex justify-content-between align-items-center mb-2">
-          <span class="text-muted fw-semibold" style="font-size: 11.5px; letter-spacing: 0.03em;">{{ t('Thiết bị IT', current_lang) }}</span>
-          <span class="toku-kpi-icon"><i class="fa-solid fa-laptop"></i></span>
-        </div>
-        <div class="d-flex align-items-baseline justify-content-between mt-auto pt-2">
-          <div class="d-flex align-items-baseline gap-1">
-            <span class="num-tabular fw-bold text-dark" style="font-size: 28px; letter-spacing: -0.02em; line-height: 1;">{{ asset_count }}</span>
-            <span class="text-muted small ms-1" style="font-size: 12px;">{{ t('máy', current_lang) }}</span>
+          <span class="text-muted fw-semibold" style="font-size: 12px; letter-spacing: 0.02em;">{{ t('Thiết bị IT', current_lang) }}</span>
+          <div style="width: 32px; height: 32px; border-radius: 8px; background: #EEF2FF; color: #4D5CB0; display: flex; align-items: center; justify-content: center; font-size: 14px;">
+            <i class="fa-solid fa-laptop"></i>
           </div>
-          <span class="text-muted small toku-kpi-link" style="font-size: 11px; font-weight: 500;">{{ t('Chi tiết', current_lang) }} &rarr;</span>
+        </div>
+        <div class="d-flex align-items-baseline gap-2 mb-2">
+          <span class="fw-bold text-dark num-tabular" style="font-size: 28px; line-height: 1; letter-spacing: -0.02em;">{{ asset_count }}</span>
+          <span class="text-muted small" style="font-size: 12px;">{{ t('máy', current_lang) }}</span>
+        </div>
+        <div class="mt-auto">
+          <div class="d-flex justify-content-between align-items-center mb-1" style="font-size: 11.5px;">
+            <span class="text-muted">{{ t('Tỷ lệ cấp phát', current_lang) }}</span>
+            <span class="fw-bold text-dark num-tabular">{{ allocation_rate }}%</span>
+          </div>
+          <div class="progress" style="height: 4px; background-color: #f1f5f9; border-radius: 2px;">
+            <div class="progress-bar" role="progressbar" style="width: {{ allocation_rate }}%; background-color: #4D5CB0; border-radius: 2px;"></div>
+          </div>
         </div>
       </div>
     </a>
@@ -27,56 +105,72 @@
   <!-- Metric 2: Active Assignments -->
   <div class="col-sm-6 col-lg-3">
     <a href="{{ url_for('admin:list', identity='assignment') }}" class="text-decoration-none">
-      <div class="card p-3 h-100 toku-kpi-card">
+      <div class="card p-3 h-100 toku-kpi-card" style="border: 1px solid var(--toku-border); border-radius: 12px; background: #ffffff;">
         <div class="d-flex justify-content-between align-items-center mb-2">
-          <span class="text-muted fw-semibold" style="font-size: 11.5px; letter-spacing: 0.03em;">{{ t('Đang cấp phát', current_lang) }}</span>
-          <span class="toku-kpi-icon"><i class="fa-solid fa-arrow-right-arrow-left"></i></span>
-        </div>
-        <div class="d-flex align-items-baseline justify-content-between mt-auto pt-2">
-          <div class="d-flex align-items-baseline gap-1">
-            <span class="num-tabular fw-bold text-dark" style="font-size: 28px; letter-spacing: -0.02em; line-height: 1;">{{ assignment_count }}</span>
-            <span class="text-muted small ms-1" style="font-size: 12px;">{{ t('lượt', current_lang) }}</span>
+          <span class="text-muted fw-semibold" style="font-size: 12px; letter-spacing: 0.02em;">{{ t('Đang cấp phát', current_lang) }}</span>
+          <div style="width: 32px; height: 32px; border-radius: 8px; background: #ecfdf5; color: #059669; display: flex; align-items: center; justify-content: center; font-size: 14px;">
+            <i class="fa-solid fa-arrow-right-arrow-left"></i>
           </div>
-          <span class="text-muted small toku-kpi-link" style="font-size: 11px; font-weight: 500;">{{ t('Chi tiết', current_lang) }} &rarr;</span>
+        </div>
+        <div class="d-flex align-items-baseline gap-2 mb-2">
+          <span class="fw-bold text-dark num-tabular" style="font-size: 28px; line-height: 1; letter-spacing: -0.02em;">{{ assignment_count }}</span>
+          <span class="text-muted small" style="font-size: 12px;">{{ t('lượt', current_lang) }}</span>
+        </div>
+        <div class="mt-auto pt-1 d-flex justify-content-between align-items-center" style="font-size: 11.5px;">
+          <span class="text-muted">
+            {{ [asset_count - assignment_count, 0] | max }} {{ t('thiết bị trong kho', current_lang) }}
+          </span>
+          <span class="text-primary fw-semibold" style="font-size: 11px;">{{ t('Chi tiết', current_lang) }} &rarr;</span>
         </div>
       </div>
     </a>
   </div>
 
+  <!-- Metric 3: Software Licenses or Personnel -->
   {% if can_view_licenses %}
-  <!-- Metric 3: Software Licenses -->
   <div class="col-sm-6 col-lg-3">
     <a href="{{ url_for('admin:list', identity='license') }}" class="text-decoration-none">
-      <div class="card p-3 h-100 toku-kpi-card">
+      <div class="card p-3 h-100 toku-kpi-card" style="border: 1px solid var(--toku-border); border-radius: 12px; background: #ffffff;">
         <div class="d-flex justify-content-between align-items-center mb-2">
-          <span class="text-muted fw-semibold" style="font-size: 11.5px; letter-spacing: 0.03em;">{{ t('Bản quyền phần mềm', current_lang) }}</span>
-          <span class="toku-kpi-icon"><i class="fa-solid fa-key"></i></span>
-        </div>
-        <div class="d-flex align-items-baseline justify-content-between mt-auto pt-2">
-          <div class="d-flex align-items-baseline gap-1">
-            <span class="num-tabular fw-bold text-dark" style="font-size: 28px; letter-spacing: -0.02em; line-height: 1;">{{ license_count }}</span>
-            <span class="text-muted small ms-1" style="font-size: 12px;">{{ t('gói', current_lang) }}</span>
+          <span class="text-muted fw-semibold" style="font-size: 12px; letter-spacing: 0.02em;">{{ t('Bản quyền phần mềm', current_lang) }}</span>
+          <div style="width: 32px; height: 32px; border-radius: 8px; background: #fffbeb; color: #d97706; display: flex; align-items: center; justify-content: center; font-size: 14px;">
+            <i class="fa-solid fa-key"></i>
           </div>
-          <span class="text-muted small toku-kpi-link" style="font-size: 11px; font-weight: 500;">{{ t('Chi tiết', current_lang) }} &rarr;</span>
+        </div>
+        <div class="d-flex align-items-baseline gap-2 mb-2">
+          <span class="fw-bold text-dark num-tabular" style="font-size: 28px; line-height: 1; letter-spacing: -0.02em;">{{ license_count }}</span>
+          <span class="text-muted small" style="font-size: 12px;">{{ t('gói', current_lang) }}</span>
+        </div>
+        <div class="mt-auto pt-1 d-flex justify-content-between align-items-center" style="font-size: 11.5px;">
+          <span class="{% if expiring_licenses %}text-danger fw-semibold{% else %}text-muted{% endif %}">
+            {% if expiring_licenses %}
+            {{ expiring_licenses | length }} {{ t('sắp hết hạn', current_lang) }}
+            {% else %}
+            {{ t('Đang quản lý', current_lang) }}
+            {% endif %}
+          </span>
+          <span class="text-primary fw-semibold" style="font-size: 11px;">{{ t('Chi tiết', current_lang) }} &rarr;</span>
         </div>
       </div>
     </a>
   </div>
   {% else %}
-  <!-- Metric 3: Personnel (for GA Manager) -->
   <div class="col-sm-6 col-lg-3">
     <a href="{{ url_for('admin:list', identity='person') }}" class="text-decoration-none">
-      <div class="card p-3 h-100 toku-kpi-card">
+      <div class="card p-3 h-100 toku-kpi-card" style="border: 1px solid var(--toku-border); border-radius: 12px; background: #ffffff;">
         <div class="d-flex justify-content-between align-items-center mb-2">
-          <span class="text-muted fw-semibold" style="font-size: 11.5px; letter-spacing: 0.03em;">{{ t('Nhân sự', current_lang) }}</span>
-          <span class="toku-kpi-icon"><i class="fa-solid fa-users"></i></span>
-        </div>
-        <div class="d-flex align-items-baseline justify-content-between mt-auto pt-2">
-          <div class="d-flex align-items-baseline gap-1">
-            <span class="num-tabular fw-bold text-dark" style="font-size: 28px; letter-spacing: -0.02em; line-height: 1;">{{ person_count }}</span>
-            <span class="text-muted small ms-1" style="font-size: 12px;">{{ t('người', current_lang) }}</span>
+          <span class="text-muted fw-semibold" style="font-size: 12px; letter-spacing: 0.02em;">{{ t('Nhân sự', current_lang) }}</span>
+          <div style="width: 32px; height: 32px; border-radius: 8px; background: #f0fdf4; color: #16a34a; display: flex; align-items: center; justify-content: center; font-size: 14px;">
+            <i class="fa-solid fa-users"></i>
           </div>
-          <span class="text-muted small toku-kpi-link" style="font-size: 11px; font-weight: 500;">{{ t('Chi tiết', current_lang) }} &rarr;</span>
+        </div>
+        <div class="d-flex align-items-baseline gap-2 mb-2">
+          <span class="fw-bold text-dark num-tabular" style="font-size: 28px; line-height: 1; letter-spacing: -0.02em;">{{ person_count }}</span>
+          <span class="text-muted small" style="font-size: 12px;">{{ t('người', current_lang) }}</span>
+        </div>
+        <div class="mt-auto pt-1 d-flex justify-content-between align-items-center" style="font-size: 11.5px;">
+          <span class="text-muted">{{ t('Đang làm việc', current_lang) }}</span>
+          <span class="text-primary fw-semibold" style="font-size: 11px;">{{ t('Chi tiết', current_lang) }} &rarr;</span>
         </div>
       </div>
     </a>
@@ -86,17 +180,22 @@
   <!-- Metric 4: Access Cards -->
   <div class="col-sm-6 col-lg-3">
     <a href="{{ url_for('admin:list', identity='access-card') }}" class="text-decoration-none">
-      <div class="card p-3 h-100 toku-kpi-card">
+      <div class="card p-3 h-100 toku-kpi-card" style="border: 1px solid var(--toku-border); border-radius: 12px; background: #ffffff;">
         <div class="d-flex justify-content-between align-items-center mb-2">
-          <span class="text-muted fw-semibold" style="font-size: 11.5px; letter-spacing: 0.03em;">{{ t('Thẻ ra vào', current_lang) }}</span>
-          <span class="toku-kpi-icon"><i class="fa-solid fa-id-card"></i></span>
-        </div>
-        <div class="d-flex align-items-baseline justify-content-between mt-auto pt-2">
-          <div class="d-flex align-items-baseline gap-1">
-            <span class="num-tabular fw-bold text-dark" style="font-size: 28px; letter-spacing: -0.02em; line-height: 1;">{{ card_count }}</span>
-            <span class="text-muted small ms-1" style="font-size: 12px;">{{ t('thẻ', current_lang) }}</span>
+          <span class="text-muted fw-semibold" style="font-size: 12px; letter-spacing: 0.02em;">{{ t('Thẻ ra vào', current_lang) }}</span>
+          <div style="width: 32px; height: 32px; border-radius: 8px; background: #f8fafc; color: #475569; display: flex; align-items: center; justify-content: center; font-size: 14px; border: 1px solid #e2e8f0;">
+            <i class="fa-solid fa-id-card"></i>
           </div>
-          <span class="text-muted small toku-kpi-link" style="font-size: 11px; font-weight: 500;">{{ t('Chi tiết', current_lang) }} &rarr;</span>
+        </div>
+        <div class="d-flex align-items-baseline gap-2 mb-2">
+          <span class="fw-bold text-dark num-tabular" style="font-size: 28px; line-height: 1; letter-spacing: -0.02em;">{{ card_count }}</span>
+          <span class="text-muted small" style="font-size: 12px;">{{ t('thẻ', current_lang) }}</span>
+        </div>
+        <div class="mt-auto pt-1 d-flex justify-content-between align-items-center" style="font-size: 11.5px;">
+          <span class="{% if active_card_loans > 0 %}text-secondary fw-medium{% else %}text-muted{% endif %}">
+            {{ active_card_loans }} {{ t('thẻ đang cho mượn', current_lang) }}
+          </span>
+          <span class="text-primary fw-semibold" style="font-size: 11px;">{{ t('Chi tiết', current_lang) }} &rarr;</span>
         </div>
       </div>
     </a>
@@ -104,137 +203,118 @@
 </div>
 
 <!-- ======================================================== -->
-<!-- OPERATIONAL ALERTS STRIP (FR-17: Overdue Cards & Expiring Licenses) -->
+<!-- OPERATIONAL ALERTS (Render ONLY if actual alerts exist) -->
 <!-- ======================================================== -->
+{% if overdue_card_loans or (can_view_licenses and expiring_licenses) %}
 <div class="row g-3 mb-4">
+  {% if overdue_card_loans %}
   <!-- Alert 1: Overdue Card Loans -->
-  <div class="{% if can_view_licenses %}col-lg-6{% else %}col-12{% endif %}">
-    <div class="card h-100">
-      <div class="card-header d-flex justify-content-between align-items-center py-3 px-4">
+  <div class="{% if can_view_licenses and expiring_licenses %}col-lg-6{% else %}col-12{% endif %}">
+    <div class="card h-100" style="border: 1px solid #fecaca; border-radius: 12px; overflow: hidden;">
+      <div class="card-header d-flex justify-content-between align-items-center py-2.5 px-3 bg-white border-bottom" style="border-color: #fee2e2 !important;">
         <div class="d-flex align-items-center gap-2">
-          <span style="width: 28px; height: 28px; border-radius: 8px; background-color: {% if overdue_card_loans %}#fef2f2{% else %}#f0fdf4{% endif %}; color: {% if overdue_card_loans %}#dc2626{% else %}#16a34a{% endif %}; display: inline-flex; align-items: center; justify-content: center; font-size: 13px;">
-            <i class="fa-solid {% if overdue_card_loans %}fa-triangle-exclamation{% else %}fa-circle-check{% endif %}"></i>
+          <span style="width: 26px; height: 26px; border-radius: 6px; background-color: #fef2f2; color: #dc2626; display: inline-flex; align-items: center; justify-content: center; font-size: 12px;">
+            <i class="fa-solid fa-triangle-exclamation"></i>
           </span>
-          <span class="card-title fw-bold" style="font-size: 14.5px;">{{ t('Thẻ mượn quá hạn hẹn trả', current_lang) }}</span>
-          {% if overdue_card_loans %}
-          <span class="badge bg-danger ms-1">{{ overdue_card_loans | length }}</span>
-          {% endif %}
+          <span class="card-title fw-bold" style="font-size: 13.5px; color: #991b1b;">{{ t('Thẻ mượn quá hạn hẹn trả', current_lang) }}</span>
+          <span class="badge bg-danger ms-1" style="font-size: 11px;">{{ overdue_card_loans | length }}</span>
         </div>
-        <a href="{{ url_for('admin:list', identity='card-loan') }}" class="btn btn-outline-secondary btn-sm py-1 px-3" style="font-size: 11.5px; font-weight: 600;">
+        <a href="{{ url_for('admin:list', identity='card-loan') }}" class="btn btn-outline-danger btn-sm py-0.5 px-2.5" style="font-size: 11px; font-weight: 600;">
           {{ t('Sổ mượn thẻ', current_lang) }} &rarr;
         </a>
       </div>
       <div class="table-responsive">
         <table class="table card-table table-vcenter mb-0">
           <thead>
-            <tr>
-              <th style="width: 90px;">{{ t('Mã thẻ', current_lang) }}</th>
-              <th>{{ t('Người mượn', current_lang) }}</th>
-              <th style="width: 110px;">{{ t('Hẹn trả', current_lang) }}</th>
-              <th style="width: 120px;" class="text-end">{{ t('Tình trạng', current_lang) }}</th>
+            <tr style="background: #fff5f5;">
+              <th style="width: 100px; font-size: 11px;">{{ t('Mã thẻ', current_lang) }}</th>
+              <th style="font-size: 11px;">{{ t('Người mượn', current_lang) }}</th>
+              <th style="width: 100px; font-size: 11px;">{{ t('Hẹn trả', current_lang) }}</th>
+              <th style="width: 110px; font-size: 11px;" class="text-end">{{ t('Tình trạng', current_lang) }}</th>
             </tr>
           </thead>
           <tbody>
-            {% if overdue_card_loans %}
-              {% for loan in overdue_card_loans %}
-              <tr>
-                <td>
-                  <a href="{{ url_for('admin:details', identity='access-card', pk=loan.card_id) }}" class="fw-bold text-dark text-decoration-none font-monospace" style="font-size: 12.5px;">
-                    {{ loan.card_number }}
-                  </a>
-                </td>
-                <td>
-                  <span class="fw-medium text-dark" style="font-size: 12.5px;">{{ loan.borrower }}</span>
-                </td>
-                <td class="num-tabular text-muted" style="font-size: 12px;">
-                  {{ loan.expected_return_at.strftime('%Y-%m-%d') if loan.expected_return_at else '—' }}
-                </td>
-                <td class="text-end">
-                  <span class="badge bg-danger fw-bold" style="font-size: 11px;">
-                    <i class="fa-solid fa-clock me-1"></i>{{ t('Trễ', current_lang) }} {{ loan.days_overdue }} {{ t('ngày', current_lang) }}
-                  </span>
-                </td>
-              </tr>
-              {% endfor %}
-            {% else %}
-              <tr>
-                <td colspan="4" class="text-center py-4 text-muted" style="font-size: 12.5px;">
-                  <i class="fa-solid fa-shield-check text-success me-1"></i> {{ t('Hiện không có thẻ nào bị quá hạn hẹn trả.', current_lang) }}
-                </td>
-              </tr>
-            {% endif %}
+            {% for loan in overdue_card_loans %}
+            <tr>
+              <td>
+                <a href="{{ url_for('admin:details', identity='access-card', pk=loan.card_id) }}" class="fw-bold text-dark text-decoration-none font-monospace" style="font-size: 12px;">
+                  {{ loan.card_number }}
+                </a>
+              </td>
+              <td>
+                <span class="fw-medium text-dark" style="font-size: 12px;">{{ loan.borrower }}</span>
+              </td>
+              <td class="num-tabular text-muted" style="font-size: 11.5px;">
+                {{ loan.expected_return_at.strftime('%Y-%m-%d') if loan.expected_return_at else '—' }}
+              </td>
+              <td class="text-end">
+                <span class="badge bg-danger fw-bold" style="font-size: 10.5px;">
+                  <i class="fa-solid fa-clock me-1"></i>{{ t('Trễ', current_lang) }} {{ loan.days_overdue }} {{ t('ngày', current_lang) }}
+                </span>
+              </td>
+            </tr>
+            {% endfor %}
           </tbody>
         </table>
       </div>
     </div>
   </div>
+  {% endif %}
 
-  {% if can_view_licenses %}
-  <!-- Alert 2: Expiring Software Licenses (Within 60 Days) -->
-  <div class="col-lg-6">
-    <div class="card h-100">
-      <div class="card-header d-flex justify-content-between align-items-center py-3 px-4">
+  {% if can_view_licenses and expiring_licenses %}
+  <!-- Alert 2: Expiring Licenses -->
+  <div class="{% if overdue_card_loans %}col-lg-6{% else %}col-12{% endif %}">
+    <div class="card h-100" style="border: 1px solid #fde68a; border-radius: 12px; overflow: hidden;">
+      <div class="card-header d-flex justify-content-between align-items-center py-2.5 px-3 bg-white border-bottom" style="border-color: #fef3c7 !important;">
         <div class="d-flex align-items-center gap-2">
-          <span style="width: 28px; height: 28px; border-radius: 8px; background-color: {% if expiring_licenses %}#fffbeb{% else %}#f0fdf4{% endif %}; color: {% if expiring_licenses %}#d97706{% else %}#16a34a{% endif %}; display: inline-flex; align-items: center; justify-content: center; font-size: 13px;">
-            <i class="fa-solid {% if expiring_licenses %}fa-hourglass-half{% else %}fa-circle-check{% endif %}"></i>
+          <span style="width: 26px; height: 26px; border-radius: 6px; background-color: #fffbeb; color: #d97706; display: inline-flex; align-items: center; justify-content: center; font-size: 12px;">
+            <i class="fa-solid fa-hourglass-half"></i>
           </span>
-          <span class="card-title fw-bold" style="font-size: 14.5px;">{{ t('Bản quyền sắp hết hạn (≤ 60 ngày)', current_lang) }}</span>
-          {% if expiring_licenses %}
-          <span class="badge bg-warning ms-1">{{ expiring_licenses | length }}</span>
-          {% endif %}
+          <span class="card-title fw-bold" style="font-size: 13.5px; color: #92400e;">{{ t('Bản quyền sắp hết hạn (≤ 60 ngày)', current_lang) }}</span>
+          <span class="badge bg-warning ms-1" style="font-size: 11px;">{{ expiring_licenses | length }}</span>
         </div>
-        <a href="{{ url_for('admin:list', identity='license') }}" class="btn btn-outline-secondary btn-sm py-1 px-3" style="font-size: 11.5px; font-weight: 600;">
+        <a href="{{ url_for('admin:list', identity='license') }}" class="btn btn-outline-warning btn-sm py-0.5 px-2.5 text-dark" style="font-size: 11px; font-weight: 600;">
           {{ t('Xem tất cả', current_lang) }} &rarr;
         </a>
       </div>
       <div class="table-responsive">
         <table class="table card-table table-vcenter mb-0">
           <thead>
-            <tr>
-              <th>{{ t('Phần mềm', current_lang) }}</th>
-              <th style="width: 90px;">{{ t('Seat', current_lang) }}</th>
-              <th style="width: 110px;">{{ t('Hạn dùng', current_lang) }}</th>
-              <th style="width: 120px;" class="text-end">{{ t('Còn lại', current_lang) }}</th>
+            <tr style="background: #fffdf5;">
+              <th style="font-size: 11px;">{{ t('Phần mềm', current_lang) }}</th>
+              <th style="width: 80px; font-size: 11px;">{{ t('Seat', current_lang) }}</th>
+              <th style="width: 100px; font-size: 11px;">{{ t('Hạn dùng', current_lang) }}</th>
+              <th style="width: 110px; font-size: 11px;" class="text-end">{{ t('Còn lại', current_lang) }}</th>
             </tr>
           </thead>
           <tbody>
-            {% if expiring_licenses %}
-              {% for lic in expiring_licenses %}
-              <tr>
-                <td>
-                  <a href="{{ url_for('admin:details', identity='license', pk=lic.id) }}" class="fw-bold text-dark text-decoration-none" style="font-size: 12.5px;">
-                    {{ lic.product_name }}
-                  </a>
-                  {% if lic.note %}
-                  <div class="text-muted text-truncate" style="font-size: 11px; max-width: 180px;">{{ lic.note }}</div>
-                  {% endif %}
-                </td>
-                <td class="num-tabular text-dark" style="font-size: 12px;">
-                  {{ lic.seats_used }}
-                </td>
-                <td class="num-tabular text-muted" style="font-size: 12px;">
-                  {{ lic.expiry_date.strftime('%Y-%m-%d') if lic.expiry_date else '—' }}
-                </td>
-                <td class="text-end">
-                  {% if lic.is_expired %}
-                  <span class="badge bg-danger fw-bold" style="font-size: 11px;">
-                    <i class="fa-solid fa-circle-exclamation me-1"></i>{{ t('Đã hết hạn', current_lang) }}
-                  </span>
-                  {% else %}
-                  <span class="badge bg-warning fw-bold" style="font-size: 11px;">
-                    <i class="fa-solid fa-clock me-1"></i>{{ lic.days_left }} {{ t('ngày', current_lang) }}
-                  </span>
-                  {% endif %}
-                </td>
-              </tr>
-              {% endfor %}
-            {% else %}
-              <tr>
-                <td colspan="4" class="text-center py-4 text-muted" style="font-size: 12.5px;">
-                  <i class="fa-solid fa-shield-check text-success me-1"></i> {{ t('Tất cả bản quyền đều đang trong thời hạn an toàn.', current_lang) }}
-                </td>
-              </tr>
-            {% endif %}
+            {% for lic in expiring_licenses %}
+            <tr>
+              <td>
+                <a href="{{ url_for('admin:details', identity='license', pk=lic.id) }}" class="fw-bold text-dark text-decoration-none" style="font-size: 12px;">
+                  {{ lic.product_name }}
+                </a>
+                {% if lic.note %}
+                <div class="text-muted text-truncate" style="font-size: 10.5px; max-width: 180px;">{{ lic.note }}</div>
+                {% endif %}
+              </td>
+              <td class="num-tabular text-dark" style="font-size: 11.5px;">{{ lic.seats_used }}</td>
+              <td class="num-tabular text-muted" style="font-size: 11.5px;">
+                {{ lic.expiry_date.strftime('%Y-%m-%d') if lic.expiry_date else '—' }}
+              </td>
+              <td class="text-end">
+                {% if lic.is_expired %}
+                <span class="badge bg-danger fw-bold" style="font-size: 10.5px;">
+                  <i class="fa-solid fa-circle-exclamation me-1"></i>{{ t('Đã hết hạn', current_lang) }}
+                </span>
+                {% else %}
+                <span class="badge bg-warning fw-bold text-dark" style="font-size: 10.5px;">
+                  <i class="fa-solid fa-clock me-1"></i>{{ lic.days_left }} {{ t('ngày', current_lang) }}
+                </span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
           </tbody>
         </table>
       </div>
@@ -242,167 +322,220 @@
   </div>
   {% endif %}
 </div>
+{% endif %}
 
-<!-- Main Operational Layout (Asymmetric 8 / 4 Grid or Adaptive Layout) -->
-{% set is_admin = (request.session.get('role') == 'ADMIN' or request.session.get('role_code') == 'ADMIN') %}
-{% set is_executive = (request.session.get('role') == 'EXECUTIVE' or request.session.get('role_code') == 'EXECUTIVE') %}
-{% set is_ga_manager = (request.session.get('role') == 'GA_MANAGER' or request.session.get('role_code') == 'GA_MANAGER') %}
-
+<!-- ======================================================== -->
+<!-- MAIN OPERATIONAL WORKSPACE (Asymmetric 8 / 4 Grid)       -->
+<!-- ======================================================== -->
 <div class="row g-3 mb-4">
   {% if can_view_audit %}
-  <!-- Left Column: Live Activity Audit Table (8 cols) -->
+  <!-- Left Column: Activity Stream (Clean, uncluttered event list) -->
   <div class="col-lg-8">
-    <div class="card h-100">
-      <div class="card-header d-flex justify-content-between align-items-center py-3 px-4">
-        <span class="card-title fw-bold" style="font-size: 14.5px;">{{ t('Nhật ký hoạt động gần nhất', current_lang) }}</span>
+    <div class="card h-100" style="border: 1px solid var(--toku-border); border-radius: 12px; background: #ffffff;">
+      <div class="card-header d-flex justify-content-between align-items-center py-3 px-3 bg-white border-bottom" style="border-color: #f1f5f9 !important;">
+        <div class="d-flex align-items-center gap-2">
+          <span style="width: 28px; height: 28px; border-radius: 8px; background-color: #f8fafc; color: #475569; display: flex; align-items: center; justify-content: center; font-size: 13px; border: 1px solid #e2e8f0;">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+          </span>
+          <span class="card-title fw-bold mb-0" style="font-size: 14px; color: #0f172a;">{{ t('Hoạt động gần nhất', current_lang) }}</span>
+        </div>
         <a href="{{ url_for('admin:list', identity='audit-log') }}" class="btn btn-outline-secondary btn-sm py-1 px-3" style="font-size: 11.5px; font-weight: 600;">
-          {{ t('Xem tất cả nhật ký', current_lang) }} &rarr;
+          {{ t('Xem tất cả nhật ký kiểm toán', current_lang) }} &rarr;
         </a>
       </div>
-      <div class="table-responsive">
-        <table class="table card-table table-vcenter mb-0">
-          <thead>
-            <tr>
-              <th style="width: 70px;">{{ t('Mã', current_lang) }}</th>
-              <th style="width: 170px;">{{ t('Thời điểm', current_lang) }}</th>
-              <th style="width: 110px;">{{ t('Hành động', current_lang) }}</th>
-              <th>{{ t('Bảng dữ liệu', current_lang) }}</th>
-              <th style="width: 90px;">{{ t('Bản ghi ID', current_lang) }}</th>
-              <th style="width: 130px;">{{ t('Địa chỉ IP', current_lang) }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% if recent_logs %}
-              {% for log in recent_logs %}
-              <tr>
-                <td class="num-tabular text-muted" style="font-size: 12px;">#{{ log.id }}</td>
-                <td class="num-tabular text-dark" style="font-size: 12px;">{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') if log.created_at else '—' }}</td>
-                <td>
-                  {% if log.action.value == 'LOGIN' %}
-                  <span class="fw-bold" style="font-size: 11px; color: #15803d; letter-spacing: 0.03em;">LOGIN</span>
-                  {% elif log.action.value == 'LOGIN_FAIL' %}
-                  <span class="fw-bold" style="font-size: 11px; color: #dc2626; letter-spacing: 0.03em;">LOGIN FAIL</span>
-                  {% elif log.action.value == 'CREATE' %}
-                  <span class="fw-bold" style="font-size: 11px; color: #4D5CB0; letter-spacing: 0.03em;">CREATE</span>
-                  {% elif log.action.value == 'UPDATE' %}
-                  <span class="fw-bold" style="font-size: 11px; color: #475569; letter-spacing: 0.03em;">UPDATE</span>
-                  {% elif log.action.value == 'DELETE' %}
-                  <span class="fw-bold" style="font-size: 11px; color: #b91c1c; letter-spacing: 0.03em;">DELETE</span>
-                  {% elif log.action.value == 'REVEAL' %}
-                  <span class="fw-bold" style="font-size: 11px; color: #b45309; letter-spacing: 0.03em;">REVEAL</span>
-                  {% else %}
-                  <span class="fw-bold text-muted" style="font-size: 11px; letter-spacing: 0.03em;">{{ log.action.value }}</span>
-                  {% endif %}
-                </td>
-                <td><span class="num-tabular text-dark fw-medium" style="font-size: 12px; font-family: var(--toku-font-mono);">{{ log.table_name }}</span></td>
-                <td class="num-tabular text-dark" style="font-size: 12px;">{{ log.record_id if log.record_id is not none else '—' }}</td>
-                <td class="num-tabular text-muted" style="font-size: 11.5px;">{{ log.ip_address or '127.0.0.1' }}</td>
-              </tr>
-              {% endfor %}
-            {% else %}
-              <tr>
-                <td colspan="6" class="text-center py-4 text-muted" style="font-size: 12.5px;">
-                  {{ t('Chưa có dữ liệu kiểm toán phát sinh trong phiên làm việc này.', current_lang) }}
-                </td>
-              </tr>
-            {% endif %}
-          </tbody>
-        </table>
+
+      <div class="card-body p-2 p-md-3">
+        {% if recent_logs %}
+          <div class="d-flex flex-column gap-1">
+            {% for log in recent_logs %}
+            <div class="d-flex align-items-center justify-content-between p-2 rounded-3 toku-activity-row">
+              <div class="d-flex align-items-center gap-3 min-w-0">
+                {% if log.action.value == 'LOGIN' %}
+                <span class="toku-act-icon" style="background-color: #ecfdf5; color: #059669;">
+                  <i class="fa-solid fa-right-to-bracket"></i>
+                </span>
+                {% elif log.action.value == 'LOGIN_FAIL' %}
+                <span class="toku-act-icon" style="background-color: #fef2f2; color: #dc2626;">
+                  <i class="fa-solid fa-triangle-exclamation"></i>
+                </span>
+                {% elif log.action.value == 'CREATE' %}
+                <span class="toku-act-icon" style="background-color: #EEF2FF; color: #4D5CB0;">
+                  <i class="fa-solid fa-plus"></i>
+                </span>
+                {% elif log.action.value == 'UPDATE' %}
+                <span class="toku-act-icon" style="background-color: #f1f5f9; color: #475569;">
+                  <i class="fa-solid fa-pen"></i>
+                </span>
+                {% elif log.action.value == 'DELETE' %}
+                <span class="toku-act-icon" style="background-color: #fef2f2; color: #dc2626;">
+                  <i class="fa-solid fa-trash-can"></i>
+                </span>
+                {% elif log.action.value == 'RESTORE' %}
+                <span class="toku-act-icon" style="background-color: #ecfdf5; color: #059669;">
+                  <i class="fa-solid fa-rotate-left"></i>
+                </span>
+                {% elif log.action.value == 'REVEAL' %}
+                <span class="toku-act-icon" style="background-color: #FFF1EB; color: #FF561D;">
+                  <i class="fa-solid fa-eye"></i>
+                </span>
+                {% else %}
+                <span class="toku-act-icon" style="background-color: #f8fafc; color: #64748b;">
+                  <i class="fa-solid fa-bolt"></i>
+                </span>
+                {% endif %}
+
+                <div class="d-flex flex-column min-w-0">
+                  <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span class="fw-semibold text-dark text-truncate" style="font-size: 13px;">
+                      {% if log.action.value == 'LOGIN' %}{{ t('Đăng nhập thành công', current_lang) }}
+                      {% elif log.action.value == 'LOGIN_FAIL' %}{{ t('Đăng nhập thất bại', current_lang) }}
+                      {% elif log.action.value == 'CREATE' %}{{ t('Tạo mới bản ghi', current_lang) }}
+                      {% elif log.action.value == 'UPDATE' %}{{ t('Cập nhật dữ liệu', current_lang) }}
+                      {% elif log.action.value == 'DELETE' %}{{ t('Xóa dữ liệu', current_lang) }}
+                      {% elif log.action.value == 'RESTORE' %}{{ t('Khôi phục dữ liệu', current_lang) }}
+                      {% elif log.action.value == 'REVEAL' %}{{ t('Mở khóa xem mật khẩu', current_lang) }}
+                      {% else %}{{ log.action.value }}{% endif %}
+                    </span>
+                    <span class="badge bg-light text-secondary border font-monospace" style="font-size: 10.5px; font-weight: 500; padding: 1px 6px;">
+                      {{ log.table_name }}
+                    </span>
+                  </div>
+                  <div class="text-muted d-flex align-items-center gap-2 flex-wrap mt-0.5" style="font-size: 11.5px;">
+                    <span>
+                      {% if log.user %}
+                      @{{ log.user.username }}{% if log.user.display_name %} ({{ log.user.display_name }}){% endif %}
+                      {% else %}
+                      {{ t('Hệ thống', current_lang) }}
+                      {% endif %}
+                    </span>
+                    {% if log.record_id is not none %}
+                    <span class="text-muted">&bull;</span>
+                    <span class="font-monospace">#{{ log.record_id }}</span>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+
+              <div class="text-end text-muted num-tabular flex-shrink-0 ms-2" style="font-size: 11.5px;">
+                {{ log.created_at.strftime('%H:%M:%S') if log.created_at else '—' }}
+                <div style="font-size: 10px; color: #94a3b8;">{{ log.created_at.strftime('%d/%m/%Y') if log.created_at else '' }}</div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-center py-4 text-muted" style="font-size: 13px;">
+            <i class="fa-solid fa-clock-rotate-left me-1"></i> {{ t('Chưa có hoạt động nào trong phiên làm việc.', current_lang) }}
+          </div>
+        {% endif %}
       </div>
     </div>
   </div>
 
-  <!-- Right Column: Operations Summary & Quick Actions (4 cols) -->
+  <!-- Right Column: Quick Actions & Operations Snapshot (4 cols) -->
   <div class="col-lg-4 d-flex flex-column gap-3">
-    <!-- Operational Metrics Summary Card -->
-    <div class="card p-4">
-      <div class="card-title fw-bold mb-3" style="font-size: 14px;">{{ t('Tổng quan vận hành', current_lang) }}</div>
-      
-      <div class="d-flex flex-column gap-3">
-        <!-- Allocation Ratio -->
-        <div>
-          <div class="d-flex justify-content-between align-items-center mb-1">
-            <span class="text-muted small fw-medium">{{ t('Tỷ lệ cấp phát', current_lang) }}</span>
-            <span class="num-tabular fw-bold text-dark" style="font-size: 13px;">{{ allocation_rate }}%</span>
-          </div>
-          <div class="progress" style="height: 5px; background-color: #f1f5f9; border-radius: 3px;">
-            <div class="progress-bar" role="progressbar" style="width: {{ allocation_rate }}%; background-color: #4D5CB0; border-radius: 3px;"></div>
-          </div>
-        </div>
-
-        <div class="border-top" style="border-color: #f1f5f9 !important;"></div>
-
-        <!-- Total Personnel -->
-        <div class="d-flex justify-content-between align-items-center">
-          <span class="text-muted small fw-medium">{{ t('Nhân sự đang làm việc', current_lang) }}</span>
-          <span class="num-tabular fw-bold text-dark" style="font-size: 13px;">{{ person_count }} {{ t('người', current_lang) }}</span>
-        </div>
-
-        <div class="border-top" style="border-color: #f1f5f9 !important;"></div>
-
-        <!-- Procurement Contracts -->
-        <div class="d-flex justify-content-between align-items-center">
-          <span class="text-muted small fw-medium">{{ t('Hợp đồng mua sắm', current_lang) }}</span>
-          <span class="num-tabular fw-bold text-dark" style="font-size: 13px;">{{ contract_count }} {{ t('hợp đồng', current_lang) }}</span>
-        </div>
-
-        <div class="border-top" style="border-color: #f1f5f9 !important;"></div>
-
-        <!-- Cards on Loan -->
-        <div class="d-flex justify-content-between align-items-center">
-          <span class="text-muted small fw-medium">{{ t('Thẻ đang mượn', current_lang) }}</span>
-          <span class="num-tabular fw-bold text-dark" style="font-size: 13px;">{{ active_card_loans }} {{ t('thẻ', current_lang) }}</span>
-        </div>
-      </div>
-    </div>
-
     {% if not is_executive %}
-    <!-- Direct Quick Actions Card (Clean action rows, zero paragraphs) -->
-    <div class="card p-4">
-      <div class="card-title fw-bold mb-3" style="font-size: 14px;">{{ t('Thao tác nhanh', current_lang) }}</div>
+    <!-- Quick Actions Card -->
+    <div class="card p-3" style="border: 1px solid var(--toku-border); border-radius: 12px; background: #ffffff;">
+      <div class="card-title fw-bold mb-3 px-1" style="font-size: 13.5px; color: #0f172a;">{{ t('Thao tác nhanh', current_lang) }}</div>
       <div class="d-flex flex-column gap-2">
         {% if is_admin %}
-        <a href="{{ url_for('admin:create', identity='asset') }}" class="btn btn-outline-secondary d-flex align-items-center justify-content-between py-2 px-3 text-start" style="font-size: 12.5px; font-weight: 600;">
-          <span><i class="fa-solid fa-plus text-primary me-2"></i>{{ t('Thêm thiết bị mới', current_lang) }}</span>
+        <a href="{{ url_for('admin:create', identity='assignment') }}" class="btn toku-quick-btn d-flex align-items-center justify-content-between py-2 px-3 text-start">
+          <span class="d-flex align-items-center gap-2" style="font-size: 12.5px; font-weight: 600;">
+            <i class="fa-solid fa-arrow-right-arrow-left" style="color: #059669; width: 16px;"></i>
+            <span>{{ t('Cấp phát tài sản', current_lang) }}</span>
+          </span>
           <i class="fa-solid fa-chevron-right text-muted" style="font-size: 10px;"></i>
         </a>
-        <a href="{{ url_for('admin:create', identity='assignment') }}" class="btn btn-outline-secondary d-flex align-items-center justify-content-between py-2 px-3 text-start" style="font-size: 12.5px; font-weight: 600;">
-          <span><i class="fa-solid fa-arrow-right-arrow-left text-warning me-2"></i>{{ t('Cấp phát tài sản', current_lang) }}</span>
+        <a href="{{ url_for('admin:create', identity='asset') }}" class="btn toku-quick-btn d-flex align-items-center justify-content-between py-2 px-3 text-start">
+          <span class="d-flex align-items-center gap-2" style="font-size: 12.5px; font-weight: 600;">
+            <i class="fa-solid fa-laptop-medical" style="color: #4D5CB0; width: 16px;"></i>
+            <span>{{ t('Thêm thiết bị mới', current_lang) }}</span>
+          </span>
           <i class="fa-solid fa-chevron-right text-muted" style="font-size: 10px;"></i>
         </a>
-        {% endif %}
-        <a href="{{ url_for('admin:create', identity='person') }}" class="btn btn-outline-secondary d-flex align-items-center justify-content-between py-2 px-3 text-start" style="font-size: 12.5px; font-weight: 600;">
-          <span><i class="fa-solid fa-user-plus text-info me-2"></i>{{ t('Thêm nhân sự', current_lang) }}</span>
+        <a href="{{ url_for('admin:create', identity='card-loan') }}" class="btn toku-quick-btn d-flex align-items-center justify-content-between py-2 px-3 text-start">
+          <span class="d-flex align-items-center gap-2" style="font-size: 12.5px; font-weight: 600;">
+            <i class="fa-solid fa-id-badge" style="color: #475569; width: 16px;"></i>
+            <span>{{ t('Cho mượn thẻ', current_lang) }}</span>
+          </span>
           <i class="fa-solid fa-chevron-right text-muted" style="font-size: 10px;"></i>
         </a>
-        <a href="{{ url_for('admin:create', identity='card-loan') }}" class="btn btn-outline-secondary d-flex align-items-center justify-content-between py-2 px-3 text-start" style="font-size: 12.5px; font-weight: 600;">
-          <span><i class="fa-solid fa-id-badge text-secondary me-2"></i>{{ t('Cho mượn thẻ', current_lang) }}</span>
+        <a href="{{ url_for('admin:create', identity='person') }}" class="btn toku-quick-btn d-flex align-items-center justify-content-between py-2 px-3 text-start">
+          <span class="d-flex align-items-center gap-2" style="font-size: 12.5px; font-weight: 600;">
+            <i class="fa-solid fa-user-plus" style="color: #0284c7; width: 16px;"></i>
+            <span>{{ t('Thêm nhân sự', current_lang) }}</span>
+          </span>
           <i class="fa-solid fa-chevron-right text-muted" style="font-size: 10px;"></i>
         </a>
-        {% if is_ga_manager %}
-        <a href="{{ url_for('admin:create', identity='phone') }}" class="btn btn-outline-secondary d-flex align-items-center justify-content-between py-2 px-3 text-start" style="font-size: 12.5px; font-weight: 600;">
-          <span><i class="fa-solid fa-phone text-success me-2"></i>{{ t('Thêm danh bạ thoại', current_lang) }}</span>
+        <a href="{{ url_for('admin:list', identity='contract') }}" class="btn toku-quick-btn d-flex align-items-center justify-content-between py-2 px-3 text-start">
+          <span class="d-flex align-items-center gap-2" style="font-size: 12.5px; font-weight: 600;">
+            <i class="fa-solid fa-file-contract" style="color: #d97706; width: 16px;"></i>
+            <span>{{ t('Hợp đồng & Nhập kho', current_lang) }}</span>
+          </span>
+          <i class="fa-solid fa-chevron-right text-muted" style="font-size: 10px;"></i>
+        </a>
+        {% elif is_ga_manager %}
+        <a href="{{ url_for('admin:create', identity='card-loan') }}" class="btn toku-quick-btn d-flex align-items-center justify-content-between py-2 px-3 text-start">
+          <span class="d-flex align-items-center gap-2" style="font-size: 12.5px; font-weight: 600;">
+            <i class="fa-solid fa-id-badge" style="color: #475569; width: 16px;"></i>
+            <span>{{ t('Cho mượn thẻ', current_lang) }}</span>
+          </span>
+          <i class="fa-solid fa-chevron-right text-muted" style="font-size: 10px;"></i>
+        </a>
+        <a href="{{ url_for('admin:create', identity='person') }}" class="btn toku-quick-btn d-flex align-items-center justify-content-between py-2 px-3 text-start">
+          <span class="d-flex align-items-center gap-2" style="font-size: 12.5px; font-weight: 600;">
+            <i class="fa-solid fa-user-plus" style="color: #0284c7; width: 16px;"></i>
+            <span>{{ t('Thêm nhân sự', current_lang) }}</span>
+          </span>
+          <i class="fa-solid fa-chevron-right text-muted" style="font-size: 10px;"></i>
+        </a>
+        <a href="{{ url_for('admin:create', identity='phone') }}" class="btn toku-quick-btn d-flex align-items-center justify-content-between py-2 px-3 text-start">
+          <span class="d-flex align-items-center gap-2" style="font-size: 12.5px; font-weight: 600;">
+            <i class="fa-solid fa-phone" style="color: #059669; width: 16px;"></i>
+            <span>{{ t('Thêm danh bạ thoại', current_lang) }}</span>
+          </span>
           <i class="fa-solid fa-chevron-right text-muted" style="font-size: 10px;"></i>
         </a>
         {% endif %}
       </div>
     </div>
     {% endif %}
+
+    <!-- Operations Snapshot Card -->
+    <div class="card p-3" style="border: 1px solid var(--toku-border); border-radius: 12px; background: #ffffff;">
+      <div class="card-title fw-bold mb-3 px-1" style="font-size: 13.5px; color: #0f172a;">{{ t('Chỉ số vận hành', current_lang) }}</div>
+      <div class="d-flex flex-column gap-2.5 px-1">
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="text-muted" style="font-size: 12.5px;">{{ t('Nhân sự đang làm việc', current_lang) }}</span>
+          <span class="fw-bold text-dark num-tabular" style="font-size: 13.5px;">{{ person_count }} {{ t('người', current_lang) }}</span>
+        </div>
+        <div class="border-top" style="border-color: #f1f5f9 !important;"></div>
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="text-muted" style="font-size: 12.5px;">{{ t('Hợp đồng mua sắm', current_lang) }}</span>
+          <span class="fw-bold text-dark num-tabular" style="font-size: 13.5px;">{{ contract_count }} {{ t('hợp đồng', current_lang) }}</span>
+        </div>
+        <div class="border-top" style="border-color: #f1f5f9 !important;"></div>
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="text-muted" style="font-size: 12.5px;">{{ t('Thẻ đang mượn', current_lang) }}</span>
+          <span class="fw-bold text-dark num-tabular" style="font-size: 13.5px;">{{ active_card_loans }} {{ t('thẻ', current_lang) }}</span>
+        </div>
+      </div>
+    </div>
   </div>
 
   {% else %}
   <!-- Layout for GA Manager & Executive (can_view_audit is False) -->
   <div class="{% if is_executive %}col-12{% else %}col-lg-6{% endif %}">
-    <!-- Operational Metrics Summary Card -->
-    <div class="card p-4 h-100">
-      <div class="card-title fw-bold mb-3" style="font-size: 14px;">{{ t('Tổng quan vận hành', current_lang) }}</div>
+    <div class="card p-4 h-100" style="border: 1px solid var(--toku-border); border-radius: 12px; background: #ffffff;">
+      <div class="card-title fw-bold mb-3" style="font-size: 14px; color: #0f172a;">{{ t('Tổng quan vận hành', current_lang) }}</div>
       
       <div class="d-flex flex-column gap-3">
         <!-- Allocation Ratio -->
         <div>
           <div class="d-flex justify-content-between align-items-center mb-1">
             <span class="text-muted small fw-medium">{{ t('Tỷ lệ cấp phát', current_lang) }}</span>
-            <span class="num-tabular fw-bold text-dark" style="font-size: 13px;">{{ allocation_rate }}%</span>
+            <span class="num-tabular fw-bold text-dark" style="font-size: 13.5px;">{{ allocation_rate }}%</span>
           </div>
           <div class="progress" style="height: 5px; background-color: #f1f5f9; border-radius: 3px;">
             <div class="progress-bar" role="progressbar" style="width: {{ allocation_rate }}%; background-color: #4D5CB0; border-radius: 3px;"></div>
@@ -414,7 +547,7 @@
         <!-- Total Personnel -->
         <div class="d-flex justify-content-between align-items-center">
           <span class="text-muted small fw-medium">{{ t('Nhân sự đang làm việc', current_lang) }}</span>
-          <span class="num-tabular fw-bold text-dark" style="font-size: 13px;">{{ person_count }} {{ t('người', current_lang) }}</span>
+          <span class="num-tabular fw-bold text-dark" style="font-size: 13.5px;">{{ person_count }} {{ t('người', current_lang) }}</span>
         </div>
 
         <div class="border-top" style="border-color: #f1f5f9 !important;"></div>
@@ -422,7 +555,7 @@
         <!-- Procurement Contracts -->
         <div class="d-flex justify-content-between align-items-center">
           <span class="text-muted small fw-medium">{{ t('Hợp đồng mua sắm', current_lang) }}</span>
-          <span class="num-tabular fw-bold text-dark" style="font-size: 13px;">{{ contract_count }} {{ t('hợp đồng', current_lang) }}</span>
+          <span class="num-tabular fw-bold text-dark" style="font-size: 13.5px;">{{ contract_count }} {{ t('hợp đồng', current_lang) }}</span>
         </div>
 
         <div class="border-top" style="border-color: #f1f5f9 !important;"></div>
@@ -430,7 +563,7 @@
         <!-- Cards on Loan -->
         <div class="d-flex justify-content-between align-items-center">
           <span class="text-muted small fw-medium">{{ t('Thẻ đang mượn', current_lang) }}</span>
-          <span class="num-tabular fw-bold text-dark" style="font-size: 13px;">{{ active_card_loans }} {{ t('thẻ', current_lang) }}</span>
+          <span class="num-tabular fw-bold text-dark" style="font-size: 13.5px;">{{ active_card_loans }} {{ t('thẻ', current_lang) }}</span>
         </div>
       </div>
     </div>
@@ -438,20 +571,29 @@
 
   {% if not is_executive %}
   <div class="col-lg-6">
-    <!-- Direct Quick Actions Card for GA Manager -->
-    <div class="card p-4 h-100">
-      <div class="card-title fw-bold mb-3" style="font-size: 14px;">{{ t('Thao tác nhanh', current_lang) }}</div>
+    <!-- Quick Actions Card for GA Manager -->
+    <div class="card p-4 h-100" style="border: 1px solid var(--toku-border); border-radius: 12px; background: #ffffff;">
+      <div class="card-title fw-bold mb-3" style="font-size: 14px; color: #0f172a;">{{ t('Thao tác nhanh', current_lang) }}</div>
       <div class="d-flex flex-column gap-2">
-        <a href="{{ url_for('admin:create', identity='person') }}" class="btn btn-outline-secondary d-flex align-items-center justify-content-between py-2 px-3 text-start" style="font-size: 12.5px; font-weight: 600;">
-          <span><i class="fa-solid fa-user-plus text-info me-2"></i>{{ t('Thêm nhân sự', current_lang) }}</span>
+        <a href="{{ url_for('admin:create', identity='person') }}" class="btn toku-quick-btn d-flex align-items-center justify-content-between py-2 px-3 text-start">
+          <span class="d-flex align-items-center gap-2" style="font-size: 12.5px; font-weight: 600;">
+            <i class="fa-solid fa-user-plus" style="color: #0284c7; width: 16px;"></i>
+            <span>{{ t('Thêm nhân sự', current_lang) }}</span>
+          </span>
           <i class="fa-solid fa-chevron-right text-muted" style="font-size: 10px;"></i>
         </a>
-        <a href="{{ url_for('admin:create', identity='card-loan') }}" class="btn btn-outline-secondary d-flex align-items-center justify-content-between py-2 px-3 text-start" style="font-size: 12.5px; font-weight: 600;">
-          <span><i class="fa-solid fa-id-badge text-secondary me-2"></i>{{ t('Cho mượn thẻ', current_lang) }}</span>
+        <a href="{{ url_for('admin:create', identity='card-loan') }}" class="btn toku-quick-btn d-flex align-items-center justify-content-between py-2 px-3 text-start">
+          <span class="d-flex align-items-center gap-2" style="font-size: 12.5px; font-weight: 600;">
+            <i class="fa-solid fa-id-badge" style="color: #475569; width: 16px;"></i>
+            <span>{{ t('Cho mượn thẻ', current_lang) }}</span>
+          </span>
           <i class="fa-solid fa-chevron-right text-muted" style="font-size: 10px;"></i>
         </a>
-        <a href="{{ url_for('admin:create', identity='phone') }}" class="btn btn-outline-secondary d-flex align-items-center justify-content-between py-2 px-3 text-start" style="font-size: 12.5px; font-weight: 600;">
-          <span><i class="fa-solid fa-phone text-success me-2"></i>{{ t('Thêm danh bạ thoại', current_lang) }}</span>
+        <a href="{{ url_for('admin:create', identity='phone') }}" class="btn toku-quick-btn d-flex align-items-center justify-content-between py-2 px-3 text-start">
+          <span class="d-flex align-items-center gap-2" style="font-size: 12.5px; font-weight: 600;">
+            <i class="fa-solid fa-phone" style="color: #059669; width: 16px;"></i>
+            <span>{{ t('Thêm danh bạ thoại', current_lang) }}</span>
+          </span>
           <i class="fa-solid fa-chevron-right text-muted" style="font-size: 10px;"></i>
         </a>
       </div>
