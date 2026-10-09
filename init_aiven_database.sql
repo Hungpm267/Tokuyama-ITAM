@@ -609,27 +609,28 @@ CREATE OR REPLACE FUNCTION itam_audit_immutable()
         RETURNS trigger AS $$
         BEGIN
             RAISE EXCEPTION
-                'audit_logs chi cho phep INSERT va SELECT (thao tac bi chan: %%)',
+                'audit_logs chi cho phep INSERT va SELECT (thao tac bi chan: %)',
                 TG_OP
             USING ERRCODE = 'check_violation';
         END;
-        $$ LANGUAGE plpgsql;;
+        $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_audit_logs_no_update
         BEFORE UPDATE ON audit_logs
-        FOR EACH ROW EXECUTE FUNCTION itam_audit_immutable();;
+        FOR EACH ROW EXECUTE FUNCTION itam_audit_immutable();
 
 CREATE TRIGGER trg_audit_logs_no_delete
         BEFORE DELETE ON audit_logs
-        FOR EACH ROW EXECUTE FUNCTION itam_audit_immutable();;
+        FOR EACH ROW EXECUTE FUNCTION itam_audit_immutable();
 
 CREATE TRIGGER trg_audit_logs_no_truncate
         BEFORE TRUNCATE ON audit_logs
-        FOR EACH STATEMENT EXECUTE FUNCTION itam_audit_immutable();;
+        FOR EACH STATEMENT EXECUTE FUNCTION itam_audit_immutable();
 
 UPDATE alembic_version SET version_num='0002' WHERE alembic_version.version_num = '0001';
 
-COMMIT;
+-- Foreign Key bổ sung cho users.role_id liên kết roles.id (do use_alter=True)
+ALTER TABLE users ADD CONSTRAINT fk_users_role_id FOREIGN KEY (role_id) REFERENCES roles (id) ON DELETE RESTRICT;
 
 
 
@@ -721,22 +722,22 @@ ON CONFLICT (role_id, module, action) DO NOTHING;
 -- ga.manager: TokuyamaGa2026!@#
 -- executive: TokuyamaExec2026!@#
 INSERT INTO users (id, username, password_hash, display_name, role_id, preferred_lang, is_active, created_at, updated_at, is_deleted) VALUES
-(1, 'it.admin', '$argon2id$v=19$m=65536,t=3,p=4$5cgF4uQl+q8678odCck81Q$QSXaUypxxW000TyI4zSM7ei43pzdDp2LyKGfQITA1Tc', 'IT Administrator', 1, 'vi', true, now(), now(), false),
-(2, 'ga.manager', '$argon2id$v=19$m=65536,t=3,p=4$Azxrtng46+kY0WJgmZbbtw$nJBzCugO8XJ02t2GK0UnLnZjpdPNSmd4Di/KO3+h/2w', 'Trưởng phòng GA (Tổng vụ)', 2, 'vi', true, now(), now(), false),
-(3, 'executive', '$argon2id$v=19$m=65536,t=3,p=4$6jhVvYiv6FKi8iJg2dOA7w$KUTgG4SSFVQbjy44vbm2H44GEdiEj4YVErc/4EKh5+U', 'Ban Giám Đốc (Executive)', 3, 'ja', true, now(), now(), false)
+(1, 'it.admin', '$argon2id$v=19$m=65536,t=3,p=4$tWds8vv6u5vfAOYjjuehcA$SjENve73oZ68Gy46OJ+skkKDfqleBaEWP6XAxOKM37g', 'IT Administrator', 1, 'vi', true, now(), now(), false),
+(2, 'ga.manager', '$argon2id$v=19$m=65536,t=3,p=4$XHRtEq7a1d9MYjBmFuwJIw$DwXZdQV+Fhngno1z22k9ErVnL4mjcMNc8EL+EjPVqUM', 'Trưởng phòng GA (Tổng vụ)', 2, 'vi', true, now(), now(), false),
+(3, 'executive', '$argon2id$v=19$m=65536,t=3,p=4$x9hWryYDOlOdtMx9+4jKLA$9XjvkLQjTZ7MLJPwpjc/+8QKLxupYyfQp9F6NPwivKU', 'Ban Giám Đốc (Executive)', 3, 'ja', true, now(), now(), false)
 ON CONFLICT (id) DO NOTHING;
 
 SELECT setval('users_id_seq', (SELECT MAX(id) FROM users));
 
 -- 4. Initial Asset Categories
-INSERT INTO asset_categories (id, code, name_en, name_ja, created_at, updated_at, is_deleted) VALUES
-(1, 'LAPTOP', 'Laptop / Notebook', 'ノートパソコン', now(), now(), false),
-(2, 'DESKTOP', 'Desktop PC', 'デスクトップパソコン', now(), now(), false),
-(3, 'MONITOR', 'Monitor / Display', '液晶モニター', now(), now(), false),
-(4, 'SERVER', 'Server Hardware', 'サーバー機器', now(), now(), false),
-(5, 'NETWORK', 'Network / Switch / Router', 'ネットワーク機器', now(), now(), false),
-(6, 'PRINTER', 'Printer / Copier', 'プリンター・複合機', now(), now(), false),
-(7, 'PERIPHERAL', 'Peripherals / Accessories', '周辺機器・アクセサリ', now(), now(), false)
+INSERT INTO asset_categories (id, name_en, name_ja, created_at, updated_at, is_deleted) VALUES
+(1, 'Laptop / Notebook', 'ノートパソコン', now(), now(), false),
+(2, 'Desktop PC', 'デスクトップパソコン', now(), now(), false),
+(3, 'Monitor / Display', '液晶モニター', now(), now(), false),
+(4, 'Server Hardware', 'サーバー機器', now(), now(), false),
+(5, 'Network / Switch / Router', 'ネットワーク機器', now(), now(), false),
+(6, 'Printer / Copier', 'プリンター・複合機', now(), now(), false),
+(7, 'Peripherals / Accessories', '周辺機器・アクセサリ', now(), now(), false)
 ON CONFLICT (id) DO NOTHING;
 
 SELECT setval('asset_categories_id_seq', (SELECT MAX(id) FROM asset_categories));
@@ -754,16 +755,16 @@ ON CONFLICT (id) DO NOTHING;
 
 SELECT setval('departments_id_seq', (SELECT MAX(id) FROM departments));
 
--- 6. Initial Office Locations
-INSERT INTO office_locations (id, building, floor, room_en, room_ja, created_at, updated_at, is_deleted) VALUES
-(1, 'Main Building', 1, 'GA & Admin Office', '総務事務所', now(), now(), false),
-(2, 'Main Building', 1, 'Server Room', 'サーバー室', now(), now(), false),
-(3, 'Main Building', 2, 'Director Office', '役員室', now(), now(), false),
-(4, 'Main Building', 2, 'Meeting Room A', '会議室A', now(), now(), false),
-(5, 'Factory Plant', 1, 'Control Room', '中央制御室', now(), now(), false)
+-- 6. Initial Locations
+INSERT INTO locations (id, building, floor, room_en, room_ja, created_at, updated_at, is_deleted) VALUES
+(1, 'Main Building', '1', 'GA & Admin Office', '総務事務所', now(), now(), false),
+(2, 'Main Building', '1', 'Server Room', 'サーバー室', now(), now(), false),
+(3, 'Main Building', '2', 'Director Office', '役員室', now(), now(), false),
+(4, 'Main Building', '2', 'Meeting Room A', '会議室A', now(), now(), false),
+(5, 'Factory Plant', '1', 'Control Room', '中央制御室', now(), now(), false)
 ON CONFLICT (id) DO NOTHING;
 
-SELECT setval('office_locations_id_seq', (SELECT MAX(id) FROM office_locations));
+SELECT setval('locations_id_seq', (SELECT MAX(id) FROM locations));
 
 
 -- Hoàn tất khởi tạo cơ sở dữ liệu

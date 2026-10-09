@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 from argon2 import PasswordHasher
 
+sys.path.insert(0, ".")
 from app.enums import DEFAULT_ROLE_PERMISSIONS, RoleCode
 
 ph = PasswordHasher()
@@ -28,6 +29,23 @@ for line in alembic_sql.splitlines():
         continue
     clean_lines.append(line)
 clean_ddl = "\n".join(clean_lines)
+
+# Bỏ COMMIT trung gian của Alembic để gộp DDL và Seed data vào 1 transaction duy nhất
+clean_ddl = clean_ddl.rstrip()
+if clean_ddl.endswith("COMMIT;"):
+    clean_ddl = clean_ddl[:-7].rstrip()
+
+# Sửa lỗi format escape trong PL/pgSQL trigger sinh ra từ alembic --sql
+clean_ddl = clean_ddl.replace("(thao tac bi chan: %%)", "(thao tac bi chan: %)")
+clean_ddl = clean_ddl.replace("plpgsql;;", "plpgsql;")
+clean_ddl = clean_ddl.replace("itam_audit_immutable();;", "itam_audit_immutable();")
+
+# Bổ sung Foreign Key Constraint cho users.role_id -> roles.id (do use_alter=True trong offline mode)
+fk_users_role_sql = """
+-- Foreign Key bổ sung cho users.role_id liên kết roles.id (do use_alter=True)
+ALTER TABLE users ADD CONSTRAINT fk_users_role_id FOREIGN KEY (role_id) REFERENCES roles (id) ON DELETE RESTRICT;
+"""
+clean_ddl += "\n" + fk_users_role_sql
 
 # 2. Xây dựng Seed Data SQL
 seed_sql = """
@@ -77,14 +95,14 @@ ON CONFLICT (id) DO NOTHING;
 SELECT setval('users_id_seq', (SELECT MAX(id) FROM users));
 
 -- 4. Initial Asset Categories
-INSERT INTO asset_categories (id, code, name_en, name_ja, created_at, updated_at, is_deleted) VALUES
-(1, 'LAPTOP', 'Laptop / Notebook', 'ノートパソコン', now(), now(), false),
-(2, 'DESKTOP', 'Desktop PC', 'デスクトップパソコン', now(), now(), false),
-(3, 'MONITOR', 'Monitor / Display', '液晶モニター', now(), now(), false),
-(4, 'SERVER', 'Server Hardware', 'サーバー機器', now(), now(), false),
-(5, 'NETWORK', 'Network / Switch / Router', 'ネットワーク機器', now(), now(), false),
-(6, 'PRINTER', 'Printer / Copier', 'プリンター・複合機', now(), now(), false),
-(7, 'PERIPHERAL', 'Peripherals / Accessories', '周辺機器・アクセサリ', now(), now(), false)
+INSERT INTO asset_categories (id, name_en, name_ja, created_at, updated_at, is_deleted) VALUES
+(1, 'Laptop / Notebook', 'ノートパソコン', now(), now(), false),
+(2, 'Desktop PC', 'デスクトップパソコン', now(), now(), false),
+(3, 'Monitor / Display', '液晶モニター', now(), now(), false),
+(4, 'Server Hardware', 'サーバー機器', now(), now(), false),
+(5, 'Network / Switch / Router', 'ネットワーク機器', now(), now(), false),
+(6, 'Printer / Copier', 'プリンター・複合機', now(), now(), false),
+(7, 'Peripherals / Accessories', '周辺機器・アクセサリ', now(), now(), false)
 ON CONFLICT (id) DO NOTHING;
 
 SELECT setval('asset_categories_id_seq', (SELECT MAX(id) FROM asset_categories));
@@ -102,16 +120,16 @@ ON CONFLICT (id) DO NOTHING;
 
 SELECT setval('departments_id_seq', (SELECT MAX(id) FROM departments));
 
--- 6. Initial Office Locations
-INSERT INTO office_locations (id, building, floor, room_en, room_ja, created_at, updated_at, is_deleted) VALUES
-(1, 'Main Building', 1, 'GA & Admin Office', '総務事務所', now(), now(), false),
-(2, 'Main Building', 1, 'Server Room', 'サーバー室', now(), now(), false),
-(3, 'Main Building', 2, 'Director Office', '役員室', now(), now(), false),
-(4, 'Main Building', 2, 'Meeting Room A', '会議室A', now(), now(), false),
-(5, 'Factory Plant', 1, 'Control Room', '中央制御室', now(), now(), false)
+-- 6. Initial Locations
+INSERT INTO locations (id, building, floor, room_en, room_ja, created_at, updated_at, is_deleted) VALUES
+(1, 'Main Building', '1', 'GA & Admin Office', '総務事務所', now(), now(), false),
+(2, 'Main Building', '1', 'Server Room', 'サーバー室', now(), now(), false),
+(3, 'Main Building', '2', 'Director Office', '役員室', now(), now(), false),
+(4, 'Main Building', '2', 'Meeting Room A', '会議室A', now(), now(), false),
+(5, 'Factory Plant', '1', 'Control Room', '中央制御室', now(), now(), false)
 ON CONFLICT (id) DO NOTHING;
 
-SELECT setval('office_locations_id_seq', (SELECT MAX(id) FROM office_locations));
+SELECT setval('locations_id_seq', (SELECT MAX(id) FROM locations));
 """
 
 full_sql = f"""-- =============================================================================
