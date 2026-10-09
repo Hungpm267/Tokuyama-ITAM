@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: tokuyama-itam
+    runtime: python
+    plan: free
+    region: singapore
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      - key: ITAM_ENV
+        value: prod
+      - key: ITAM_DATABASE_URL
+        sync: false
+      - key: ITAM_SECRET_KEY_V1
+        sync: false
+      - key: ITAM_SESSION_SECRET
+        generateValue: true
