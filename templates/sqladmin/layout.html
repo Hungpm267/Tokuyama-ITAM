@@ -28,44 +28,35 @@
         {{ display_menu(admin._menu, request) }}
       </div>
 
-      <!-- Operator Profile & Action Widget (Sleek Swiss Enterprise Design) -->
-      <div class="w-100 mt-auto border-top p-2.5 bg-white" style="border-color: var(--toku-border) !important;">
-        <div class="d-flex align-items-center justify-content-between p-2 rounded-3" style="background-color: #f8fafc; border: 1px solid var(--toku-border);">
-          <div class="d-flex align-items-center gap-2.5 min-w-0 flex-grow-1 me-2">
-            <div style="width: 34px; height: 34px; border-radius: 8px; background: linear-gradient(135deg, #4D5CB0, #3E4D9D); color: #ffffff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 2px 4px rgba(77, 92, 176, 0.2);">
-              {% set user_role = request.session.get('role', 'ADMIN') %}
-              {% if user_role == 'ADMIN' %}
-              <i class="fa-solid fa-shield-halved" style="font-size: 14px;"></i>
-              {% elif user_role == 'GA_MANAGER' %}
-              <i class="fa-solid fa-user-tie" style="font-size: 14px;"></i>
-              {% else %}
-              <i class="fa-solid fa-user" style="font-size: 14px;"></i>
-              {% endif %}
-            </div>
-            <div class="d-flex flex-column min-w-0">
-              <span class="text-truncate fw-bold" style="font-size: 13px; color: #0f172a; line-height: 1.25;" title="{{ request.session.get('display_name', '') or request.session.get('username', 'it.admin') }}">
-                {{ request.session.get("display_name") or request.session.get("username", "it.admin") }}
-              </span>
-              <span class="text-truncate" style="font-size: 11px; color: #64748b; font-weight: 500; line-height: 1.2; margin-top: 2px;">
-                {{ t(request.session.get('role_title', 'ADMINISTRATOR'), current_lang) }}
-              </span>
-            </div>
+      <!-- Operator Profile & Action Strip (Seamless Swiss Enterprise Design) -->
+      <div class="w-100 mt-auto border-top px-3 py-2 bg-white d-flex align-items-center justify-content-between flex-shrink-0" style="border-color: var(--toku-border) !important; min-height: 50px;">
+        <div class="d-flex align-items-center gap-2 min-w-0 flex-grow-1 me-2">
+          <div style="width: 28px; height: 28px; border-radius: 50%; background-color: #EEF2FF; color: #4D5CB0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1px solid #C7D2FE;">
+            <i class="fa-solid fa-user" style="font-size: 11px;"></i>
           </div>
-          {% if admin.authentication_backend %}
-          <a href="{{ request.url_for('admin:logout') }}" 
-             class="btn btn-sm p-0 d-flex align-items-center justify-content-center flex-shrink-0 text-decoration-none shadow-none" 
-             title="{{ t('Đăng xuất', current_lang) }}"
-             style="width: 32px; height: 32px; border-radius: 6px; border: 1px solid var(--toku-border); background-color: #ffffff; color: #64748b; transition: all 0.15s ease;"
-             onmouseover="this.style.backgroundColor='#fef2f2'; this.style.borderColor='#fca5a5'; this.style.color='#dc2626';" 
-             onmouseout="this.style.backgroundColor='#ffffff'; this.style.borderColor='var(--toku-border)'; this.style.color='#64748b';">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-              <polyline points="16 17 21 12 16 7"></polyline>
-              <line x1="21" y1="12" x2="9" y2="12"></line>
-            </svg>
-          </a>
-          {% endif %}
+          <div class="d-flex flex-column min-w-0">
+            <span class="text-truncate fw-bold text-dark" style="font-size: 12.5px; line-height: 1.25;" title="{{ request.session.get('display_name', '') or request.session.get('username', 'it.admin') }}">
+              {{ request.session.get("display_name") or request.session.get("username", "it.admin") }}
+            </span>
+            <span class="text-truncate" style="font-size: 10.5px; color: #64748b; font-weight: 500; line-height: 1.2; margin-top: 1px;">
+              {{ t(request.session.get('role_title', 'ADMINISTRATOR'), current_lang) }}
+            </span>
+          </div>
         </div>
+        {% if admin.authentication_backend %}
+        <a href="{{ request.url_for('admin:logout') }}" 
+           class="btn btn-sm p-0 d-flex align-items-center justify-content-center flex-shrink-0 text-decoration-none shadow-none" 
+           title="{{ t('Đăng xuất', current_lang) }}"
+           style="width: 28px; height: 28px; border-radius: 6px; border: 1px solid transparent; background: transparent; color: #64748b; transition: all 0.15s ease;"
+           onmouseover="this.style.backgroundColor='#fee2e2'; this.style.color='#dc2626';" 
+           onmouseout="this.style.backgroundColor='transparent'; this.style.color='#64748b';">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+        </a>
+        {% endif %}
       </div>
 
     </div>
@@ -95,46 +86,94 @@
         </div>
       </form>
 
-      <!-- Sleek Enterprise Language Selector Dropdown -->
-      <div class="dropdown">
-        <button class="btn btn-sm d-inline-flex align-items-center gap-1.5 px-2.5 py-1 text-decoration-none shadow-none" 
-                type="button" id="langDropdown" data-bs-toggle="dropdown" aria-expanded="false"
-                style="background: #ffffff; border: 1px solid var(--toku-border); border-radius: 8px; font-size: 12px; font-weight: 600; color: #334155; height: 30px; transition: all 0.15s ease;">
-          <i class="fa-solid fa-globe" style="color: #4D5CB0; font-size: 13px;"></i>
-          <span>
-            {% if current_lang == 'vi' %}Tiếng Việt
-            {% elif current_lang == 'ja' %}日本語
-            {% else %}English{% endif %}
-          </span>
-          <i class="fa-solid fa-chevron-down ms-1" style="font-size: 9px; color: #94a3b8;"></i>
-        </button>
-        <ul class="dropdown-menu dropdown-menu-end shadow-sm border py-1.5" aria-labelledby="langDropdown" 
-            style="border-color: var(--toku-border) !important; border-radius: 10px; min-width: 145px; z-index: 1050; margin-top: 4px;">
-          <li>
-            <a class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 {% if current_lang == 'vi' %}active fw-bold text-white{% endif %}" 
-               href="/admin/set-lang?lang=vi&next={{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}" 
-               style="font-size: 12.5px; {% if current_lang == 'vi' %}background-color: #4D5CB0;{% endif %}">
-              <span>🇻🇳 Tiếng Việt</span>
-              {% if current_lang == 'vi' %}<i class="fa-solid fa-check ms-2" style="font-size: 11px;"></i>{% endif %}
-            </a>
-          </li>
-          <li>
-            <a class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 {% if current_lang == 'en' %}active fw-bold text-white{% endif %}" 
-               href="/admin/set-lang?lang=en&next={{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}" 
-               style="font-size: 12.5px; {% if current_lang == 'en' %}background-color: #4D5CB0;{% endif %}">
-              <span>🇺🇸 English</span>
-              {% if current_lang == 'en' %}<i class="fa-solid fa-check ms-2" style="font-size: 11px;"></i>{% endif %}
-            </a>
-          </li>
-          <li>
-            <a class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 {% if current_lang == 'ja' %}active fw-bold text-white{% endif %}" 
-               href="/admin/set-lang?lang=ja&next={{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}" 
-               style="font-size: 12.5px; {% if current_lang == 'ja' %}background-color: #4D5CB0;{% endif %}">
-              <span>🇯🇵 日本語</span>
-              {% if current_lang == 'ja' %}<i class="fa-solid fa-check ms-2" style="font-size: 11px;"></i>{% endif %}
-            </a>
-          </li>
-        </ul>
+      <!-- Right Actions: Language Selector & User Profile Dropdown -->
+      <div class="d-flex align-items-center gap-2">
+        <!-- Sleek Enterprise Language Selector Dropdown -->
+        <div class="dropdown">
+          <button class="btn btn-sm d-inline-flex align-items-center gap-1.5 px-2.5 py-1 text-decoration-none shadow-none" 
+                  type="button" id="langDropdown" data-bs-toggle="dropdown" aria-expanded="false"
+                  style="background: #ffffff; border: 1px solid var(--toku-border); border-radius: 8px; font-size: 12px; font-weight: 600; color: #334155; height: 30px; transition: all 0.15s ease;">
+            <i class="fa-solid fa-globe" style="color: #4D5CB0; font-size: 13px;"></i>
+            <span>
+              {% if current_lang == 'vi' %}Tiếng Việt
+              {% elif current_lang == 'ja' %}日本語
+              {% else %}English{% endif %}
+            </span>
+            <i class="fa-solid fa-chevron-down ms-1" style="font-size: 9px; color: #94a3b8;"></i>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end shadow-sm border py-1.5" aria-labelledby="langDropdown" 
+              style="border-color: var(--toku-border) !important; border-radius: 10px; min-width: 145px; z-index: 1050; margin-top: 4px;">
+            <li>
+              <a class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 {% if current_lang == 'vi' %}active fw-bold text-white{% endif %}" 
+                 href="/admin/set-lang?lang=vi&next={{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}" 
+                 style="font-size: 12.5px; {% if current_lang == 'vi' %}background-color: #4D5CB0;{% endif %}">
+                <span>🇻🇳 Tiếng Việt</span>
+                {% if current_lang == 'vi' %}<i class="fa-solid fa-check ms-2" style="font-size: 11px;"></i>{% endif %}
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 {% if current_lang == 'en' %}active fw-bold text-white{% endif %}" 
+                 href="/admin/set-lang?lang=en&next={{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}" 
+                 style="font-size: 12.5px; {% if current_lang == 'en' %}background-color: #4D5CB0;{% endif %}">
+                <span>🇺🇸 English</span>
+                {% if current_lang == 'en' %}<i class="fa-solid fa-check ms-2" style="font-size: 11px;"></i>{% endif %}
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item d-flex align-items-center justify-content-between py-1.5 px-3 {% if current_lang == 'ja' %}active fw-bold text-white{% endif %}" 
+                 href="/admin/set-lang?lang=ja&next={{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}" 
+                 style="font-size: 12.5px; {% if current_lang == 'ja' %}background-color: #4D5CB0;{% endif %}">
+                <span>🇯🇵 日本語</span>
+                {% if current_lang == 'ja' %}<i class="fa-solid fa-check ms-2" style="font-size: 11px;"></i>{% endif %}
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <div style="width: 1px; height: 18px; background-color: var(--toku-border);" class="d-none d-sm-block"></div>
+
+        <!-- Topbar User Profile Menu -->
+        <div class="dropdown">
+          <button class="btn btn-sm d-inline-flex align-items-center gap-1.5 px-2.5 py-1 text-decoration-none shadow-none" 
+                  type="button" id="userMenuDropdown" data-bs-toggle="dropdown" aria-expanded="false"
+                  style="background: #ffffff; border: 1px solid var(--toku-border); border-radius: 8px; font-size: 12px; font-weight: 600; color: #1e293b; height: 30px; transition: all 0.15s ease;">
+            <div style="width: 18px; height: 18px; border-radius: 50%; background-color: #EEF2FF; color: #4D5CB0; display: flex; align-items: center; justify-content: center; font-size: 9.5px; font-weight: 700;">
+              <i class="fa-solid fa-user" style="font-size: 9px;"></i>
+            </div>
+            <span class="text-truncate d-none d-md-inline" style="max-width: 130px;">
+              {{ request.session.get("display_name") or request.session.get("username", "it.admin") }}
+            </span>
+            <i class="fa-solid fa-chevron-down ms-0.5" style="font-size: 8px; color: #94a3b8;"></i>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end shadow-sm border py-2" aria-labelledby="userMenuDropdown" 
+              style="border-color: var(--toku-border) !important; border-radius: 10px; min-width: 190px; z-index: 1050; margin-top: 4px;">
+            <li class="px-3 py-1.5 border-bottom mb-1" style="border-color: #f1f5f9 !important;">
+              <div class="fw-bold text-dark text-truncate" style="font-size: 13px;">
+                {{ request.session.get("display_name") or request.session.get("username", "it.admin") }}
+              </div>
+              <div class="d-flex align-items-center gap-1.5 mt-1">
+                <span class="badge" style="background-color: #EEF2FF; color: #4D5CB0; font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 4px;">
+                  {{ t(request.session.get('role_title', 'ADMINISTRATOR'), current_lang) }}
+                </span>
+                <span class="text-muted" style="font-size: 10.5px;">@{{ request.session.get('username', 'admin') }}</span>
+              </div>
+            </li>
+            {% if admin.authentication_backend %}
+            <li>
+              <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 text-danger" 
+                 href="{{ request.url_for('admin:logout') }}" 
+                 style="font-size: 12.5px; font-weight: 600;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                  <polyline points="16 17 21 12 16 7"></polyline>
+                  <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+                <span>{{ t('Đăng xuất', current_lang) }}</span>
+              </a>
+            </li>
+            {% endif %}
+          </ul>
+        </div>
       </div>
     </header>
 
