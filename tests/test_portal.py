@@ -99,6 +99,6 @@ def test_admin_login_page_renders_cleanly(client: TestClient):
     res = client.get("/admin/login")
     assert res.status_code == 200
     html = res.text
-    assert "Hệ thống Quản lý Tài sản CNTT Tokuyama Vietnam" in html
+    assert "Tokuyama" in html
     assert 'name="username"' in html
     assert 'name="password"' in html

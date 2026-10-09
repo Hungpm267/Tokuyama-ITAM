@@ -88,13 +88,7 @@
 {% set current_lang = current_lang or get_current_lang(request) %}
 
 <!-- Minimalist Header Strip on Login Page -->
-<header class="w-100 d-flex align-items-center justify-content-between px-4 py-3" style="position: absolute; top: 0; left: 0; right: 0; z-index: 10;">
-  <div class="d-flex align-items-center gap-2">
-    <span style="font-size: 12px; font-weight: 800; color: #4D5CB0; letter-spacing: 0.05em;">TOKUYAMA <span style="color: #FF561D;">VIETNAM</span></span>
-    <span class="text-muted d-none d-sm-inline" style="font-size: 11px;">/</span>
-    <span class="text-secondary d-none d-sm-inline" style="font-size: 12px; font-weight: 500;">IT Asset Management</span>
-  </div>
-
+<header class="w-100 d-flex align-items-center justify-content-end px-4 py-3" style="position: absolute; top: 0; left: 0; right: 0; z-index: 10;">
   <!-- Language Selector Dropdown -->
   <div class="dropdown">
     <button class="btn btn-sm d-inline-flex align-items-center gap-1.5 px-2.5 py-1 text-decoration-none shadow-none" 
@@ -143,13 +137,7 @@
   <div class="login-card">
     <!-- Brand Masthead inside Card -->
     <div class="text-center mb-4">
-      <img src="{{ admin.logo_url or '/static/img/logo.png' }}" alt="Tokuyama" style="height: 44px; width: auto; object-fit: contain; display: inline-block;" class="mb-3">
-      <h3 class="fw-bold mb-1" style="color: #0f172a; font-size: 19px; letter-spacing: -0.01em;">
-        {{ admin.title }}
-      </h3>
-      <p class="text-muted small mb-0" style="font-size: 12.5px;">
-        {{ 'Tokuyama Vietnam IT Asset Management System' if current_lang == 'en' else ('トクヤマ・ベトナム社内IT資産管理システム' if current_lang == 'ja' else 'Hệ thống Quản lý Tài sản CNTT Tokuyama Vietnam') }}
-      </p>
+      <img src="{{ admin.logo_url or '/static/img/logo.png' }}" alt="Tokuyama" style="height: 48px; width: auto; object-fit: contain; display: inline-block;">
     </div>
 
     {% if error %}
