@@ -41,8 +41,8 @@
         {% if model_view.can_create %}
         <div class="ms-3 d-inline-block">
           <a href="{{ url_for('admin:create', identity=model_view.identity) }}" class="btn btn-primary d-inline-flex align-items-center gap-1" style="font-size: 13px; font-weight: 600;">
-            <i class="fa-solid fa-plus"></i>
-            <span>{{ '+ New' if current_lang == 'en' else ('+ 新規作成' if current_lang == 'ja' else '+ Thêm mới') }} {{ t(model_view.name, current_lang) }}</span>
+            <i class="fa-solid fa-plus me-1"></i>
+            <span>{{ 'New' if current_lang == 'en' else ('新規作成' if current_lang == 'ja' else 'Thêm mới') }} {{ t(model_view.name, current_lang) }}</span>
           </a>
         </div>
         {% endif %}

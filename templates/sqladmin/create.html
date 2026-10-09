@@ -6,7 +6,7 @@
   <div class="card shadow-sm border" style="border-color: var(--toku-border) !important; border-radius: 20px;">
     <div class="card-header bg-white py-3 d-flex align-items-center justify-content-between" style="border-bottom: 1px solid var(--toku-border) !important;">
       <h3 class="card-title fw-bold text-dark m-0" style="font-size: 16px;">
-        {{ '+ Thêm mới' if current_lang != 'en' else '+ New' }} {{ t(model_view.name, current_lang) }}
+        {{ 'New' if current_lang == 'en' else ('新規作成' if current_lang == 'ja' else 'Thêm mới') }} {{ t(model_view.name, current_lang) }}
       </h3>
       <a href="{{ url_for('admin:list', identity=model_view.identity) }}" class="btn btn-outline-secondary btn-sm" style="font-size: 13px;">
         <i class="fa-solid fa-arrow-left me-1"></i> {{ 'Quay lại' if current_lang != 'en' else 'Back to list' }}
