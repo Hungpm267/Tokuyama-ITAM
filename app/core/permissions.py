@@ -370,10 +370,14 @@ def save_role_permissions_matrix(
     if role.code == RoleCode.ADMIN.value:
         essential_admin = {
             (Module.USERS.value, PermissionAction.VIEW.value),
+            (Module.USERS.value, PermissionAction.ADD.value),
             (Module.USERS.value, PermissionAction.CHANGE.value),
+            (Module.AUDIT_LOGS.value, PermissionAction.VIEW.value),
+            (Module.SECRETS.value, PermissionAction.VIEW.value),
+            (Module.TRASH.value, PermissionAction.VIEW.value),
         }
         if not essential_admin.issubset(new_set):
-            raise ValueError("Không thể tước bỏ các quyền quản trị người dùng cốt lõi của vai trò ADMIN.")
+            raise ValueError("Không thể tước bỏ các quyền quản trị hệ thống cốt lõi (Users, Audit Logs, Secrets, Trash) của vai trò ADMIN.")
 
     # Xóa quyền bị bỏ
     to_delete = old_set - new_set

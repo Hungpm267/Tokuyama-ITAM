@@ -15,7 +15,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.admin import get_admin
+from app.admin import get_admin, invalidate_model_count_cache
 from app.core.audit import record_audit
 from app.core.i18n import get_current_lang, translate
 from app.core.permissions import has_permission
@@ -275,6 +275,7 @@ async def restore_item(
             sync_contract_delivery_status(db, line.contract_id)
 
     db.commit()
+    invalidate_model_count_cache(model_cls)
 
     return JSONResponse({
         "success": True,

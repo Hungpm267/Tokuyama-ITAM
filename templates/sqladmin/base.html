@@ -613,6 +613,115 @@
   <script type="text/javascript" src="{{ url_for('admin:statics', path='js/select2.full.min.js') }}"></script>
   <script type="text/javascript" src="{{ url_for('admin:statics', path='js/flatpickr.min.js') }}"></script>
   <script type="text/javascript" src="{{ url_for('admin:statics', path='js/main.js') }}"></script>
+
+  <!-- Tokuyama Instant Navigation & Speculative Prefetching Engine -->
+  <div id="toku-top-loader" style="position: fixed; top: 0; left: 0; height: 3px; width: 0%; background: linear-gradient(90deg, #4D5CB0 0%, #FF561D 100%); z-index: 99999; transition: width 0.25s cubic-bezier(0.1, 0.9, 0.2, 1), opacity 0.25s ease; opacity: 0; pointer-events: none; box-shadow: 0 0 10px rgba(77, 92, 176, 0.5);"></div>
+
+  <script>
+    (function() {
+      // 1. Instant Top Loading Bar Controller
+      var loader = document.getElementById('toku-top-loader');
+      var loaderTimer = null;
+
+      function startLoader() {
+        if (!loader) return;
+        loader.style.opacity = '1';
+        loader.style.width = '30%';
+        clearTimeout(loaderTimer);
+        loaderTimer = setTimeout(function() {
+          loader.style.width = '75%';
+        }, 120);
+      }
+
+      function finishLoader() {
+        if (!loader) return;
+        loader.style.width = '100%';
+        setTimeout(function() {
+          loader.style.opacity = '0';
+          setTimeout(function() {
+            loader.style.width = '0%';
+          }, 250);
+        }, 150);
+      }
+
+      // Kích hoạt thanh tiến trình ngay lập tức khi click link điều hướng nội bộ
+      document.addEventListener('click', function(e) {
+        var a = e.target.closest('a');
+        if (!a || !a.href) return;
+        if (a.target === '_blank' || a.hasAttribute('download')) return;
+        if (a.getAttribute('role') === 'button' || a.dataset.bsToggle) return;
+        if (a.href.indexOf('#') !== -1 && a.pathname === window.location.pathname) return;
+        if (a.origin !== window.location.origin) return;
+        // Bỏ qua các action logout hoặc trigger modal delete
+        if (a.pathname.indexOf('/logout') !== -1 || a.pathname.indexOf('/delete') !== -1) return;
+
+        startLoader();
+      }, true);
+
+      // 2. Speculative Link Prefetching Engine (Instant Page Hover Prefetch)
+      // Khi rê chuột vào menu/tab >= 65ms hoặc chạm tay (touchstart), prefetch trang ngầm
+      var prefetchedUrls = new Set();
+      var hoverTimer = null;
+
+      function canPrefetch(url) {
+        if (!url) return false;
+        try {
+          var parsed = new URL(url, window.location.href);
+          if (parsed.origin !== window.location.origin) return false;
+          if (parsed.pathname === window.location.pathname && parsed.search === window.location.search) return false;
+          if (parsed.pathname.indexOf('/logout') !== -1 || parsed.pathname.indexOf('/delete') !== -1 || parsed.pathname.indexOf('/export') !== -1) return false;
+          if (prefetchedUrls.has(parsed.href)) return false;
+          return true;
+        } catch (err) {
+          return false;
+        }
+      }
+
+      function prefetchUrl(url) {
+        if (!canPrefetch(url)) return;
+        var fullUrl = new URL(url, window.location.href).href;
+        prefetchedUrls.add(fullUrl);
+
+        // Tạo thẻ <link rel="prefetch"> để trình duyệt tải trước vào HTTP cache
+        var link = document.createElement('link');
+        link.rel = 'prefetch';
+        link.href = fullUrl;
+        link.as = 'document';
+        document.head.appendChild(link);
+      }
+
+      function onPointerOver(e) {
+        var a = e.target.closest('a');
+        if (!a || !a.href) return;
+        if (a.origin !== window.location.origin) return;
+
+        clearTimeout(hoverTimer);
+        hoverTimer = setTimeout(function() {
+          prefetchUrl(a.href);
+        }, 65);
+      }
+
+      function onPointerOut() {
+        clearTimeout(hoverTimer);
+      }
+
+      function onTouchStart(e) {
+        var a = e.target.closest('a');
+        if (!a || !a.href) return;
+        prefetchUrl(a.href);
+      }
+
+      document.addEventListener('mouseover', onPointerOver, { passive: true });
+      document.addEventListener('mouseout', onPointerOut, { passive: true });
+      document.addEventListener('touchstart', onTouchStart, { passive: true });
+
+      // Khi trang hoàn tất tải (hoặc back/forward cache)
+      window.addEventListener('pageshow', function() {
+        finishLoader();
+      });
+    })();
+  </script>
+
   {% block tail %}
   {% endblock %}
 </body>

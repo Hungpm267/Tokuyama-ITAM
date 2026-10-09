@@ -138,6 +138,18 @@ def invalidate_user_cache(user_id: int | None = None) -> None:
         _AUTH_USER_CACHE.pop(user_id, None)
 
 
+_MODEL_COUNT_CACHE: dict[type, tuple[float, int]] = {}
+_MODEL_COUNT_CACHE_TTL = 30.0  # 30s cache cho số lượng bản ghi để tiết kiệm roundtrip Aiven Cloud
+
+
+def invalidate_model_count_cache(model: type | None = None) -> None:
+    """Xóa cache số lượng bản ghi khi có thao tác thêm, xóa, sửa hoặc khôi phục."""
+    if model is None:
+        _MODEL_COUNT_CACHE.clear()
+    else:
+        _MODEL_COUNT_CACHE.pop(model, None)
+
+
 def get_user_from_request(request: Request, db: Any) -> User | None:
     """Trích xuất và cache thông tin User từ request để tránh truy vấn lặp lại."""
     if hasattr(request.state, "current_user") and request.state.current_user is not None:
@@ -496,14 +508,18 @@ class BaseAdminView(ModelView):
 
     async def insert_model(self, request: Request, data: dict) -> Any:
         try:
-            return await super().insert_model(request, data)
+            res = await super().insert_model(request, data)
+            invalidate_model_count_cache(self.model)
+            return res
         except Exception as e:
             lang = request.session.get("lang", "vi")
             raise ValueError(humanize_error_str(str(e), lang=lang)) from e
 
     async def update_model(self, request: Request, pk: Any, data: dict) -> Any:
         try:
-            return await super().update_model(request, pk, data)
+            res = await super().update_model(request, pk, data)
+            invalidate_model_count_cache(self.model)
+            return res
         except Exception as e:
             lang = request.session.get("lang", "vi")
             raise ValueError(humanize_error_str(str(e), lang=lang)) from e
@@ -538,7 +554,6 @@ class BaseAdminView(ModelView):
 
         await super().on_model_change(data, model, is_created, request)
 
-
     def list_query(self, request: Request) -> Select:
         stmt = super().list_query(request)
         if hasattr(self.model, "is_deleted"):
@@ -550,6 +565,23 @@ class BaseAdminView(ModelView):
         if hasattr(self.model, "is_deleted"):
             stmt = stmt.where(self.model.is_deleted.is_(False))
         return stmt
+
+    async def count(self, request: Request, stmt: Select | None = None) -> int:
+        """Đếm số bản ghi với cache RAM (TTL 30s) cho danh sách mặc định không filter.
+
+        Loại bỏ 1 round-trip SQL (~210ms) tới Aiven Cloud trên mỗi lần bấm đổi tab.
+        """
+        has_search = bool(request.query_params.get("search"))
+        if stmt is None and not has_search:
+            cached = _MODEL_COUNT_CACHE.get(self.model)
+            if cached:
+                cached_time, val = cached
+                if time.monotonic() - cached_time < _MODEL_COUNT_CACHE_TTL:
+                    return val
+            val = await super().count(request, stmt)
+            _MODEL_COUNT_CACHE[self.model] = (time.monotonic(), val)
+            return val
+        return await super().count(request, stmt)
 
     def form_edit_query(self, request: Request) -> Select:
         stmt = super().form_edit_query(request)
@@ -724,6 +756,8 @@ class BaseAdminView(ModelView):
                     ip_address=client_ip,
                 )
                 db.commit()
+
+            invalidate_model_count_cache(self.model)
 
     async def after_model_change(self, data: dict, model: Any, is_created: bool, request: Request) -> None:
         action = AuditAction.CREATE if is_created else AuditAction.UPDATE

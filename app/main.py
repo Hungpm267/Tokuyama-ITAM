@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from fastapi import FastAPI
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.requests import Request
@@ -33,13 +34,25 @@ app = FastAPI(
     redoc_url=None if is_prod else "/redoc",
 )
 
-# 1. Middlewares (Session và Request Context lưu trữ vào ContextVar)
+# 1. Middlewares (GZip nén dữ liệu mạng, Session và Request Context)
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(RequestContextMiddleware)
 app.add_middleware(
     SessionMiddleware,
     secret_key=SESSION_SECRET,
     max_age=settings.session_idle_minutes * 60,
 )
+
+
+@app.middleware("http")
+async def cache_headers_middleware(request: Request, call_next) -> Response:
+    """Tối ưu tốc độ: gắn Cache-Control cho static assets (CSS, JS, WebFonts, PNG)."""
+    response = await call_next(request)
+    path = request.url.path
+    if path.startswith("/static") or "statics" in path or path.endswith((".css", ".js", ".woff2", ".png", ".ico")):
+        response.headers["Cache-Control"] = "public, max-age=86400, stale-while-revalidate=604800"
+    return response
+
 
 # 2. Mount thư mục tĩnh Static (phục vụ logo công ty, stylesheet)
 static_dir = BASE_DIR / "static"

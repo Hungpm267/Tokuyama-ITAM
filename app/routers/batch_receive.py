@@ -9,7 +9,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
-from app.admin import get_admin
+from app.admin import get_admin, invalidate_model_count_cache
 from app.core.audit import record_audit
 from app.core.i18n import get_current_lang
 from app.core.permissions import has_permission
@@ -422,6 +422,7 @@ async def process_batch_receive(
         contract.updated_by = user.id
 
     db.commit()
+    invalidate_model_count_cache(Asset)
 
     return JSONResponse(
         content={
