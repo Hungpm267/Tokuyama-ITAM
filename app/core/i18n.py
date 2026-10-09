@@ -514,6 +514,96 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         "vi": "Không thể xóa vai trò ADMIN hệ thống.",
         "en": "Cannot delete the system ADMIN role.",
     },
+
+    # Dashboard Redesign Enhancements
+    "Xin chào": {
+        "vi": "Xin chào",
+        "en": "Welcome",
+    },
+    "Tổng quan vận hành và tài sản công nghệ thông tin Tokuyama Vietnam": {
+        "vi": "Tổng quan vận hành và tài sản công nghệ thông tin Tokuyama Vietnam",
+        "en": "Tokuyama Vietnam IT operations overview and asset landscape",
+    },
+    "Hệ thống vận hành bình thường": {
+        "vi": "Hệ thống vận hành bình thường",
+        "en": "All systems operational",
+    },
+    "cảnh báo cần chú ý": {
+        "vi": "cảnh báo cần chú ý",
+        "en": "alerts require attention",
+    },
+    "đã cấp phát": {
+        "vi": "đã cấp phát",
+        "en": "assigned",
+    },
+    "thiết bị trong kho": {
+        "vi": "thiết bị trong kho",
+        "en": "in stock",
+    },
+    "sắp hết hạn": {
+        "vi": "sắp hết hạn",
+        "en": "expiring soon",
+    },
+    "thẻ đang cho mượn": {
+        "vi": "thẻ đang cho mượn",
+        "en": "cards on loan",
+    },
+    "Đang quản lý": {
+        "vi": "Đang quản lý",
+        "en": "Active",
+    },
+    "Trang chủ": {
+        "vi": "Trang chủ",
+        "en": "Home",
+    },
+    "Hoạt động gần nhất": {
+        "vi": "Hoạt động gần nhất",
+        "en": "Recent Activity",
+    },
+    "Xem tất cả nhật ký kiểm toán": {
+        "vi": "Xem tất cả nhật ký kiểm toán",
+        "en": "View all audit logs",
+    },
+    "Đăng nhập thành công": {
+        "vi": "Đăng nhập thành công",
+        "en": "Login successful",
+    },
+    "Đăng nhập thất bại": {
+        "vi": "Đăng nhập thất bại",
+        "en": "Login failed",
+    },
+    "Tạo mới bản ghi": {
+        "vi": "Tạo mới bản ghi",
+        "en": "Created record",
+    },
+    "Cập nhật dữ liệu": {
+        "vi": "Cập nhật dữ liệu",
+        "en": "Updated data",
+    },
+    "Xóa dữ liệu": {
+        "vi": "Xóa dữ liệu",
+        "en": "Deleted record",
+    },
+    "Khôi phục dữ liệu": {
+        "vi": "Khôi phục dữ liệu",
+        "en": "Restored record",
+    },
+    "Mở khóa xem mật khẩu": {
+        "vi": "Mở khóa xem mật khẩu",
+        "en": "Password revealed",
+    },
+    "Chưa có hoạt động nào trong phiên làm việc.": {
+        "vi": "Chưa có hoạt động nào trong phiên làm việc.",
+        "en": "No activity recorded in this session.",
+    },
+    "Chỉ số vận hành": {
+        "vi": "Chỉ số vận hành",
+        "en": "Operations Snapshot",
+    },
+    "Hợp đồng & Nhập kho": {
+        "vi": "Hợp đồng & Nhập kho",
+        "en": "Contracts & Receiving",
+    },
 }
 
 # =============================================================================
@@ -935,6 +1025,28 @@ JA_TRANSLATIONS: Final[dict[str, str]] = {
     "Bàn giao / Thu hồi": "機器割当・返却",
     "Tìm kiếm toàn cục": "全体検索",
     "Thùng rác & Khôi phục": "ゴミ箱・データ復元",
+    "Xin chào": "ようこそ",
+    "Tổng quan vận hành và tài sản công nghệ thông tin Tokuyama Vietnam": "徳山ベトナム IT資産・運用ダッシュボード",
+    "Hệ thống vận hành bình thường": "システム正常稼働中",
+    "cảnh báo cần chú ý": "件の要対応アラート",
+    "đã cấp phát": "割当済み",
+    "thiết bị trong kho": "在庫機器",
+    "sắp hết hạn": "期限間近",
+    "thẻ đang cho mượn": "貸出中カード",
+    "Đang quản lý": "管理中",
+    "Hoạt động gần nhất": "最近の操作履歴",
+    "Xem tất cả nhật ký kiểm toán": "監査ログをすべて表示",
+    "Đăng nhập thành công": "ログイン成功",
+    "Đăng nhập thất bại": "ログイン失敗",
+    "Tạo mới bản ghi": "新規作成",
+    "Cập nhật dữ liệu": "データ更新",
+    "Xóa dữ liệu": "データ削除",
+    "Khôi phục dữ liệu": "データ復元",
+    "Mở khóa xem mật khẩu": "パスワード開示",
+    "Chưa có hoạt động nào trong phiên làm việc.": "本セッションの操作履歴はありません。",
+    "Chỉ số vận hành": "運用サマリー",
+    "Hợp đồng & Nhập kho": "契約・受入",
+    "Trang chủ": "ホーム",
 }
 
 JA_PROPERTY_LABELS: Final[dict[str, str]] = {

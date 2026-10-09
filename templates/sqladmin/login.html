@@ -59,27 +59,45 @@
     transform: translateY(-1px);
     color: #ffffff !important;
   }
+  /* Ẩn triệt để nút con mắt mặc định của Microsoft Edge / IE */
+  input[type="password"]::-ms-reveal,
+  input[type="password"]::-ms-clear {
+    display: none !important;
+  }
+  .password-wrapper {
+    position: relative;
+    width: 100%;
+  }
+  .password-wrapper input {
+    padding-right: 42px !important;
+    border-radius: 8px !important;
+  }
   .password-toggle-btn {
-    border: 1px solid #cbd5e1;
-    border-left: none;
-    background: #f8fafc;
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 34px;
+    height: 34px;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 6px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0 13px;
+    padding: 0;
     color: #64748b;
-    border-top-right-radius: 8px;
-    border-bottom-right-radius: 8px;
+    z-index: 5;
     transition: all 0.15s ease-in-out;
   }
   .password-toggle-btn:hover {
     color: #0f172a;
-    background-color: #f1f5f9;
+    background-color: rgba(0, 0, 0, 0.05) !important;
   }
-  .input-password-group input {
-    border-top-right-radius: 0 !important;
-    border-bottom-right-radius: 0 !important;
+  .password-toggle-btn:focus {
+    outline: none;
+    color: var(--toku-primary);
   }
 </style>
 {% endblock %}
@@ -161,11 +179,11 @@
         <label class="form-label fw-semibold" for="password" style="font-size: 12.5px; color: #334155; margin-bottom: 5px;">
           {{ 'Password' if current_lang == 'en' else ('パスワード' if current_lang == 'ja' else 'Mật khẩu') }}
         </label>
-        <div class="input-group input-password-group">
+        <div class="password-wrapper">
           <input id="password" name="password" type="password" class="form-control form-control-toku" 
                  placeholder="{{ 'Enter your password' if current_lang == 'en' else ('パスワードを入力' if current_lang == 'ja' else 'Nhập mật khẩu...') }}" 
                  required autocomplete="current-password">
-          <button class="btn password-toggle-btn" type="button" id="togglePasswordBtn" title="Hiển thị hoặc che mật khẩu" aria-label="Hiện hoặc ẩn mật khẩu">
+          <button class="password-toggle-btn" type="button" id="togglePasswordBtn" title="Hiển thị hoặc che mật khẩu" aria-label="Hiện hoặc ẩn mật khẩu">
             <!-- Icon Eye (Hiển thị) -->
             <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
