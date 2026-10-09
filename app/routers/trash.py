@@ -28,6 +28,7 @@ from app.models import (
     AssetCategory,
     AssetTag,
     Contract,
+    ContractLine,
     Department,
     License,
     LicenseProduct,
@@ -36,6 +37,7 @@ from app.models import (
     Phone,
     User,
 )
+from app.services.contract_service import sync_contract_delivery_status
 
 router = APIRouter(prefix="/admin/trash", tags=["Recycle Bin"])
 
@@ -266,6 +268,11 @@ async def restore_item(
         after={"is_deleted": False},
         ip_address=client_ip,
     )
+
+    if entity_type == "asset" and getattr(rec, "contract_line_id", None):
+        line = db.get(ContractLine, rec.contract_line_id)
+        if line:
+            sync_contract_delivery_status(db, line.contract_id)
 
     db.commit()
 

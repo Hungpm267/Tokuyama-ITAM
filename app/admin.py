@@ -8,6 +8,7 @@ Quy định bảo mật GEMINI.md:
 
 from __future__ import annotations
 
+import contextlib
 import contextvars
 import datetime as dt
 from pathlib import Path
@@ -21,7 +22,7 @@ from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
 from starlette.types import ASGIApp, Receive, Scope, Send
 from sqlalchemy import Select, func, or_, select
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import Session, selectinload
 from markupsafe import Markup, escape
 
 
@@ -29,6 +30,7 @@ from app.core.audit import audit_login, record_audit
 from app.core.i18n import DEFAULT_ADMIN_COLUMN_LABELS, get_current_lang, translate
 from app.core.permissions import get_user_permissions
 from app.core.security import (
+    DUMMY_PASSWORD_HASH,
     SESSION_SECRET,
     create_session_token,
     hash_password,
@@ -62,6 +64,7 @@ from app.models import (
     User,
     UserPermissionOverride,
 )
+from app.services.contract_service import sync_contract_delivery_status
 
 COMMON_EXCLUDED_COLUMNS = [
     "created_at", "created_by", "updated_at", "updated_by",
@@ -77,6 +80,17 @@ def get_admin_lang() -> str:
     if req:
         return get_current_lang(req)
     return "vi"
+
+
+@contextlib.contextmanager
+def _get_admin_db(request: Request | None):
+    """Lấy session DB: ưu tiên Session thật có sẵn trong request.state (ví dụ khi test), ngược lại mở SessionLocal."""
+    req_db = getattr(request.state, "db", None) if request and hasattr(request, "state") else None
+    if isinstance(req_db, Session):
+        yield req_db
+    else:
+        with SessionLocal() as db:
+            yield db
 
 
 class RequestContextMiddleware:
@@ -158,50 +172,52 @@ class AdminAuth(AuthenticationBackend):
                     User.is_deleted.is_(False),
                 )
             )
+            valid_password = False
             if user:
-                if verify_password(password, user.password_hash):
-                    user.last_login_at = dt.datetime.now(dt.timezone.utc)
-                    audit_login(db, user_id=user.id, success=True, username=username, ip_address=client_ip)
-                    db.commit()
-
-                    role_code = user.role.code if user.role else RoleCode.ADMIN.value
-                    token = create_session_token({
-                        "user_id": user.id,
-                        "role": role_code,
-                        "username": user.username,
-                    })
-                    lang = user.preferred_lang or request.cookies.get("itam_lang") or "vi"
-
-                    if role_code == RoleCode.ADMIN.value:
-                        role_title = "ADMINISTRATOR"
-                    elif role_code == RoleCode.GA_MANAGER.value:
-                        role_title = "GA MANAGER"
-                    elif role_code == RoleCode.EXECUTIVE.value:
-                        role_title = "EXECUTIVE"
-                    else:
-                        role_title = role_code
-
-                    request.session.update({
-                        "token": token,
-                        "user_id": user.id,
-                        "role": role_code,
-                        "role_code": role_code,
-                        "role_title": role_title,
-                        "username": user.username,
-                        "display_name": user.display_name or user.username,
-                        "lang": lang,
-                    })
-
-                    # Điều hướng vào trang quản trị /admin cho cả 3 vai trò
-                    request.state.redirect_url = "/admin"
-                    return True
-                else:
-                    request.state.login_error = "Mật khẩu không chính xác."
+                valid_password = verify_password(password, user.password_hash)
             else:
-                request.state.login_error = "Tên đăng nhập không tồn tại hoặc đã bị khóa."
+                verify_password(password, DUMMY_PASSWORD_HASH)
 
-            audit_login(db, user_id=user.id if user else None, success=False, username=username, ip_address=client_ip)
-            db.commit()
+            if user and valid_password:
+                user.last_login_at = dt.datetime.now(dt.timezone.utc)
+                audit_login(db, user_id=user.id, success=True, username=username, ip_address=client_ip)
+                db.commit()
+
+                role_code = user.role.code if user.role else RoleCode.ADMIN.value
+                token = create_session_token({
+                    "user_id": user.id,
+                    "role": role_code,
+                    "username": user.username,
+                })
+                lang = user.preferred_lang or request.cookies.get("itam_lang") or "vi"
+
+                if role_code == RoleCode.ADMIN.value:
+                    role_title = "ADMINISTRATOR"
+                elif role_code == RoleCode.GA_MANAGER.value:
+                    role_title = "GA MANAGER"
+                elif role_code == RoleCode.EXECUTIVE.value:
+                    role_title = "EXECUTIVE"
+                else:
+                    role_title = role_code
+
+                request.session.update({
+                    "token": token,
+                    "user_id": user.id,
+                    "role": role_code,
+                    "role_code": role_code,
+                    "role_title": role_title,
+                    "username": user.username,
+                    "display_name": user.display_name or user.username,
+                    "lang": lang,
+                })
+
+                # Điều hướng vào trang quản trị /admin cho cả 3 vai trò
+                request.state.redirect_url = "/admin"
+                return True
+            else:
+                request.state.login_error = "Tên đăng nhập hoặc mật khẩu không chính xác."
+                audit_login(db, user_id=user.id if user else None, success=False, username=username, ip_address=client_ip)
+                db.commit()
 
         return False
 
@@ -506,7 +522,7 @@ class BaseAdminView(ModelView):
                 detail="Không thể xóa tài khoản của chính bạn đang đăng nhập.",
             )
 
-        with SessionLocal() as db:
+        with _get_admin_db(request) as db:
             stmt = self._stmt_by_identifier(str(pk))
             obj = db.scalar(stmt)
             if not obj:
@@ -518,6 +534,91 @@ class BaseAdminView(ModelView):
                     status_code=400,
                     detail="Không thể xóa vai trò ADMIN hệ thống.",
                 )
+
+            # Chặn xóa Nhân viên khi còn đang giữ thiết bị IT, thẻ ra vào hoặc license
+            if self.model is Person:
+                active_asgn = db.scalar(
+                    select(Assignment).where(
+                        Assignment.person_id == obj.id,
+                        Assignment.returned_at.is_(None),
+                        Assignment.is_deleted.is_(False),
+                    )
+                )
+                if active_asgn:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Không thể xóa nhân viên đang giữ thiết bị IT. Hãy thu hồi thiết bị trước khi xóa.",
+                    )
+
+                active_card = db.scalar(
+                    select(CardLoan).where(
+                        CardLoan.person_id == obj.id,
+                        CardLoan.returned_at.is_(None),
+                        CardLoan.is_deleted.is_(False),
+                    )
+                )
+                if active_card:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Không thể xóa nhân viên đang mượn thẻ ra vào. Hãy thu hồi thẻ trước khi xóa.",
+                    )
+
+                active_lic = db.scalar(
+                    select(LicenseAssignment).where(
+                        LicenseAssignment.person_id == obj.id,
+                        LicenseAssignment.removed_at.is_(None),
+                        LicenseAssignment.is_deleted.is_(False),
+                    )
+                )
+                if active_lic:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Không thể xóa nhân viên đang được cấp bản quyền phần mềm. Hãy thu hồi license trước khi xóa.",
+                    )
+
+            # Chặn xóa Thiết bị khi đang được sử dụng hoặc có lượt bàn giao mở
+            if self.model is Asset:
+                active_asgn = db.scalar(
+                    select(Assignment).where(
+                        Assignment.asset_id == obj.id,
+                        Assignment.returned_at.is_(None),
+                        Assignment.is_deleted.is_(False),
+                    )
+                )
+                if active_asgn or obj.status == AssetStatus.IN_USE:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Không thể xóa thiết bị đang có người sử dụng. Hãy thu hồi thiết bị trước khi xóa.",
+                    )
+
+            # Chặn xóa Thẻ ra vào khi đang có người mượn
+            if self.model is AccessCard:
+                active_loan = db.scalar(
+                    select(CardLoan).where(
+                        CardLoan.card_id == obj.id,
+                        CardLoan.returned_at.is_(None),
+                        CardLoan.is_deleted.is_(False),
+                    )
+                )
+                if active_loan or obj.status == CardStatus.BORROWED:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Không thể xóa thẻ ra vào đang có người mượn. Hãy thu hồi thẻ trước khi xóa.",
+                    )
+
+            # Chặn xóa dòng hợp đồng nếu đã có thiết bị nhập kho
+            if self.model is ContractLine:
+                active_asset_count = db.scalar(
+                    select(func.count(Asset.id)).where(
+                        Asset.contract_line_id == obj.id,
+                        Asset.is_deleted.is_(False),
+                    )
+                ) or 0
+                if active_asset_count > 0:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Không thể xóa dòng hợp đồng đã có {active_asset_count} thiết bị nhập kho.",
+                    )
 
             table_name = getattr(self.model, "__tablename__", "unknown")
             client_ip = request.client.host if request.client else None
@@ -540,6 +641,12 @@ class BaseAdminView(ModelView):
                 obj.deleted_at = dt.datetime.now(dt.timezone.utc)
                 obj.deleted_by = current_user_id
                 obj.delete_reason = delete_reason
+
+                # Nếu xóa mềm Asset, đồng bộ lại tiến độ hợp đồng liên quan
+                if self.model is Asset and getattr(obj, "contract_line_id", None):
+                    line = db.get(ContractLine, obj.contract_line_id)
+                    if line:
+                        sync_contract_delivery_status(db, line.contract_id)
 
                 record_audit(
                     db=db,
@@ -1012,14 +1119,16 @@ class AssetAdmin(BaseAdminView, model=Asset):
         "actions_quick": lambda m, a: (
             Markup(
                 f'<button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 fw-semibold" '
-                f'onclick="openAssignModal({m.id}, \'{escape(m.asset_code or m.serial or "")}\', \'{escape(m.model or "")}\')" style="font-size: 11.5px;">'
+                f'data-id="{m.id}" data-code="{escape(m.asset_code or m.serial or "")}" data-model="{escape(m.model or "")}" '
+                f'onclick="openAssignModal(this.dataset.id, this.dataset.code, this.dataset.model)" style="font-size: 11.5px;">'
                 f'<i class="fa-solid fa-handshake me-1"></i>{translate("Bàn giao", get_admin_lang())}</button>'
             )
             if m.status == AssetStatus.IN_STOCK
             else (
                 Markup(
                     f'<button type="button" class="btn btn-sm btn-outline-warning text-dark py-0 px-2 fw-bold" '
-                    f'onclick="openReturnModal({m.id}, \'{escape(m.asset_code or m.serial or "")}\', \'{escape(m.current_holder or "")}\')" style="font-size: 11.5px;">'
+                    f'data-id="{m.id}" data-code="{escape(m.asset_code or m.serial or "")}" data-holder="{escape(m.current_holder or "")}" '
+                    f'onclick="openReturnModal(this.dataset.id, this.dataset.code, this.dataset.holder)" style="font-size: 11.5px;">'
                     f'<i class="fa-solid fa-arrow-rotate-left me-1"></i>{translate("Thu hồi", get_admin_lang())}</button>'
                 )
                 if m.status == AssetStatus.IN_USE
@@ -1115,7 +1224,8 @@ class AssignmentAdmin(BaseAdminView, model=Assignment):
         "actions_quick": lambda m, a: (
             Markup(
                 f'<button type="button" class="btn btn-sm btn-outline-warning text-dark py-0 px-2 fw-bold" '
-                f'onclick="openReturnModal({m.asset_id}, \'{escape(m.asset.asset_code or m.asset.serial or "" if m.asset else "")}\', \'{escape(m.person.full_name if m.person else "")}\')" style="font-size: 11.5px;">'
+                f'data-id="{m.asset_id}" data-code="{escape(m.asset.asset_code or m.asset.serial or "" if m.asset else "")}" data-holder="{escape(m.person.full_name if m.person else "")}" '
+                f'onclick="openReturnModal(this.dataset.id, this.dataset.code, this.dataset.holder)" style="font-size: 11.5px;">'
                 f'<i class="fa-solid fa-arrow-rotate-left me-1"></i>{translate("Thu hồi", get_admin_lang())}</button>'
             )
             if not m.returned_at
@@ -1176,7 +1286,7 @@ class AssignmentAdmin(BaseAdminView, model=Assignment):
 
         if aid and b_at:
             current_id = getattr(model, "id", None) if not is_created else None
-            with SessionLocal() as db:
+            with _get_admin_db(request) as db:
                 query = (
                     select(Assignment)
                     .options(selectinload(Assignment.person))
@@ -1404,7 +1514,7 @@ class LicenseAssignmentAdmin(BaseAdminView, model=LicenseAssignment):
         "license": lambda m, a: (
             Markup(
                 f'<a href="/admin/license/details/{m.license_id}" class="text-decoration-none fw-bold text-primary">'
-                f'<i class="fa-solid fa-compact-disc me-1"></i>{m.license.product.name if m.license and m.license.product else (str(m.license) if m.license else "-")}</a> '
+                f'<i class="fa-solid fa-compact-disc me-1"></i>{escape(m.license.product.name) if m.license and m.license.product else (escape(str(m.license)) if m.license else "-")}</a> '
                 f'<span class="badge bg-light text-secondary border ms-1">{m.license.seats if m.license else ""} seats</span>'
             )
             if m.license
@@ -1456,6 +1566,52 @@ class LicenseAssignmentAdmin(BaseAdminView, model=LicenseAssignment):
         for relation in self._details_relations:
             stmt = stmt.options(selectinload(relation))
         return await self._get_object_by_pk(stmt)
+
+    async def on_model_change(
+        self, data: dict, model: Any, is_created: bool, request: Request
+    ) -> None:
+        await super().on_model_change(data, model, is_created, request)
+        lang = request.session.get("lang", "vi")
+        is_en = (lang == "en")
+        is_ja = (lang == "ja")
+
+        asset_val = data.get("asset")
+        person_val = data.get("person")
+        if not asset_val and not person_val:
+            if is_ja:
+                raise ValueError("ライセンスは機器または社員に割り当てる必要があります。")
+            elif is_en:
+                raise ValueError("License must be assigned to an asset or person.")
+            else:
+                raise ValueError("Bản quyền phải được gán cho thiết bị hoặc nhân viên.")
+
+        lic_val = data.get("license")
+        lid = getattr(lic_val, "id", None)
+        if lid is None and str(lic_val).isdigit():
+            lid = int(lic_val)
+        if lid is None and hasattr(model, "license_id"):
+            lid = model.license_id
+
+        r_at = data.get("removed_at") if "removed_at" in data else getattr(model, "removed_at", None)
+
+        if lid and is_created and r_at is None:
+            with _get_admin_db(request) as db:
+                lic = db.get(License, lid)
+                if lic and not lic.is_deleted:
+                    active_count = db.scalar(
+                        select(func.count(LicenseAssignment.id)).where(
+                            LicenseAssignment.license_id == lid,
+                            LicenseAssignment.removed_at.is_(None),
+                            LicenseAssignment.is_deleted.is_(False),
+                        )
+                    ) or 0
+                    if active_count >= lic.seats:
+                        if is_ja:
+                            raise ValueError(f"ライセンス '{lic}' の上限（{lic.seats} seats）に達しました。")
+                        elif is_en:
+                            raise ValueError(f"License '{lic}' has reached maximum seats ({lic.seats}).")
+                        else:
+                            raise ValueError(f"Bản quyền '{lic}' đã hết lượt gán (tổng {lic.seats} seats).")
 
 
 class AccessCardAdmin(BaseAdminView, model=AccessCard):
@@ -1664,7 +1820,7 @@ class CardLoanAdmin(BaseAdminView, model=CardLoan):
             cid = model.card_id
 
         if cid and is_created and data.get("returned_at") is None:
-            with SessionLocal() as db:
+            with _get_admin_db(request) as db:
                 card = db.get(AccessCard, cid)
                 if card and card.status in (CardStatus.LOST, CardStatus.DAMAGED):
                     raise ValueError(
@@ -1685,7 +1841,7 @@ class CardLoanAdmin(BaseAdminView, model=CardLoan):
 
         if cid and b_at:
             current_id = getattr(model, "id", None) if not is_created else None
-            with SessionLocal() as db:
+            with _get_admin_db(request) as db:
                 query = (
                     select(CardLoan)
                     .options(selectinload(CardLoan.person))

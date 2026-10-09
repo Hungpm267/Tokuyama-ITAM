@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.core.audit import audit_login
 from app.core.permissions import get_user_permissions
 from app.core.reveal import RevealGate
-from app.core.security import create_session_token, verify_password, verify_session_token
+from app.core.security import DUMMY_PASSWORD_HASH, create_session_token, verify_password, verify_session_token
 from app.db import get_db
 from app.models import User
 
@@ -93,7 +93,13 @@ def login(
         )
     )
 
-    if not user or not verify_password(data.password, user.password_hash):
+    valid_password = False
+    if user:
+        valid_password = verify_password(data.password, user.password_hash)
+    else:
+        verify_password(data.password, DUMMY_PASSWORD_HASH)
+
+    if not user or not valid_password:
         audit_login(db, user_id=user.id if user else None, success=False, username=username, ip_address=client_ip)
         db.commit()
         raise HTTPException(

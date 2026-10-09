@@ -20,11 +20,11 @@
         {% endif %}
         {% if model_view.identity == 'asset' and (request.session.get('role') == 'ADMIN' or request.session.get('role_code') == 'ADMIN') %}
           {% if model.status and model.status.value == 'IN_STOCK' %}
-          <button type="button" class="btn btn-primary btn-sm text-white" onclick="openAssignModal({{ get_object_identifier(model) }}, '{{ model.asset_code or model.serial or '' }}', '{{ model.model or '' }}')" style="font-size: 13px;">
+          <button type="button" class="btn btn-primary btn-sm text-white" data-id="{{ get_object_identifier(model) }}" data-code="{{ model.asset_code or model.serial or '' }}" data-model="{{ model.model or '' }}" onclick="openAssignModal(this.dataset.id, this.dataset.code, this.dataset.model)" style="font-size: 13px;">
             <i class="fa-solid fa-handshake me-1"></i> {{ '機器割当' if current_lang == 'ja' else ('Assign Asset' if current_lang == 'en' else 'Bàn giao thiết bị') }}
           </button>
           {% elif model.status and model.status.value == 'IN_USE' %}
-          <button type="button" class="btn btn-warning btn-sm text-dark fw-bold" onclick="openReturnModal({{ get_object_identifier(model) }}, '{{ model.asset_code or model.serial or '' }}', '{{ model.current_holder or '' }}')" style="font-size: 13px;">
+          <button type="button" class="btn btn-warning btn-sm text-dark fw-bold" data-id="{{ get_object_identifier(model) }}" data-code="{{ model.asset_code or model.serial or '' }}" data-holder="{{ model.current_holder or '' }}" onclick="openReturnModal(this.dataset.id, this.dataset.code, this.dataset.holder)" style="font-size: 13px;">
             <i class="fa-solid fa-arrow-rotate-left me-1"></i> {{ '機器返却' if current_lang == 'ja' else ('Return Asset' if current_lang == 'en' else 'Thu hồi thiết bị') }}
           </button>
           {% endif %}
@@ -615,7 +615,7 @@
               </td>
               <td class="text-end">
                 {% if a.returned_at is none and a.asset %}
-                <button type="button" class="btn btn-sm btn-outline-warning text-dark py-0 px-2 fw-bold" onclick="openReturnModal({{ a.asset.id }}, '{{ a.asset.asset_code or a.asset.serial or '' }}', '{{ model.full_name }}')" style="font-size: 12px;">
+                <button type="button" class="btn btn-sm btn-outline-warning text-dark py-0 px-2 fw-bold" data-id="{{ a.asset.id }}" data-code="{{ a.asset.asset_code or a.asset.serial or '' }}" data-holder="{{ model.full_name or '' }}" onclick="openReturnModal(this.dataset.id, this.dataset.code, this.dataset.holder)" style="font-size: 12px;">
                   <i class="fa-solid fa-arrow-rotate-left me-1"></i> {{ '回収' if current_lang == 'ja' else ('Return' if current_lang == 'en' else 'Thu hồi') }}
                 </button>
                 {% else %}

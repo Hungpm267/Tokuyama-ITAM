@@ -58,8 +58,12 @@ def assign_license(
     if not person_id and not asset_id:
         raise ValueError("License phải được gán cho máy tính hoặc nhân viên")
 
-    lic = db.get(License, license_id)
-    if not lic or lic.is_deleted:
+    lic = db.scalar(
+        select(License)
+        .where(License.id == license_id, License.is_deleted.is_(False))
+        .with_for_update(of=License)
+    )
+    if not lic:
         raise ValueError(f"License ID {license_id} không tồn tại hoặc đã bị xoá")
 
     # Kiểm tra trùng lặp trên thiết bị

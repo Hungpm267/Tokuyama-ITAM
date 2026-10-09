@@ -6,6 +6,7 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.enums import DeliveryStatus
 from app.models import Asset, Contract, ContractLine
 
 
@@ -79,3 +80,41 @@ def get_contract_summary(db: Session, contract_id: int) -> dict[str, Any]:
         "total_remaining": total_remaining,
         "status": contract_status,
     }
+
+
+def sync_contract_delivery_status(db: Session, contract_id: int) -> DeliveryStatus | None:
+    """Đồng bộ delivery_status của Contract dựa trên các lines và asset sống (Rule 8)."""
+    contract = db.get(Contract, contract_id)
+    if not contract or contract.is_deleted:
+        return None
+
+    lines = db.scalars(
+        select(ContractLine).where(
+            ContractLine.contract_id == contract_id,
+            ContractLine.is_deleted.is_(False),
+        )
+    ).all()
+
+    if not lines:
+        contract.delivery_status = DeliveryStatus.PENDING
+        return DeliveryStatus.PENDING
+
+    all_delivered = True
+    for line in lines:
+        delivered = (
+            db.scalar(
+                select(func.count(Asset.id)).where(
+                    Asset.contract_line_id == line.id,
+                    Asset.is_deleted.is_(False),
+                )
+            )
+            or 0
+        )
+        if delivered < line.qty_ordered:
+            all_delivered = False
+            break
+
+    new_status = DeliveryStatus.DELIVERED if all_delivered else DeliveryStatus.PENDING
+    contract.delivery_status = new_status
+    return new_status
+

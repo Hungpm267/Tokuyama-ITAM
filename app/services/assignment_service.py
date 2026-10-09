@@ -105,6 +105,22 @@ def assign_asset(
     if person.status == PersonStatus.RESIGNED:
         raise ValueError(f"Không thể bàn giao thiết bị cho nhân viên đã nghỉ việc ({person.full_name}).")
 
+    # Kiểm tra trùng lặp thời gian với các lần mượn trước đó
+    overlapping_history = db.scalar(
+        select(Assignment).where(
+            Assignment.asset_id == asset_id,
+            Assignment.is_deleted.is_(False),
+            Assignment.returned_at.is_not(None),
+            Assignment.returned_at > borrowed_at,
+        ).order_by(Assignment.returned_at.desc())
+    )
+    if overlapping_history:
+        ret_date_str = overlapping_history.returned_at.strftime("%d/%m/%Y")
+        raise ValueError(
+            f"Ngày bàn giao ({borrowed_at.strftime('%d/%m/%Y')}) không được trước ngày kết thúc "
+            f"của lần mượn trước đó ({ret_date_str})."
+        )
+
     # 1. Tạo bản ghi Assignment
     clean_note = (note or "").strip() or None
     asgn = Assignment(

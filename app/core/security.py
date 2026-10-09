@@ -26,6 +26,9 @@ _hasher = PasswordHasher(
 SESSION_SECRET = os.environ.get("ITAM_SESSION_SECRET", "tokuyama-itam-session-secret-key-2026")
 _serializer = URLSafeTimedSerializer(SESSION_SECRET, salt="itam-session-cookie")
 
+# Hash giả định tạo sẵn để đối chiếu khi user không tồn tại, chống Timing Attack
+DUMMY_PASSWORD_HASH = _hasher.hash("dummy-security-timing-protection-password")
+
 
 def hash_password(password: str) -> str:
     """Băm mật khẩu người dùng bằng Argon2id."""

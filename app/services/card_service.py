@@ -70,6 +70,22 @@ def loan_card(
     if expected_return_at and expected_return_at < eff_borrowed_at:
         raise ValueError("Ngày dự kiến trả không được trước ngày mượn thẻ")
 
+    # Kiểm tra trùng lặp thời gian với các lần mượn trước đó
+    overlapping_loan = db.scalar(
+        select(CardLoan).where(
+            CardLoan.card_id == card_id,
+            CardLoan.is_deleted.is_(False),
+            CardLoan.returned_at.is_not(None),
+            CardLoan.returned_at > eff_borrowed_at,
+        ).order_by(CardLoan.returned_at.desc())
+    )
+    if overlapping_loan:
+        ret_date_str = overlapping_loan.returned_at.strftime("%d/%m/%Y")
+        raise ValueError(
+            f"Ngày mượn thẻ ({eff_borrowed_at.strftime('%d/%m/%Y')}) không được trước ngày trả "
+            f"của lượt mượn trước đó ({ret_date_str})."
+        )
+
     combined_purpose = purpose or note
 
     loan = CardLoan(

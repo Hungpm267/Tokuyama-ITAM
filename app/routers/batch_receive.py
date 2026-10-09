@@ -59,7 +59,7 @@ def check_batch_receive_permission(db: Session, user: User) -> None:
     if not has_permission(db, user, Module.ASSETS, PermissionAction.ADD):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Bạn không có quyền nhập kho thiết bị (yêu cầu quyền assets.add).",
+            detail="Bạn không có quyền thực hiện thao tác này.",
         )
 
 

@@ -9,7 +9,8 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.core.audit import record_audit
 from app.enums import AssetStatus, AuditAction
-from app.models import Asset, AssetCategory, AssetTag, AssetTagLink, Assignment
+from app.models import Asset, AssetCategory, AssetTag, AssetTagLink, Assignment, ContractLine
+from app.services.contract_service import sync_contract_delivery_status
 
 
 def _asset_to_dict(asset: Asset) -> dict[str, Any]:
@@ -228,6 +229,11 @@ def soft_delete_asset(
     asset.deleted_by = user_id
     asset.deleted_at = dt.datetime.now(dt.timezone.utc)
     db.flush()
+
+    if asset.contract_line_id:
+        line = db.get(ContractLine, asset.contract_line_id)
+        if line:
+            sync_contract_delivery_status(db, line.contract_id)
 
     after_dict = _asset_to_dict(asset)
 

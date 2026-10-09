@@ -5,7 +5,8 @@ from __future__ import annotations
 from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.orm import Session, selectinload
 
 from app.core.permissions import (
     reset_role_permissions_matrix,
@@ -13,14 +14,15 @@ from app.core.permissions import (
 )
 from app.core.security import verify_session_token
 from app.db import get_db
+from app.enums import RoleCode
+from app.models import User
 
 router = APIRouter(prefix="/admin/role-permission/matrix", tags=["Role Permission Matrix"])
 
 
-def _verify_admin_access(request: Request) -> int:
-    """Xác thực người dùng hiện tại có vai trò ADMIN hay không."""
+def _verify_admin_access(request: Request, db: Session) -> int:
+    """Xác thực người dùng hiện tại có vai trò ADMIN hay không (kiểm tra CSDL thời gian thực)."""
     user_id = request.session.get("user_id") if hasattr(request, "session") else None
-    role = request.session.get("role") if hasattr(request, "session") else None
 
     if not user_id:
         token = request.cookies.get("itam_session")
@@ -28,20 +30,32 @@ def _verify_admin_access(request: Request) -> int:
             payload = verify_session_token(token)
             if payload:
                 user_id = payload.get("user_id")
-                role = payload.get("role")
 
-    if not user_id or str(role).upper() != "ADMIN":
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Chưa đăng nhập hoặc phiên làm việc đã hết hạn.",
+        )
+
+    user = db.scalar(
+        select(User).options(selectinload(User.role)).where(
+            User.id == int(user_id),
+            User.is_active.is_(True),
+            User.is_deleted.is_(False),
+        )
+    )
+    if not user or not user.role or user.role.code != RoleCode.ADMIN.value:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Chỉ Quản trị viên (ADMIN) mới có quyền thay đổi ma trận quyền hệ thống.",
         )
-    return int(user_id)
+    return user.id
 
 
 @router.post("/save")
 async def save_role_matrix(request: Request, db: Session = Depends(get_db)) -> JSONResponse:
     """Lưu toàn bộ thay đổi ma trận quyền của một vai trò."""
-    admin_id = _verify_admin_access(request)
+    admin_id = _verify_admin_access(request, db)
     try:
         body: dict[str, Any] = await request.json()
     except Exception:
@@ -70,7 +84,7 @@ async def save_role_matrix(request: Request, db: Session = Depends(get_db)) -> J
 @router.post("/reset")
 async def reset_role_matrix(request: Request, db: Session = Depends(get_db)) -> JSONResponse:
     """Khôi phục ma trận quyền về giá trị mặc định chuẩn của GEMINI.md."""
-    admin_id = _verify_admin_access(request)
+    admin_id = _verify_admin_access(request, db)
     try:
         body: dict[str, Any] = await request.json()
     except Exception:
