@@ -16,7 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.audit import record_audit
-from app.enums import AssetStatus, AuditAction
+from app.enums import AssetStatus, AuditAction, PersonStatus
 from app.models import Asset, Assignment, Person
 
 
@@ -86,7 +86,7 @@ def assign_asset(
     if not asset:
         raise ValueError(f"Thiết bị với ID {asset_id} không tồn tại hoặc đã bị xóa.")
 
-    if asset.status in (AssetStatus.DISPOSED, AssetStatus.LOST):
+    if asset.status in (AssetStatus.DISPOSED, AssetStatus.LOST, AssetStatus.REPAIR):
         raise ValueError(f"Không thể bàn giao thiết bị ở trạng thái '{asset.status.value}'.")
 
     # Kiểm tra xem máy có đang có người sử dụng không
@@ -102,6 +102,8 @@ def assign_asset(
     person = db.scalar(select(Person).where(Person.id == person_id, Person.is_deleted.is_(False)))
     if not person:
         raise ValueError(f"Nhân viên với ID {person_id} không tồn tại hoặc đã bị xóa.")
+    if person.status == PersonStatus.RESIGNED:
+        raise ValueError(f"Không thể bàn giao thiết bị cho nhân viên đã nghỉ việc ({person.full_name}).")
 
     # 1. Tạo bản ghi Assignment
     clean_note = (note or "").strip() or None

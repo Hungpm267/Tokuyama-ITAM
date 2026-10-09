@@ -137,11 +137,11 @@ async def trash_list_view(
                 identifier = rec.staff_code
                 details = f"{rec.full_name} ({rec.email or 'No email'})"
             elif ent_key == "contract":
-                identifier = rec.contract_code
+                identifier = rec.code
                 details = f"Vendor: {rec.vendor_name}"
             elif ent_key == "card":
-                identifier = rec.card_number
-                details = f"Card #{rec.card_number}"
+                identifier = rec.card_no
+                details = f"Card #{rec.card_no}"
             elif ent_key == "phone":
                 identifier = rec.extension_number
                 details = f"Ext {rec.extension_number} ({rec.device_name})"
@@ -330,12 +330,12 @@ def check_restore_conflicts(db: Session, entity_type: str, rec: Any) -> str | No
         dup_card = db.scalar(
             select(AccessCard).where(
                 AccessCard.id != rec.id,
-                AccessCard.card_number == rec.card_number,
+                AccessCard.card_no == rec.card_no,
                 AccessCard.is_deleted.is_(False),
             )
         )
         if dup_card:
-            return f"Không thể khôi phục: Số thẻ '{rec.card_number}' hiện đã được cấp cho thẻ #{dup_card.id}."
+            return f"Không thể khôi phục: Số thẻ '{rec.card_no}' hiện đã được cấp cho thẻ #{dup_card.id}."
 
     elif entity_type == "phone":
         dup_ext = db.scalar(
@@ -352,12 +352,12 @@ def check_restore_conflicts(db: Session, entity_type: str, rec: Any) -> str | No
         dup_contract = db.scalar(
             select(Contract).where(
                 Contract.id != rec.id,
-                Contract.contract_code == rec.contract_code,
+                Contract.code == rec.code,
                 Contract.is_deleted.is_(False),
             )
         )
         if dup_contract:
-            return f"Không thể khôi phục: Mã hợp đồng '{rec.contract_code}' đã tồn tại trong hệ thống."
+            return f"Không thể khôi phục: Mã hợp đồng '{rec.code}' đã tồn tại trong hệ thống."
 
     elif entity_type == "user":
         dup_user = db.scalar(

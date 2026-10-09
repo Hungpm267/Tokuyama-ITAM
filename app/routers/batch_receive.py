@@ -294,6 +294,16 @@ async def process_batch_receive(
     if not cleaned_items:
         raise HTTPException(status_code=400, detail="Không có dòng thiết bị hợp lệ để nhập kho.")
 
+    # Kiểm tra số lượng nhập không vượt quá số lượng còn lại của hạng mục hợp đồng
+    if len(cleaned_items) > line.qty_remaining:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Số lượng nhập ({len(cleaned_items)} thiết bị) vượt quá số lượng còn lại "
+                f"của hạng mục hợp đồng ({line.qty_remaining} thiết bị còn lại)."
+            ),
+        )
+
     # Kiểm tra trùng lặp với CSDL hiện có (lọc is_deleted = False theo GEMINI.md)
     all_serials = [it["serial"] for it in cleaned_items if it["serial"]]
     if all_serials:

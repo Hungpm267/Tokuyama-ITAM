@@ -441,3 +441,57 @@ def test_trash_access_denied_for_non_admin(client: TestClient, db: Session):
     resp = client.get("/admin/trash", follow_redirects=True)
     assert resp.status_code == 403
     assert "Chỉ Quản trị viên" in resp.json()["detail"]
+
+
+def test_trash_restore_card_and_contract_success(client: TestClient, db: Session):
+    """Kiểm tra xem Thùng rác và Khôi phục hoạt động chính xác với Thẻ từ và Hợp đồng."""
+    admin_user = _get_or_create_admin_user(db)
+    client.cookies.set("itam_session", _auth_cookie_token(admin_user))
+
+    # 1. Thẻ bị xóa mềm
+    del_card = AccessCard(
+        card_no="CARD-TRASH-999",
+        status=CardStatus.IN_STOCK,
+        is_deleted=True,
+        deleted_at=dt.datetime.now(dt.timezone.utc),
+        deleted_by=admin_user.id,
+        delete_reason="Thẻ hỏng cũ",
+    )
+    # 2. Hợp đồng bị xóa mềm
+    del_contract = Contract(
+        code="HD-TRASH-999",
+        vendor_name="FPT Telecom",
+        is_deleted=True,
+        deleted_at=dt.datetime.now(dt.timezone.utc),
+        deleted_by=admin_user.id,
+        delete_reason="Hợp đồng hủy",
+    )
+    db.add_all([del_card, del_contract])
+    db.flush()
+
+    # Truy cập trang /admin/trash (không được crash 500)
+    res_list = client.get("/admin/trash")
+    assert res_list.status_code == 200
+    assert "CARD-TRASH-999" in res_list.text
+    assert "HD-TRASH-999" in res_list.text
+
+    # Khôi phục thẻ thành công
+    res_card = client.post(
+        "/admin/trash/restore",
+        data={"entity_type": "card", "item_id": del_card.id},
+    )
+    assert res_card.status_code == 200
+    assert res_card.json()["success"] is True
+
+    # Khôi phục hợp đồng thành công
+    res_contract = client.post(
+        "/admin/trash/restore",
+        data={"entity_type": "contract", "item_id": del_contract.id},
+    )
+    assert res_contract.status_code == 200
+    assert res_contract.json()["success"] is True
+
+    db.refresh(del_card)
+    db.refresh(del_contract)
+    assert del_card.is_deleted is False
+    assert del_contract.is_deleted is False

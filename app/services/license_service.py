@@ -8,8 +8,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.audit import record_audit
-from app.enums import AuditAction
-from app.models import License, LicenseAssignment
+from app.enums import AuditAction, PersonStatus
+from app.models import Asset, License, LicenseAssignment, Person
 
 
 def get_license_seats_summary(db: Session, license_id: int) -> dict[str, Any]:
@@ -64,6 +64,9 @@ def assign_license(
 
     # Kiểm tra trùng lặp trên thiết bị
     if asset_id:
+        asset = db.get(Asset, asset_id)
+        if not asset or asset.is_deleted:
+            raise ValueError(f"Thiết bị #{asset_id} không tồn tại hoặc đã bị xoá")
         existing_asset = db.scalar(
             select(LicenseAssignment).where(
                 LicenseAssignment.license_id == license_id,
@@ -77,6 +80,11 @@ def assign_license(
 
     # Kiểm tra trùng lặp trên nhân sự
     if person_id:
+        person = db.get(Person, person_id)
+        if not person or person.is_deleted:
+            raise ValueError(f"Nhân viên #{person_id} không tồn tại hoặc đã bị xoá")
+        if person.status == PersonStatus.RESIGNED:
+            raise ValueError(f"Không thể gán bản quyền cho nhân viên đã nghỉ việc ({person.full_name})")
         existing_person = db.scalar(
             select(LicenseAssignment).where(
                 LicenseAssignment.license_id == license_id,

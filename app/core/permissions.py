@@ -14,7 +14,7 @@ from fastapi import HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.enums import Module, PermissionAction
+from app.enums import Module, PermissionAction, RoleCode
 from app.models import RolePermission, User, UserPermissionOverride
 
 
@@ -365,6 +365,15 @@ def save_role_permissions_matrix(
         a = item.get("action")
         if m in valid_modules and a in valid_actions:
             new_set.add((m, a))
+
+    # Chống tự khóa tài khoản Admin (Admin Lockout Protection)
+    if role.code == RoleCode.ADMIN.value:
+        essential_admin = {
+            (Module.USERS.value, PermissionAction.VIEW.value),
+            (Module.USERS.value, PermissionAction.CHANGE.value),
+        }
+        if not essential_admin.issubset(new_set):
+            raise ValueError("Không thể tước bỏ các quyền quản trị người dùng cốt lõi của vai trò ADMIN.")
 
     # Xóa quyền bị bỏ
     to_delete = old_set - new_set

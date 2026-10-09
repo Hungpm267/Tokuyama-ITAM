@@ -708,7 +708,7 @@ class UserPermissionOverrideAdmin(BaseAdminView, model=UserPermissionOverride):
     icon = "fa-solid fa-user-pen"
     category = "Hệ thống & Phân quyền"
     column_list = [UserPermissionOverride.id, UserPermissionOverride.user_id, UserPermissionOverride.module, UserPermissionOverride.action, UserPermissionOverride.granted]
-    column_details_list = [UserPermissionOverride.id, UserPermissionOverride.user_id, UserPermissionOverride.module, UserPermissionOverride.action, UserPermissionOverride.granted] + COMMON_EXCLUDED_COLUMNS
+    column_details_list = [UserPermissionOverride.id, UserPermissionOverride.user_id, UserPermissionOverride.module, UserPermissionOverride.action, UserPermissionOverride.granted]
     column_labels = {
         "user_id": "Người dùng",
         "module": "Phân hệ nghiệp vụ",

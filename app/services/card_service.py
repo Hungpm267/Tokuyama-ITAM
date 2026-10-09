@@ -7,8 +7,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.audit import record_audit
-from app.enums import AuditAction, CardStatus
-from app.models import AccessCard, CardLoan
+from app.enums import AuditAction, CardStatus, PersonStatus
+from app.models import AccessCard, CardLoan, Person
 
 
 def get_active_card_loan(db: Session, card_id: int) -> CardLoan | None:
@@ -47,6 +47,13 @@ def loan_card(
 
     if not person_id and not clean_ext_name:
         raise ValueError("Người mượn thẻ phải là nhân viên hoặc có họ tên đối tác bên ngoài")
+
+    if person_id:
+        person = db.get(Person, person_id)
+        if not person or person.is_deleted:
+            raise ValueError(f"Nhân viên ID {person_id} không tồn tại hoặc đã bị xoá")
+        if person.status == PersonStatus.RESIGNED:
+            raise ValueError(f"Không thể cho mượn thẻ đối với nhân viên đã nghỉ việc ({person.full_name})")
 
     card = db.get(AccessCard, card_id)
     if not card or card.is_deleted:
