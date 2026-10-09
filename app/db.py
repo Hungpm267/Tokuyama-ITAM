@@ -162,7 +162,16 @@ def biz_args(*extra: Any) -> tuple[Any, ...]:
     return (*extra, soft_delete_coherent())
 
 
-engine = create_engine(settings.database_url)
+engine_kwargs: dict[str, Any] = {"pool_pre_ping": True}
+if not settings.database_url.startswith("sqlite"):
+    engine_kwargs.update({
+        "pool_size": 15,
+        "max_overflow": 25,
+        "pool_recycle": 1800,
+        "pool_timeout": 30,
+    })
+
+engine = create_engine(settings.database_url, **engine_kwargs)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 

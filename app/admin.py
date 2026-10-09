@@ -21,8 +21,9 @@ from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
 from starlette.types import ASGIApp, Receive, Scope, Send
+import time
 from sqlalchemy import Select, func, or_, select
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session, joinedload, selectinload
 from markupsafe import Markup, escape
 
 
@@ -112,9 +113,34 @@ class RequestContextMiddleware:
             await self.app(scope, receive, send)
 
 
+_AUTH_USER_CACHE: dict[int, tuple[float, User]] = {}
+_AUTH_USER_CACHE_TTL = 60.0  # 60s in-memory cache for authenticated user & role
+
+
+def get_cached_user(user_id: int) -> User | None:
+    entry = _AUTH_USER_CACHE.get(user_id)
+    if entry:
+        cached_time, user = entry
+        if time.monotonic() - cached_time < _AUTH_USER_CACHE_TTL:
+            return user
+        _AUTH_USER_CACHE.pop(user_id, None)
+    return None
+
+
+def set_cached_user(user: User) -> None:
+    _AUTH_USER_CACHE[user.id] = (time.monotonic(), user)
+
+
+def invalidate_user_cache(user_id: int | None = None) -> None:
+    if user_id is None:
+        _AUTH_USER_CACHE.clear()
+    else:
+        _AUTH_USER_CACHE.pop(user_id, None)
+
+
 def get_user_from_request(request: Request, db: Any) -> User | None:
     """Trích xuất và cache thông tin User từ request để tránh truy vấn lặp lại."""
-    if hasattr(request.state, "current_user"):
+    if hasattr(request.state, "current_user") and request.state.current_user is not None:
         return request.state.current_user
 
     user_id = request.session.get("user_id") if hasattr(request, "session") else None
@@ -128,13 +154,20 @@ def get_user_from_request(request: Request, db: Any) -> User | None:
     if not user_id:
         return None
 
+    cached = get_cached_user(int(user_id))
+    if cached:
+        request.state.current_user = cached
+        return cached
+
     user = db.scalar(
-        select(User).options(selectinload(User.role)).where(
+        select(User).options(joinedload(User.role)).where(
             User.id == int(user_id),
             User.is_active.is_(True),
             User.is_deleted.is_(False),
         )
     )
+    if user:
+        set_cached_user(user)
     request.state.current_user = user
     return user
 
@@ -168,7 +201,7 @@ class AdminAuth(AuthenticationBackend):
 
         with SessionLocal() as db:
             user = db.scalar(
-                select(User).options(selectinload(User.role)).where(
+                select(User).options(joinedload(User.role)).where(
                     User.username == username,
                     User.is_active.is_(True),
                     User.is_deleted.is_(False),
@@ -184,6 +217,8 @@ class AdminAuth(AuthenticationBackend):
                 user.last_login_at = dt.datetime.now(dt.timezone.utc)
                 audit_login(db, user_id=user.id, success=True, username=username, ip_address=client_ip)
                 db.commit()
+
+                set_cached_user(user)
 
                 role_code = user.role.code if user.role else RoleCode.ADMIN.value
                 token = create_session_token({
@@ -224,6 +259,9 @@ class AdminAuth(AuthenticationBackend):
         return False
 
     async def logout(self, request: Request) -> bool:
+        user_id = request.session.get("user_id")
+        if user_id:
+            invalidate_user_cache(int(user_id))
         request.session.clear()
         return True
 
@@ -237,39 +275,48 @@ class AdminAuth(AuthenticationBackend):
             return False
 
         user_id = payload.get("user_id")
-        with SessionLocal() as db:
-            user = db.scalar(
-                select(User).options(selectinload(User.role)).where(
-                    User.id == user_id,
-                    User.is_active.is_(True),
-                    User.is_deleted.is_(False),
+        if not user_id:
+            return False
+
+        user = get_cached_user(int(user_id))
+        if not user:
+            with SessionLocal() as db:
+                user = db.scalar(
+                    select(User).options(joinedload(User.role)).where(
+                        User.id == int(user_id),
+                        User.is_active.is_(True),
+                        User.is_deleted.is_(False),
+                    )
                 )
-            )
-            if not user or not user.role:
-                return False
+                if user and user.role:
+                    set_cached_user(user)
 
-            role_code = user.role.code
-            if role_code not in (RoleCode.ADMIN.value, RoleCode.GA_MANAGER.value, RoleCode.EXECUTIVE.value):
-                return False
+        if not user or not user.role:
+            return False
 
-            if role_code == RoleCode.ADMIN.value:
-                role_title = "ADMINISTRATOR"
-            elif role_code == RoleCode.GA_MANAGER.value:
-                role_title = "GA MANAGER"
-            elif role_code == RoleCode.EXECUTIVE.value:
-                role_title = "EXECUTIVE"
-            else:
-                role_title = role_code
+        role_code = user.role.code
+        if role_code not in (RoleCode.ADMIN.value, RoleCode.GA_MANAGER.value, RoleCode.EXECUTIVE.value):
+            return False
 
-            if "lang" not in request.session:
-                request.session["lang"] = user.preferred_lang or request.cookies.get("itam_lang") or "vi"
+        if role_code == RoleCode.ADMIN.value:
+            role_title = "ADMINISTRATOR"
+        elif role_code == RoleCode.GA_MANAGER.value:
+            role_title = "GA MANAGER"
+        elif role_code == RoleCode.EXECUTIVE.value:
+            role_title = "EXECUTIVE"
+        else:
+            role_title = role_code
 
-            request.session["user_id"] = user.id
-            request.session["username"] = user.username
-            request.session["display_name"] = user.display_name or user.username
-            request.session["role"] = role_code
-            request.session["role_code"] = role_code
-            request.session["role_title"] = role_title
+        if "lang" not in request.session:
+            request.session["lang"] = user.preferred_lang or request.cookies.get("itam_lang") or "vi"
+
+        request.session["user_id"] = user.id
+        request.session["username"] = user.username
+        request.session["display_name"] = user.display_name or user.username
+        request.session["role"] = role_code
+        request.session["role_code"] = role_code
+        request.session["role_title"] = role_title
+        request.state.current_user = user
         return True
 
 
@@ -2281,41 +2328,42 @@ class TokuyamaAdmin(Admin):
         can_view_licenses = (user_role in (RoleCode.ADMIN.value, RoleCode.EXECUTIVE.value))
 
         with SessionLocal() as db:
-            asset_count = db.scalar(
-                select(func.count()).select_from(Asset).where(Asset.is_deleted.is_(False))
-            ) or 0
-            assignment_count = db.scalar(
-                select(func.count()).select_from(Assignment).where(Assignment.returned_at.is_(None))
-            ) or 0
-            license_count = db.scalar(
-                select(func.count()).select_from(License).where(License.is_deleted.is_(False))
-            ) or 0
-            card_count = db.scalar(
-                select(func.count()).select_from(AccessCard).where(AccessCard.is_deleted.is_(False))
-            ) or 0
-            person_count = db.scalar(
-                select(func.count()).select_from(Person).where(Person.is_deleted.is_(False))
-            ) or 0
-            contract_count = db.scalar(
-                select(func.count()).select_from(Contract).where(Contract.is_deleted.is_(False))
-            ) or 0
-            active_card_loans = db.scalar(
-                select(func.count()).select_from(CardLoan).where(CardLoan.returned_at.is_(None))
-            ) or 0
+            counts_stmt = select(
+                select(func.count()).select_from(Asset).where(Asset.is_deleted.is_(False)).scalar_subquery(),
+                select(func.count()).select_from(Assignment).where(Assignment.returned_at.is_(None)).scalar_subquery(),
+                select(func.count()).select_from(License).where(License.is_deleted.is_(False)).scalar_subquery(),
+                select(func.count()).select_from(AccessCard).where(AccessCard.is_deleted.is_(False)).scalar_subquery(),
+                select(func.count()).select_from(Person).where(Person.is_deleted.is_(False)).scalar_subquery(),
+                select(func.count()).select_from(Contract).where(Contract.is_deleted.is_(False)).scalar_subquery(),
+                select(func.count()).select_from(CardLoan).where(CardLoan.returned_at.is_(None)).scalar_subquery(),
+            )
+            counts_row = db.execute(counts_stmt).first()
+            if counts_row:
+                (
+                    asset_count,
+                    assignment_count,
+                    license_count,
+                    card_count,
+                    person_count,
+                    contract_count,
+                    active_card_loans,
+                ) = counts_row
+            else:
+                asset_count = assignment_count = license_count = card_count = person_count = contract_count = active_card_loans = 0
 
             # Audit logs (chỉ query khi có quyền xem)
             recent_logs = []
             if can_view_audit:
                 recent_logs = db.scalars(
-                    select(AuditLog).order_by(AuditLog.id.desc()).limit(8)
+                    select(AuditLog).options(joinedload(AuditLog.user)).order_by(AuditLog.id.desc()).limit(8)
                 ).all()
 
             # Overdue card loans (FR-17) - hiển thị cho cả Admin, GA Manager, Executive
             overdue_loans_raw = db.scalars(
                 select(CardLoan)
                 .options(
-                    selectinload(CardLoan.card),
-                    selectinload(CardLoan.person),
+                    joinedload(CardLoan.card),
+                    joinedload(CardLoan.person),
                 )
                 .where(
                     CardLoan.returned_at.is_(None),
@@ -2347,7 +2395,7 @@ class TokuyamaAdmin(Admin):
                 expiring_lics_raw = db.scalars(
                     select(License)
                     .options(
-                        selectinload(License.product),
+                        joinedload(License.product),
                         selectinload(License.assignments),
                     )
                     .where(
