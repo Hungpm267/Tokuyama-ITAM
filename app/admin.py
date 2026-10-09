@@ -2405,6 +2405,7 @@ def setup_admin(app, engine):
         engine,
         title="Tokuyama IT Portal",
         logo_url="/static/img/logo.png",
+        favicon_url="/static/img/tokuyama-favicon.png",
         authentication_backend=authentication_backend,
         base_url="/admin",
         templates_dir=str(TEMPLATES_DIR),

@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.requests import Request
-from starlette.responses import RedirectResponse, Response
+from starlette.responses import FileResponse, RedirectResponse, Response
 
 from app.admin import RequestContextMiddleware, setup_admin
 from app.config import settings
@@ -56,6 +56,12 @@ app.include_router(global_search_router)
 app.include_router(trash_router)
 app.include_router(assets_router)
 app.include_router(export_router)
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon() -> FileResponse:
+    """Phục vụ favicon mặc định của hệ thống."""
+    return FileResponse(BASE_DIR / "static" / "img" / "tokuyama-favicon.png", media_type="image/png")
 
 
 @app.get("/admin/set-lang")

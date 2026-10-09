@@ -19,7 +19,13 @@
   <link rel="stylesheet" href="{{ url_for('admin:statics', path='css/main.css') }}">
 
   {% if admin.favicon_url %}
-  <link rel="icon" href="{{ admin.favicon_url }}">
+  <link rel="icon" type="image/png" href="{{ admin.favicon_url }}">
+  <link rel="shortcut icon" type="image/png" href="{{ admin.favicon_url }}">
+  <link rel="apple-touch-icon" href="{{ admin.favicon_url }}">
+  {% else %}
+  <link rel="icon" type="image/png" href="/static/img/tokuyama-favicon.png">
+  <link rel="shortcut icon" type="image/png" href="/static/img/tokuyama-favicon.png">
+  <link rel="apple-touch-icon" href="/static/img/tokuyama-favicon.png">
   {% endif %}
 
   <!-- Swiss Anchor Architectural Tokens (Khớp chính xác mã màu Logo Tokuyama) -->

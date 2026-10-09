@@ -259,3 +259,25 @@ def test_set_language_endpoint_trilingual():
     assert res_vi.status_code == 303
     assert "itam_lang=vi" in res_vi.headers.get("set-cookie", "")
 
+
+def test_favicon_endpoints():
+    """Kiểm tra favicon hệ thống trả về đúng mã HTTP 200 và nhúng trong HTML."""
+    client = TestClient(app)
+
+    # 1. Trình duyệt tự động request /favicon.ico
+    res_ico = client.get("/favicon.ico")
+    assert res_ico.status_code == 200
+    assert "image/png" in res_ico.headers.get("content-type", "")
+    assert len(res_ico.content) > 0
+
+    # 2. Static file GET /static/img/tokuyama-favicon.png
+    res_static = client.get("/static/img/tokuyama-favicon.png")
+    assert res_static.status_code == 200
+    assert len(res_static.content) == len(res_ico.content)
+
+    # 3. Template HTML nhúng đúng đường dẫn favicon
+    res_login = client.get("/admin/login")
+    assert res_login.status_code == 200
+    assert "/static/img/tokuyama-favicon.png" in res_login.text
+
+
