@@ -133,3 +133,36 @@ def test_api_asset_history_endpoint(auth_client: TestClient, db: Session, seed):
     history = res.json()
     assert len(history) >= 1
     assert history[0]["staff_code"] == person.staff_code
+
+
+def test_api_assign_asset_rejects_future_date(auth_client: TestClient, db: Session, seed):
+    asset = seed["asset"]
+    person = seed["person"]
+    future_date = (dt.date.today() + dt.timedelta(days=5)).isoformat()
+
+    payload = {
+        "person_id": person.id,
+        "borrowed_at": future_date,
+    }
+    res = auth_client.post(f"/admin/assets/{asset.id}/assign", json=payload)
+    assert res.status_code == 400
+    assert "không được vượt quá ngày hiện tại" in res.json()["detail"]
+
+
+def test_api_return_asset_rejects_future_date(auth_client: TestClient, db: Session, seed):
+    asset = seed["asset"]
+    person = seed["person"]
+    today = dt.date.today()
+
+    auth_client.post(
+        f"/admin/assets/{asset.id}/assign",
+        json={"person_id": person.id, "borrowed_at": today.isoformat()},
+    )
+
+    future_date = (today + dt.timedelta(days=2)).isoformat()
+    res = auth_client.post(
+        f"/admin/assets/{asset.id}/return",
+        json={"returned_at": future_date, "return_status": "IN_STOCK"},
+    )
+    assert res.status_code == 400
+    assert "không được vượt quá ngày hiện tại" in res.json()["detail"]

@@ -29,6 +29,11 @@
           </button>
           {% endif %}
         {% endif %}
+        {% if model_view.identity == 'assignment' and (request.session.get('role') == 'ADMIN' or request.session.get('role_code') == 'ADMIN') and not model.returned_at %}
+        <button type="button" class="btn btn-warning btn-sm text-dark fw-bold" data-id="{{ model.asset_id }}" data-code="{{ model.asset.asset_code or model.asset.serial or '' if model.asset else '' }}" data-holder="{{ model.person.full_name or '' if model.person else '' }}" onclick="openReturnModal(this.dataset.id, this.dataset.code, this.dataset.holder)" style="font-size: 13px;">
+          <i class="fa-solid fa-arrow-rotate-left me-1"></i> {{ '機器返却' if current_lang == 'ja' else ('Return Asset' if current_lang == 'en' else 'Thu hồi thiết bị') }}
+        </button>
+        {% endif %}
         <a href="{{ url_for('admin:list', identity=model_view.identity) }}" class="btn btn-outline-secondary btn-sm" style="font-size: 13px;">
           <i class="fa-solid fa-arrow-left me-1"></i> {{ '一覧に戻る' if current_lang == 'ja' else ('Back to list' if current_lang == 'en' else 'Quay lại danh sách') }}
         </a>
@@ -836,6 +841,10 @@
   </div>
 
 </div>
+{% include 'sqladmin/asset_actions_modal.html' %}
+{% endif %}
+
+{% if model_view.identity == 'assignment' %}
 {% include 'sqladmin/asset_actions_modal.html' %}
 {% endif %}
 

@@ -1369,6 +1369,23 @@ class AssignmentAdmin(BaseAdminView, model=Assignment):
         b_at = data.get("borrowed_at") or getattr(model, "borrowed_at", None)
         r_at = data.get("returned_at") if "returned_at" in data else getattr(model, "returned_at", None)
 
+        today = dt.date.today()
+        if b_at and b_at > today:
+            if is_ja:
+                raise ValueError(f"貸出日（{b_at}）に未来の日付を指定することはできません（本日は {today}）。")
+            elif is_en:
+                raise ValueError(f"Borrow date ({b_at}) cannot be in the future (today is {today}).")
+            else:
+                raise ValueError(f"Ngày cấp phát ({b_at.strftime('%d/%m/%Y')}) không được ở tương lai (hôm nay là {today.strftime('%d/%m/%Y')}).")
+
+        if r_at and r_at > today:
+            if is_ja:
+                raise ValueError(f"返却日（{r_at}）に未来の日付を指定することはできません（本日は {today}）。")
+            elif is_en:
+                raise ValueError(f"Return date ({r_at}) cannot be in the future (today is {today}).")
+            else:
+                raise ValueError(f"Ngày thu hồi ({r_at.strftime('%d/%m/%Y')}) không được ở tương lai (hôm nay là {today.strftime('%d/%m/%Y')}).")
+
         if b_at and r_at and r_at < b_at:
             if is_ja:
                 raise ValueError("返却日を貸出日より前にすることはできません。")

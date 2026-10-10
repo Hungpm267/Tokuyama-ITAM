@@ -942,6 +942,37 @@ def test_assignment_overlap_validation(db: Session):
         asyncio.run(admin.on_model_change(data, Assignment(), is_created=True, request=req))
 
 
+def test_assignment_admin_rejects_future_dates():
+    """Kiểm tra AssignmentAdmin chặn ngày cấp phát hoặc ngày thu hồi ở tương lai."""
+    import asyncio
+    import datetime as dt
+    from unittest.mock import MagicMock
+    from app.admin import AssignmentAdmin
+    from app.models import Assignment
+
+    admin = AssignmentAdmin()
+    req = MagicMock()
+    req.session = {"lang": "vi"}
+
+    future_date = dt.date.today() + dt.timedelta(days=10)
+
+    # 1. Chặn borrowed_at ở tương lai
+    data_future_borrow = {
+        "borrowed_at": future_date,
+    }
+    with pytest.raises(ValueError, match="không được ở tương lai"):
+        asyncio.run(admin.on_model_change(data_future_borrow, Assignment(), is_created=True, request=req))
+
+    # 2. Chặn returned_at ở tương lai
+    data_future_return = {
+        "borrowed_at": dt.date.today() - dt.timedelta(days=1),
+        "returned_at": future_date,
+    }
+    with pytest.raises(ValueError, match="không được ở tương lai"):
+        asyncio.run(admin.on_model_change(data_future_return, Assignment(), is_created=False, request=req))
+
+
+
 
 
 

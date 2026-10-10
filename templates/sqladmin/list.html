@@ -270,7 +270,7 @@
   {% endif %}
   {% endfor %}
 
-  {% if model_view.identity == 'asset' %}
+  {% if model_view.identity in ['asset', 'assignment'] %}
   {% include 'sqladmin/asset_actions_modal.html' %}
   {% endif %}
 </div>

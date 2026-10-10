@@ -105,6 +105,14 @@ def assign_asset(
     if person.status == PersonStatus.RESIGNED:
         raise ValueError(f"Không thể bàn giao thiết bị cho nhân viên đã nghỉ việc ({person.full_name}).")
 
+    # Không cho phép cấp phát trong tương lai
+    today = dt.date.today()
+    if borrowed_at > today:
+        raise ValueError(
+            f"Ngày bàn giao ({borrowed_at.strftime('%d/%m/%Y')}) không được vượt quá ngày hiện tại "
+            f"({today.strftime('%d/%m/%Y')}). Không được chọn ngày trong tương lai."
+        )
+
     # Kiểm tra trùng lặp thời gian với các lần mượn trước đó
     overlapping_history = db.scalar(
         select(Assignment).where(
@@ -189,6 +197,13 @@ def return_asset(
         raise ValueError(
             f"Ngày thu hồi ({returned_at.strftime('%d/%m/%Y')}) không được trước ngày bàn giao "
             f"({asgn.borrowed_at.strftime('%d/%m/%Y')})."
+        )
+
+    today = dt.date.today()
+    if returned_at > today:
+        raise ValueError(
+            f"Ngày thu hồi ({returned_at.strftime('%d/%m/%Y')}) không được vượt quá ngày hiện tại "
+            f"({today.strftime('%d/%m/%Y')}). Không được chọn ngày trong tương lai."
         )
 
     before_asgn = _assignment_to_dict(asgn)

@@ -112,6 +112,8 @@ async def api_assign_asset(
     if not (
         has_permission(db, user, Module.ASSETS, PermissionAction.CHANGE)
         or has_permission(db, user, Module.ASSETS, PermissionAction.ADD)
+        or has_permission(db, user, Module.ASSIGNMENTS, PermissionAction.CHANGE)
+        or has_permission(db, user, Module.ASSIGNMENTS, PermissionAction.ADD)
     ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -135,6 +137,13 @@ async def api_assign_asset(
             raise HTTPException(status_code=400, detail="Định dạng ngày bàn giao không hợp lệ (YYYY-MM-DD).")
     else:
         borrowed_at = dt.date.today()
+
+    today = dt.date.today()
+    if borrowed_at > today:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Ngày bàn giao ({borrowed_at.strftime('%d/%m/%Y')}) không được vượt quá ngày hiện tại ({today.strftime('%d/%m/%Y')}).",
+        )
 
     note = body.get("note")
     client_ip = request.client.host if request.client else None
@@ -175,6 +184,8 @@ async def api_return_asset(
     if not (
         has_permission(db, user, Module.ASSETS, PermissionAction.CHANGE)
         or has_permission(db, user, Module.ASSETS, PermissionAction.ADD)
+        or has_permission(db, user, Module.ASSIGNMENTS, PermissionAction.CHANGE)
+        or has_permission(db, user, Module.ASSIGNMENTS, PermissionAction.ADD)
     ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -194,6 +205,13 @@ async def api_return_asset(
             raise HTTPException(status_code=400, detail="Định dạng ngày thu hồi không hợp lệ (YYYY-MM-DD).")
     else:
         returned_at = dt.date.today()
+
+    today = dt.date.today()
+    if returned_at > today:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Ngày thu hồi ({returned_at.strftime('%d/%m/%Y')}) không được vượt quá ngày hiện tại ({today.strftime('%d/%m/%Y')}).",
+        )
 
     return_status_raw = body.get("return_status", "IN_STOCK")
     try:

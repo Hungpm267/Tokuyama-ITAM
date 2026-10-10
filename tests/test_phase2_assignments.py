@@ -184,3 +184,41 @@ def test_assignment_history(db: Session, seed):
     assert len(history) == 2
     assert history[0].person_id == person_b.id  # Sắp xếp mới nhất lên đầu
     assert history[1].person_id == person_a.id
+
+
+def test_cannot_assign_asset_in_future(db: Session, seed):
+    asset = seed["asset"]
+    person = seed["person"]
+    future_date = dt.date.today() + dt.timedelta(days=7)
+
+    with pytest.raises(ValueError, match="Không được chọn ngày trong tương lai"):
+        assign_asset(
+            db=db,
+            asset_id=asset.id,
+            person_id=person.id,
+            borrowed_at=future_date,
+            user_id=seed["user"].id,
+        )
+
+
+def test_cannot_return_asset_in_future(db: Session, seed):
+    asset = seed["asset"]
+    person = seed["person"]
+    user_id = seed["user"].id
+
+    assign_asset(
+        db=db,
+        asset_id=asset.id,
+        person_id=person.id,
+        borrowed_at=dt.date.today() - dt.timedelta(days=1),
+        user_id=user_id,
+    )
+
+    future_date = dt.date.today() + dt.timedelta(days=3)
+    with pytest.raises(ValueError, match="Không được chọn ngày trong tương lai"):
+        return_asset(
+            db=db,
+            asset_id=asset.id,
+            returned_at=future_date,
+            user_id=user_id,
+        )
