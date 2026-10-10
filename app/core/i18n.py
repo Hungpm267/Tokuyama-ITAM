@@ -6,8 +6,11 @@ Tuân thủ nguyên tắc Swiss Design: từ ngữ chuẩn mực, chính xác, k
 
 from __future__ import annotations
 
+import datetime as dt
 from typing import Any, Final
 from starlette.requests import Request
+
+from app.core.clock import BUSINESS_TZ
 
 DEFAULT_LANGUAGE: Final[str] = "vi"
 SUPPORTED_LANGUAGES: Final[tuple[str, ...]] = ("vi", "en", "ja")
@@ -326,6 +329,18 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         "vi": "Nhận hàng",
         "en": "Receive",
     },
+    "Nhận phần mềm": {
+        "vi": "Nhận phần mềm",
+        "en": "Receive Software",
+    },
+    "Phần cứng": {
+        "vi": "Phần cứng",
+        "en": "Hardware",
+    },
+    "Phần mềm": {
+        "vi": "Phần mềm",
+        "en": "Software",
+    },
     "Đã đủ hàng": {
         "vi": "Đã đủ hàng",
         "en": "Fully Delivered",
@@ -540,6 +555,18 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         "vi": "thiết bị trong kho",
         "en": "in stock",
     },
+    "đã hết hạn": {
+        "vi": "đã hết hạn",
+        "en": "expired",
+    },
+    "Gói đã hết hạn": {
+        "vi": "Gói đã hết hạn",
+        "en": "Package expired",
+    },
+    "đã xóa": {
+        "vi": "đã xóa",
+        "en": "deleted",
+    },
     "sắp hết hạn": {
         "vi": "sắp hết hạn",
         "en": "expiring soon",
@@ -738,6 +765,7 @@ PROPERTY_LABELS: Final[dict[str, dict[str, str]]] = {
     "signed_date": {"vi": "Ngày ký hợp đồng", "en": "Signed Date"},
     "delivery_status": {"vi": "Trạng thái giao hàng", "en": "Delivery Status"},
     "item_type": {"vi": "Hạng mục hàng hóa", "en": "Item Type"},
+    "item_kind": {"vi": "Loại hạng mục", "en": "Item Kind", "ja": "品目区分"},
     "qty_ordered": {"vi": "Số lượng đặt mua", "en": "Ordered Quantity", "ja": "発注数量"},
     "qty_delivered": {"vi": "Số lượng đã nhận", "en": "Delivered Quantity", "ja": "納品済み数量"},
     "qty_remaining": {"vi": "Số lượng còn lại", "en": "Remaining Quantity", "ja": "残数量"},
@@ -939,6 +967,8 @@ JA_TRANSLATIONS: Final[dict[str, str]] = {
     "Thu hồi": "返却",
     "Thu hồi thiết bị": "機器返却",
     "Nhận hàng": "受入",
+    "Nhận phần mềm": "ソフトウェア受入",
+    "Phần cứng": "ハードウェア",
     "Đã đủ hàng": "完納",
     "Giao một phần": "分納",
     "Chưa nhận": "未受入",
@@ -1032,6 +1062,9 @@ JA_TRANSLATIONS: Final[dict[str, str]] = {
     "đã cấp phát": "割当済み",
     "thiết bị trong kho": "在庫機器",
     "sắp hết hạn": "期限間近",
+    "đã hết hạn": "期限切れ",
+    "Gói đã hết hạn": "パッケージ期限切れ",
+    "đã xóa": "削除済み",
     "thẻ đang cho mượn": "貸出中カード",
     "Đang quản lý": "管理中",
     "Hoạt động gần nhất": "最近の操作履歴",
@@ -1156,6 +1189,7 @@ JA_PROPERTY_LABELS: Final[dict[str, str]] = {
     "signed_date": "契約締結日",
     "delivery_status": "納品状況",
     "item_type": "品目種別",
+    "item_kind": "品目区分",
     "qty_ordered": "発注数量",
     "qty_delivered": "納品数量",
     "qty_remaining": "残数量",
@@ -1289,6 +1323,14 @@ def format_datetime_clean(val: Any) -> str:
     """Định dạng ngày giờ sạch sẽ (YYYY-MM-DD HH:mm:ss) thay vì hiển thị microsecond/timezone dài dòng."""
     if val is None or val == "":
         return "-"
+    if isinstance(val, dt.datetime):
+        # DB lưu UTC; người dùng làm việc theo giờ Việt Nam. In thẳng giá trị UTC làm
+        # thao tác lúc 06:00 sáng hiện thành 23:00 của ngày hôm trước.
+        if val.tzinfo is not None:
+            val = val.astimezone(BUSINESS_TZ)
+        return val.strftime("%Y-%m-%d %H:%M:%S")
+    if isinstance(val, dt.date):
+        return val.strftime("%Y-%m-%d")
     if hasattr(val, "strftime"):
         return val.strftime("%Y-%m-%d %H:%M:%S")
     s = str(val)

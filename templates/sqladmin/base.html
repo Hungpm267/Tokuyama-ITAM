@@ -669,7 +669,7 @@
           var parsed = new URL(url, window.location.href);
           if (parsed.origin !== window.location.origin) return false;
           if (parsed.pathname === window.location.pathname && parsed.search === window.location.search) return false;
-          if (parsed.pathname.indexOf('/logout') !== -1 || parsed.pathname.indexOf('/delete') !== -1 || parsed.pathname.indexOf('/export') !== -1) return false;
+          if (parsed.pathname.indexOf('/logout') !== -1 || parsed.pathname.indexOf('/delete') !== -1 || parsed.pathname.indexOf('/export') !== -1 || parsed.pathname.indexOf('/set-lang') !== -1) return false;
           if (prefetchedUrls.has(parsed.href)) return false;
           return true;
         } catch (err) {

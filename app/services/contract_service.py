@@ -6,8 +6,38 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.enums import DeliveryStatus
-from app.models import Asset, Contract, ContractLine
+from app.enums import ContractItemKind, DeliveryStatus
+from app.models import Asset, Contract, ContractLine, License
+
+
+def line_received_qty(
+    db: Session,
+    line: ContractLine,
+    exclude_asset_id: int | None = None,
+    exclude_license_id: int | None = None,
+) -> int:
+    """Số đã nhận của một hạng mục - luôn TÍNH từ dữ liệu, không có cột gõ tay (Rule 8).
+
+    Phần cứng: đếm thiết bị còn sống gắn vào hạng mục.
+    Phần mềm: tổng seat của các gói license còn sống gắn vào hạng mục.
+    Tham số exclude_* dùng khi kiểm tra sức chứa cho chính bản ghi đang được sửa.
+    """
+    if line.item_kind == ContractItemKind.SOFTWARE:
+        stmt = select(func.coalesce(func.sum(License.seats), 0)).where(
+            License.contract_line_id == line.id,
+            License.is_deleted.is_(False),
+        )
+        if exclude_license_id:
+            stmt = stmt.where(License.id != exclude_license_id)
+        return int(db.scalar(stmt) or 0)
+
+    stmt = select(func.count(Asset.id)).where(
+        Asset.contract_line_id == line.id,
+        Asset.is_deleted.is_(False),
+    )
+    if exclude_asset_id:
+        stmt = stmt.where(Asset.id != exclude_asset_id)
+    return int(db.scalar(stmt) or 0)
 
 
 def get_contract_summary(db: Session, contract_id: int) -> dict[str, Any]:
@@ -31,15 +61,7 @@ def get_contract_summary(db: Session, contract_id: int) -> dict[str, Any]:
 
     for line in lines:
         ordered = line.qty_ordered
-        delivered = (
-            db.scalar(
-                select(func.count(Asset.id)).where(
-                    Asset.contract_line_id == line.id,
-                    Asset.is_deleted.is_(False),
-                )
-            )
-            or 0
-        )
+        delivered = line_received_qty(db, line)
         remaining = max(0, ordered - delivered)
 
         if delivered >= ordered:
@@ -101,15 +123,7 @@ def sync_contract_delivery_status(db: Session, contract_id: int) -> DeliveryStat
 
     all_delivered = True
     for line in lines:
-        delivered = (
-            db.scalar(
-                select(func.count(Asset.id)).where(
-                    Asset.contract_line_id == line.id,
-                    Asset.is_deleted.is_(False),
-                )
-            )
-            or 0
-        )
+        delivered = line_received_qty(db, line)
         if delivered < line.qty_ordered:
             all_delivered = False
             break

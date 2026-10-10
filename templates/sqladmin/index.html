@@ -5,7 +5,7 @@
 {% set is_admin = (request.session.get('role') == 'ADMIN' or request.session.get('role_code') == 'ADMIN') %}
 {% set is_executive = (request.session.get('role') == 'EXECUTIVE' or request.session.get('role_code') == 'EXECUTIVE') %}
 {% set is_ga_manager = (request.session.get('role') == 'GA_MANAGER' or request.session.get('role_code') == 'GA_MANAGER') %}
-{% set total_alerts = (overdue_card_loans | length) + (expiring_licenses | length) %}
+{% set total_alerts = overdue_loan_count + expiring_license_count + expired_license_count %}
 
 <style>
   .toku-kpi-card {
@@ -118,7 +118,7 @@
         </div>
         <div class="mt-auto pt-1 d-flex justify-content-between align-items-center" style="font-size: 11.5px;">
           <span class="text-muted">
-            {{ [asset_count - assignment_count, 0] | max }} {{ t('thiết bị trong kho', current_lang) }}
+            {{ in_stock_count }} {{ t('thiết bị trong kho', current_lang) }}
           </span>
           <span class="text-primary fw-semibold" style="font-size: 11px;">{{ t('Chi tiết', current_lang) }} &rarr;</span>
         </div>
@@ -142,9 +142,9 @@
           <span class="text-muted small" style="font-size: 12px;">{{ t('gói', current_lang) }}</span>
         </div>
         <div class="mt-auto pt-1 d-flex justify-content-between align-items-center" style="font-size: 11.5px;">
-          <span class="{% if expiring_licenses %}text-danger fw-semibold{% else %}text-muted{% endif %}">
-            {% if expiring_licenses %}
-            {{ expiring_licenses | length }} {{ t('sắp hết hạn', current_lang) }}
+          <span class="{% if expiring_license_count or expired_license_count %}text-danger fw-semibold{% else %}text-muted{% endif %}">
+            {% if expiring_license_count or expired_license_count %}
+            {% if expiring_license_count %}{{ expiring_license_count }} {{ t('sắp hết hạn', current_lang) }}{% endif %}{% if expiring_license_count and expired_license_count %} · {% endif %}{% if expired_license_count %}{{ expired_license_count }} {{ t('đã hết hạn', current_lang) }}{% endif %}
             {% else %}
             {{ t('Đang quản lý', current_lang) }}
             {% endif %}
@@ -217,7 +217,7 @@
             <i class="fa-solid fa-triangle-exclamation"></i>
           </span>
           <span class="card-title fw-bold" style="font-size: 13.5px; color: #991b1b;">{{ t('Thẻ mượn quá hạn hẹn trả', current_lang) }}</span>
-          <span class="badge bg-danger ms-1" style="font-size: 11px;">{{ overdue_card_loans | length }}</span>
+          <span class="badge bg-danger ms-1" style="font-size: 11px;">{{ overdue_loan_count }}</span>
         </div>
         <a href="{{ url_for('admin:list', identity='card-loan') }}" class="btn btn-outline-danger btn-sm py-0.5 px-2.5" style="font-size: 11px; font-weight: 600;">
           {{ t('Sổ mượn thẻ', current_lang) }} &rarr;
@@ -271,7 +271,7 @@
             <i class="fa-solid fa-hourglass-half"></i>
           </span>
           <span class="card-title fw-bold" style="font-size: 13.5px; color: #92400e;">{{ t('Bản quyền sắp hết hạn (≤ 60 ngày)', current_lang) }}</span>
-          <span class="badge bg-warning ms-1" style="font-size: 11px;">{{ expiring_licenses | length }}</span>
+          <span class="badge bg-warning ms-1" style="font-size: 11px;">{{ expiring_license_count + expired_license_count }}</span>
         </div>
         <a href="{{ url_for('admin:list', identity='license') }}" class="btn btn-outline-warning btn-sm py-0.5 px-2.5 text-dark" style="font-size: 11px; font-weight: 600;">
           {{ t('Xem tất cả', current_lang) }} &rarr;
@@ -417,8 +417,8 @@
               </div>
 
               <div class="text-end text-muted num-tabular flex-shrink-0 ms-2" style="font-size: 11.5px;">
-                {{ log.created_at.strftime('%H:%M:%S') if log.created_at else '—' }}
-                <div style="font-size: 10px; color: #94a3b8;">{{ log.created_at.strftime('%d/%m/%Y') if log.created_at else '' }}</div>
+                {{ format_datetime_clean(log.created_at)[11:] if log.created_at else '—' }}
+                <div style="font-size: 10px; color: #94a3b8;">{{ format_datetime_clean(log.created_at)[:10] if log.created_at else '' }}</div>
               </div>
             </div>
             {% endfor %}

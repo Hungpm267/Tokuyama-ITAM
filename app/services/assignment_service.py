@@ -16,8 +16,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.audit import record_audit
+from app.core.clock import today_local
 from app.enums import AssetStatus, AuditAction, PersonStatus
 from app.models import Asset, Assignment, Person
+
+
+#: Trạng thái được phép đặt cho thiết bị ngay khi thu hồi.
+RETURNABLE_STATUSES = frozenset({AssetStatus.IN_STOCK, AssetStatus.REPAIR, AssetStatus.DISPOSED})
 
 
 def _assignment_to_dict(asgn: Assignment) -> dict[str, Any]:
@@ -106,7 +111,7 @@ def assign_asset(
         raise ValueError(f"Không thể bàn giao thiết bị cho nhân viên đã nghỉ việc ({person.full_name}).")
 
     # Không cho phép cấp phát trong tương lai
-    today = dt.date.today()
+    today = today_local()
     if borrowed_at > today:
         raise ValueError(
             f"Ngày bàn giao ({borrowed_at.strftime('%d/%m/%Y')}) không được vượt quá ngày hiện tại "
@@ -199,11 +204,19 @@ def return_asset(
             f"({asgn.borrowed_at.strftime('%d/%m/%Y')})."
         )
 
-    today = dt.date.today()
+    today = today_local()
     if returned_at > today:
         raise ValueError(
             f"Ngày thu hồi ({returned_at.strftime('%d/%m/%Y')}) không được vượt quá ngày hiện tại "
             f"({today.strftime('%d/%m/%Y')}). Không được chọn ngày trong tương lai."
+        )
+
+    # Từ chối thay vì âm thầm đổi về IN_STOCK: máy báo mất mà ghi "trong kho"
+    # thì lượt sau sẽ có người được bàn giao một chiếc máy không tồn tại.
+    if return_status not in RETURNABLE_STATUSES:
+        raise ValueError(
+            f"Trạng thái sau thu hồi '{return_status.value}' không hợp lệ. "
+            "Chỉ chấp nhận: IN_STOCK (về kho), REPAIR (đi sửa), DISPOSED (thanh lý)."
         )
 
     before_asgn = _assignment_to_dict(asgn)
@@ -219,9 +232,6 @@ def return_asset(
 
     # 2. Cập nhật trạng thái Asset
     old_asset_status = asset.status
-    if return_status not in (AssetStatus.IN_STOCK, AssetStatus.REPAIR, AssetStatus.DISPOSED):
-        return_status = AssetStatus.IN_STOCK
-
     asset.status = return_status
     asset.updated_by = user_id
     asset.updated_at = dt.datetime.now(dt.timezone.utc)

@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.core.audit import audit_reveal, record_audit
 from app.core.crypto import SecretBox
+from app.core.inputs import read_json_object, require_positive_int
 from app.core.permissions import has_permission
 from app.core.reveal import RevealDenied
 from app.core.security import verify_password, verify_session_token
@@ -70,18 +71,13 @@ async def save_person_secret(
             detail="Bạn không có quyền quản lý mật khẩu nhân sự.",
         )
 
-    try:
-        body: dict[str, Any] = await request.json()
-    except Exception:
-        raise HTTPException(status_code=400, detail="Dữ liệu JSON không hợp lệ.")
-
-    person_id = body.get("person_id")
-    if not person_id:
-        raise HTTPException(status_code=400, detail="Thiếu mã nhân sự (person_id).")
+    body = await read_json_object(request)
+    # Kiểm kiểu chặt: `true` hay "abc" không được bị ép thành nhân sự #1 hoặc gây lỗi 500.
+    person_id = require_positive_int(body.get("person_id"), "Thiếu mã nhân sự (person_id).")
 
     person = db.scalar(
         select(Person).where(
-            Person.id == int(person_id),
+            Person.id == person_id,
             Person.is_deleted.is_(False),
         )
     )

@@ -55,6 +55,7 @@ from app.enums import (
     AuditAction,
     CardStatus,
     CardType,
+    ContractItemKind,
     DeliveryStatus,
     LicenseType,
     PersonStatus,
@@ -507,9 +508,15 @@ class License(BizBase):
     contract_id: Mapped[int | None] = mapped_column(
         ForeignKey("contracts.id", ondelete="RESTRICT"), nullable=True
     )
+    #: Hạng mục hợp đồng (loại SOFTWARE) mà gói này được nhận về. Số đã nhận của
+    #: hạng mục = SUM(seats) các gói còn sống trỏ tới nó.
+    contract_line_id: Mapped[int | None] = mapped_column(
+        ForeignKey("contract_lines.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     product: Mapped[LicenseProduct] = relationship(lazy="joined")
+    contract_line: Mapped[ContractLine | None] = relationship(back_populates="licenses")
     assignments: Mapped[list[LicenseAssignment]] = relationship(
         back_populates="license"
     )
@@ -737,6 +744,10 @@ class ContractLine(BizBase):
     KHÔNG có delivered_qty hay remaining_qty. Số đã nhận được ĐẾM từ
     assets.contract_line_id. Đây là điểm sửa quan trọng nhất so với sheet
     "PC_Qty summary" - cột gõ tay đó chính là nguồn sai lệch.
+
+    Hạng mục loại SOFTWARE không có thiết bị để đếm: số đã nhận của nó là tổng
+    seat của các gói license trỏ tới (licenses.contract_line_id), và qty_ordered
+    khi đó là số seat đặt mua.
     """
 
     __tablename__ = "contract_lines"
@@ -745,11 +756,17 @@ class ContractLine(BizBase):
         ForeignKey("contracts.id", ondelete="RESTRICT"), nullable=False
     )
     item_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    item_kind: Mapped[ContractItemKind] = mapped_column(
+        _enum(ContractItemKind, "contract_item_kind"),
+        server_default=text("'HARDWARE'"),
+        nullable=False,
+    )
     spec: Mapped[str | None] = mapped_column(Text, nullable=True)
     qty_ordered: Mapped[int] = mapped_column(Integer, nullable=False)
 
     contract: Mapped[Contract] = relationship(back_populates="lines")
     assets: Mapped[list[Asset]] = relationship(back_populates="contract_line")
+    licenses: Mapped[list[License]] = relationship(back_populates="contract_line")
 
     __table_args__ = biz_args(
         CheckConstraint("qty_ordered > 0", name="qty_positive")
@@ -761,6 +778,8 @@ class ContractLine(BizBase):
     @property
     def qty_delivered(self) -> int:
         try:
+            if self.item_kind == ContractItemKind.SOFTWARE:
+                return sum(lic.seats for lic in self.licenses if not lic.is_deleted)
             return sum(1 for a in self.assets if not a.is_deleted)
         except Exception:
             return 0
@@ -856,6 +875,9 @@ class AuditLog(Base):
                 return "Đăng nhập thành công"
             return "-"
         extra = self.before_after.get("extra") or {}
+        # Dòng RESTORE lưu lại lý do xóa cũ trong `before`; đừng trình bày nó như một lần xóa.
+        if self.action == AuditAction.RESTORE:
+            return "Khôi phục bản ghi từ thùng rác"
         if "delete_reason" in extra:
             return f"Lý do xóa: {extra['delete_reason']}"
         if "reason" in extra:
@@ -870,11 +892,14 @@ class AuditLog(Base):
         if self.action == AuditAction.LOGIN_FAIL:
             return f"Đăng nhập thất bại ({extra.get('username', '')})"
         if self.action == AuditAction.REVEAL:
-            return f"Xem mật khẩu: {extra.get('field', '')}"
+            return f"Xem mật khẩu: {extra.get('revealed_field') or extra.get('field', '')}"
 
         after = self.before_after.get("after") or {}
         if self.action == AuditAction.UPDATE and before and after:
-            changed = [k for k in after if k in before and before[k] != after[k]]
+            changed = [
+                k for k in after
+                if k in before and before[k] != after[k] and k not in ("updated_at", "updated_by")
+            ]
             if changed:
                 return f"Sửa: {', '.join(changed[:3])}"
         if self.action == AuditAction.CREATE:

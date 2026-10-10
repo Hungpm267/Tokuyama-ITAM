@@ -16,21 +16,21 @@
           <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1">
             {% for export_type in model_view.export_types %}
             <li><a class="dropdown-item"
-                href="{{ url_for('admin:export', identity=model_view.identity, export_type=export_type) }}">{{
+                href="{{ url_for('admin:export', identity=model_view.identity, export_type=export_type) }}{% if request.url.query %}?{{ request.url.query }}{% endif %}">{{
                 export_type | upper }}</a></li>
             {% endfor %}
           </ul>
         </div>
         {% elif model_view.export_types | length == 1 %}
         <div class="ms-3 d-inline-block">
-          <a href="{{ url_for('admin:export', identity=model_view.identity, export_type=model_view.export_types[0]) }}"
+          <a href="{{ url_for('admin:export', identity=model_view.identity, export_type=model_view.export_types[0]) }}{% if request.url.query %}?{{ request.url.query }}{% endif %}"
             class="btn btn-secondary">
             Export
           </a>
         </div>
         {% endif %}
         {% endif %}
-        {% if model_view.identity == 'person' and (request.session.get('role') == 'ADMIN' or request.session.get('role_code') == 'ADMIN') %}
+        {% if model_view.identity == 'person' and can(request, 'secrets', 'view') %}
         <div class="ms-2 d-inline-block">
           <a href="/admin/person-secret/list" class="btn btn-outline-success d-inline-flex align-items-center gap-1" style="font-size: 13px; font-weight: 600;">
             <i class="fa-solid fa-user-lock"></i>
@@ -153,12 +153,6 @@
               <input class="form-check-input m-0 align-middle select-box" type="checkbox" aria-label="Select item">
             </td>
             <td class="text-end">
-              {% if model_view.identity == 'contract-line' %}
-              <a href="/admin/contract-line/{{ get_object_identifier(row) }}/receive" data-bs-toggle="tooltip"
-                data-bs-placement="top" title="{{ '一括受入' if current_lang == 'ja' else ('Batch Receive' if current_lang == 'en' else 'Nhập kho theo lô') }}" class="btn btn-sm btn-outline-primary py-0 px-1 me-2" style="font-size: 11px;">
-                <i class="fa-solid fa-boxes-packing me-1"></i>{{ '受入' if current_lang == 'ja' else ('Receive' if current_lang == 'en' else 'Nhận hàng') }}
-              </a>
-              {% endif %}
               {% if model_view.can_view_details %}
               <a href="{{ model_view._build_url_for('admin:details', request, row) }}" data-bs-toggle="tooltip"
                 data-bs-placement="top" title="{{ '詳細' if current_lang == 'ja' else ('View' if current_lang == 'en' else 'Xem chi tiết') }}" class="text-secondary me-2">

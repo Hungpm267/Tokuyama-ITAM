@@ -46,6 +46,13 @@ class DeliveryStatus(str, Enum):
     DELIVERED = "DELIVERED"  # đã nhận đủ
 
 
+class ContractItemKind(str, Enum):
+    """Hạng mục hợp đồng mua gì - quyết định cách đếm số đã nhận."""
+
+    HARDWARE = "HARDWARE"  # nhận bằng thiết bị (assets.contract_line_id)
+    SOFTWARE = "SOFTWARE"  # nhận bằng gói license, đếm theo số seat
+
+
 class LicenseType(str, Enum):
     PERPETUAL = "PERPETUAL"
     SUBSCRIPTION = "SUBSCRIPTION"
