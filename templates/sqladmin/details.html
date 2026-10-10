@@ -8,17 +8,17 @@
         {{ ('詳細: ' if current_lang == 'ja' else ('Details: ' if current_lang == 'en' else 'Chi tiết: ')) ~ model }}
       </h3>
       <div class="d-flex align-items-center gap-2">
-        {% if model_view.identity == 'person' and (request.session.get('role') == 'ADMIN' or request.session.get('role_code') == 'ADMIN') %}
+        {% if model_view.identity == 'person' and can(request, 'secrets', 'view') %}
         <a href="/admin/person-secret/list" class="btn btn-outline-success btn-sm" style="font-size: 13px;">
           <i class="fa-solid fa-user-lock me-1"></i> {{ '人事パスワード保管庫' if current_lang == 'ja' else ('Password Vault' if current_lang == 'en' else 'Kho Mật khẩu Nhân sự') }}
         </a>
         {% endif %}
-        {% if model_view.identity == 'contract-line' and (request.session.get('role') == 'ADMIN' or request.session.get('role_code') == 'ADMIN') %}
-        <a href="/admin/contract-line/{{ get_object_identifier(model) }}/receive" class="btn btn-primary btn-sm text-white" style="font-size: 13px;">
-          <i class="fa-solid fa-boxes-packing me-1"></i> {{ '一括受入' if current_lang == 'ja' else ('Batch Receive' if current_lang == 'en' else 'Nhập kho theo lô') }}
+        {% if model_view.identity == 'contract-line' and model.qty_remaining > 0 and can(request, 'licenses' if model.item_kind.value == 'SOFTWARE' else 'assets', 'add') %}
+        <a href="/admin/contract-line/{{ get_object_identifier(model) }}/{{ 'receive-software' if model.item_kind.value == 'SOFTWARE' else 'receive' }}" class="btn btn-primary btn-sm text-white" style="font-size: 13px;">
+          <i class="fa-solid fa-boxes-packing me-1"></i> {% if model.item_kind.value == 'SOFTWARE' %}{{ 'ソフトウェア受入' if current_lang == 'ja' else ('Receive Software' if current_lang == 'en' else 'Nhận phần mềm') }}{% else %}{{ '一括受入' if current_lang == 'ja' else ('Batch Receive' if current_lang == 'en' else 'Nhập kho theo lô') }}{% endif %}
         </a>
         {% endif %}
-        {% if model_view.identity == 'asset' and (request.session.get('role') == 'ADMIN' or request.session.get('role_code') == 'ADMIN') %}
+        {% if model_view.identity == 'asset' and can_loan(request) %}
           {% if model.status and model.status.value == 'IN_STOCK' %}
           <button type="button" class="btn btn-primary btn-sm text-white" data-id="{{ get_object_identifier(model) }}" data-code="{{ model.asset_code or model.serial or '' }}" data-model="{{ model.model or '' }}" onclick="openAssignModal(this.dataset.id, this.dataset.code, this.dataset.model)" style="font-size: 13px;">
             <i class="fa-solid fa-handshake me-1"></i> {{ '機器割当' if current_lang == 'ja' else ('Assign Asset' if current_lang == 'en' else 'Bàn giao thiết bị') }}
@@ -28,6 +28,11 @@
             <i class="fa-solid fa-arrow-rotate-left me-1"></i> {{ '機器返却' if current_lang == 'ja' else ('Return Asset' if current_lang == 'en' else 'Thu hồi thiết bị') }}
           </button>
           {% endif %}
+        {% endif %}
+        {% if model_view.identity == 'assignment' and can_loan(request) and not model.returned_at %}
+        <button type="button" class="btn btn-warning btn-sm text-dark fw-bold" data-id="{{ model.asset_id }}" data-code="{{ model.asset.asset_code or model.asset.serial or '' if model.asset else '' }}" data-holder="{{ model.person.full_name or '' if model.person else '' }}" onclick="openReturnModal(this.dataset.id, this.dataset.code, this.dataset.holder)" style="font-size: 13px;">
+          <i class="fa-solid fa-arrow-rotate-left me-1"></i> {{ '機器返却' if current_lang == 'ja' else ('Return Asset' if current_lang == 'en' else 'Thu hồi thiết bị') }}
+        </button>
         {% endif %}
         <a href="{{ url_for('admin:list', identity=model_view.identity) }}" class="btn btn-outline-secondary btn-sm" style="font-size: 13px;">
           <i class="fa-solid fa-arrow-left me-1"></i> {{ '一覧に戻る' if current_lang == 'ja' else ('Back to list' if current_lang == 'en' else 'Quay lại danh sách') }}
@@ -407,9 +412,9 @@
           </a>
         </div>
         <div class="d-flex align-items-center gap-2">
-          {% if model_view.identity == 'contract-line' and (request.session.get('role') == 'ADMIN' or request.session.get('role_code') == 'ADMIN') %}
-          <a href="/admin/contract-line/{{ get_object_identifier(model) }}/receive" class="btn btn-primary btn-sm text-white px-3" style="font-size: 13px; font-weight: 600;">
-            <i class="fa-solid fa-boxes-packing me-1"></i> {{ '一括受入' if current_lang == 'ja' else ('Batch Receive' if current_lang == 'en' else 'Nhập kho theo lô') }}
+          {% if model_view.identity == 'contract-line' and model.qty_remaining > 0 and can(request, 'licenses' if model.item_kind.value == 'SOFTWARE' else 'assets', 'add') %}
+          <a href="/admin/contract-line/{{ get_object_identifier(model) }}/{{ 'receive-software' if model.item_kind.value == 'SOFTWARE' else 'receive' }}" class="btn btn-primary btn-sm text-white px-3" style="font-size: 13px; font-weight: 600;">
+            <i class="fa-solid fa-boxes-packing me-1"></i> {% if model.item_kind.value == 'SOFTWARE' %}{{ 'ソフトウェア受入' if current_lang == 'ja' else ('Receive Software' if current_lang == 'en' else 'Nhận phần mềm') }}{% else %}{{ '一括受入' if current_lang == 'ja' else ('Batch Receive' if current_lang == 'en' else 'Nhập kho theo lô') }}{% endif %}
           </a>
           {% endif %}
           {% if model_view.can_edit %}
@@ -555,9 +560,11 @@
         <a href="/admin/assignment/create" class="btn btn-outline-primary btn-sm" style="font-size: 12.5px;">
           <i class="fa-solid fa-plus me-1"></i> {{ '機器割当' if current_lang == 'ja' else ('Assign Asset' if current_lang == 'en' else 'Bàn giao thiết bị') }}
         </a>
+        {% if can(request, 'secrets', 'view') %}
         <a href="/admin/person-secret/list" class="btn btn-outline-success btn-sm" style="font-size: 12.5px;">
           <i class="fa-solid fa-user-lock me-1"></i> {{ '人事パスワード保管庫' if current_lang == 'ja' else ('Password Vault' if current_lang == 'en' else 'Kho Mật khẩu Nhân sự') }}
         </a>
+        {% endif %}
       </div>
     </div>
     <div class="card-body p-0 bg-white">
@@ -615,9 +622,11 @@
               </td>
               <td class="text-end">
                 {% if a.returned_at is none and a.asset %}
+                {% if can_loan(request) %}
                 <button type="button" class="btn btn-sm btn-outline-warning text-dark py-0 px-2 fw-bold" data-id="{{ a.asset.id }}" data-code="{{ a.asset.asset_code or a.asset.serial or '' }}" data-holder="{{ model.full_name or '' }}" onclick="openReturnModal(this.dataset.id, this.dataset.code, this.dataset.holder)" style="font-size: 12px;">
                   <i class="fa-solid fa-arrow-rotate-left me-1"></i> {{ '回収' if current_lang == 'ja' else ('Return' if current_lang == 'en' else 'Thu hồi') }}
                 </button>
+                {% endif %}
                 {% else %}
                 <a href="/admin/assignment/details/{{ a.id }}" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size: 11.5px;">
                   <i class="fa-solid fa-eye me-1"></i>{{ '詳細' if current_lang == 'ja' else ('View' if current_lang == 'en' else 'Chi tiết') }}
@@ -836,6 +845,10 @@
   </div>
 
 </div>
+{% include 'sqladmin/asset_actions_modal.html' %}
+{% endif %}
+
+{% if model_view.identity == 'assignment' %}
 {% include 'sqladmin/asset_actions_modal.html' %}
 {% endif %}
 

@@ -3,17 +3,19 @@
 from __future__ import annotations
 
 import datetime as dt
-from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, selectinload
 
+from app.admin import invalidate_model_count_cache
+from app.core.clock import today_local
+from app.core.inputs import optional_text, read_json_object, require_positive_int
 from app.core.permissions import has_permission
 from app.core.security import verify_session_token
 from app.db import get_db
 from app.enums import AssetStatus, Module, PermissionAction, PersonStatus
-from app.models import Person, User
+from app.models import Assignment, Person, User
 from app.services.assignment_service import (
     assign_asset,
     get_asset_assignment_history,
@@ -84,7 +86,11 @@ def search_active_persons(
                 Person.email.ilike(pattern),
             )
         )
-    stmt = stmt.order_by(Person.full_name.asc()).limit(20)
+    stmt = stmt.order_by(Person.full_name.asc())
+    # Modal bàn giao nạp danh sách một lần không kèm từ khoá để đổ vào <select>;
+    # giới hạn 20 ở đó làm người thứ 21 trở đi không bao giờ chọn được.
+    if clean_q:
+        stmt = stmt.limit(20)
     persons = db.scalars(stmt).all()
 
     return JSONResponse(
@@ -112,20 +118,16 @@ async def api_assign_asset(
     if not (
         has_permission(db, user, Module.ASSETS, PermissionAction.CHANGE)
         or has_permission(db, user, Module.ASSETS, PermissionAction.ADD)
+        or has_permission(db, user, Module.ASSIGNMENTS, PermissionAction.CHANGE)
+        or has_permission(db, user, Module.ASSIGNMENTS, PermissionAction.ADD)
     ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Bạn không có quyền bàn giao thiết bị.",
         )
 
-    try:
-        body: dict[str, Any] = await request.json()
-    except Exception:
-        raise HTTPException(status_code=400, detail="Dữ liệu JSON không hợp lệ.")
-
-    person_id = body.get("person_id")
-    if not person_id:
-        raise HTTPException(status_code=400, detail="Vui lòng chọn nhân viên nhận máy.")
+    body = await read_json_object(request)
+    person_id = require_positive_int(body.get("person_id"), "Vui lòng chọn nhân viên nhận máy.")
 
     borrowed_at_raw = body.get("borrowed_at")
     if borrowed_at_raw:
@@ -134,16 +136,23 @@ async def api_assign_asset(
         except ValueError:
             raise HTTPException(status_code=400, detail="Định dạng ngày bàn giao không hợp lệ (YYYY-MM-DD).")
     else:
-        borrowed_at = dt.date.today()
+        borrowed_at = today_local()
 
-    note = body.get("note")
+    today = today_local()
+    if borrowed_at > today:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Ngày bàn giao ({borrowed_at.strftime('%d/%m/%Y')}) không được vượt quá ngày hiện tại ({today.strftime('%d/%m/%Y')}).",
+        )
+
+    note = optional_text(body.get("note"), 2000, "Ghi chú")
     client_ip = request.client.host if request.client else None
 
     try:
         asgn = assign_asset(
             db=db,
             asset_id=asset_id,
-            person_id=int(person_id),
+            person_id=person_id,
             borrowed_at=borrowed_at,
             note=note,
             user_id=user.id,
@@ -153,6 +162,7 @@ async def api_assign_asset(
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc))
+    invalidate_model_count_cache(Assignment)
 
     return JSONResponse(
         content={
@@ -175,16 +185,15 @@ async def api_return_asset(
     if not (
         has_permission(db, user, Module.ASSETS, PermissionAction.CHANGE)
         or has_permission(db, user, Module.ASSETS, PermissionAction.ADD)
+        or has_permission(db, user, Module.ASSIGNMENTS, PermissionAction.CHANGE)
+        or has_permission(db, user, Module.ASSIGNMENTS, PermissionAction.ADD)
     ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Bạn không có quyền thu hồi thiết bị.",
         )
 
-    try:
-        body: dict[str, Any] = await request.json()
-    except Exception:
-        raise HTTPException(status_code=400, detail="Dữ liệu JSON không hợp lệ.")
+    body = await read_json_object(request)
 
     returned_at_raw = body.get("returned_at")
     if returned_at_raw:
@@ -193,15 +202,22 @@ async def api_return_asset(
         except ValueError:
             raise HTTPException(status_code=400, detail="Định dạng ngày thu hồi không hợp lệ (YYYY-MM-DD).")
     else:
-        returned_at = dt.date.today()
+        returned_at = today_local()
+
+    today = today_local()
+    if returned_at > today:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Ngày thu hồi ({returned_at.strftime('%d/%m/%Y')}) không được vượt quá ngày hiện tại ({today.strftime('%d/%m/%Y')}).",
+        )
 
     return_status_raw = body.get("return_status", "IN_STOCK")
     try:
-        return_status = AssetStatus(str(return_status_raw).strip())
+        return_status = AssetStatus(str(return_status_raw).strip().upper())
     except ValueError:
-        return_status = AssetStatus.IN_STOCK
+        raise HTTPException(status_code=400, detail="Trạng thái sau thu hồi không hợp lệ.")
 
-    note = body.get("note")
+    note = optional_text(body.get("note"), 2000, "Ghi chú")
     client_ip = request.client.host if request.client else None
 
     try:
@@ -218,13 +234,14 @@ async def api_return_asset(
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc))
+    invalidate_model_count_cache(Assignment)
 
     return JSONResponse(
         content={
             "success": True,
             "message": "Thu hồi thiết bị thành công.",
             "assignment_id": asgn.id,
-            "asset_status": return_status.value,
+            "asset_status": asgn.asset.status.value if asgn.asset else return_status.value,
         }
     )
 

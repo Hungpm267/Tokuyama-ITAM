@@ -1,6 +1,6 @@
 <!-- Modal Bàn giao & Thu hồi Thiết bị (Asset Quick Actions) -->
-<div class="modal fade" id="modal-assign-asset" tabindex="-1" aria-hidden="true" style="backdrop-filter: blur(4px);">
-  <div class="modal-dialog modal-dialog-centered">
+<div class="modal fade" id="modal-assign-asset" tabindex="-1" role="dialog" aria-hidden="true" style="backdrop-filter: blur(4px);">
+  <div class="modal-dialog modal-dialog-centered" role="document">
     <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
       <div class="modal-header bg-white border-bottom py-3 px-4">
         <div class="d-flex align-items-center gap-2">
@@ -14,7 +14,7 @@
             <small class="text-muted" id="assignModalSubtitle">{{ '社員と割当日時を選択してください' if current_lang == 'ja' else ('Select staff member and assignment date' if current_lang == 'en' else 'Chọn nhân viên và thời điểm cấp phát') }}</small>
           </div>
         </div>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close" onclick="closeAssetModal('modal-assign-asset')"></button>
       </div>
 
       <form id="assignAssetForm" onsubmit="submitAssignAsset(event)">
@@ -53,6 +53,9 @@
               <span class="input-group-text bg-white border-end-0 text-muted"><i class="fa-regular fa-calendar"></i></span>
               <input type="date" class="form-control border-start-0" id="assignBorrowedAt" required style="font-size: 14px;">
             </div>
+            <div class="form-text text-muted small mt-1">
+              <i class="fa-solid fa-circle-info me-1"></i>{{ '未来の日付は指定できません（本日以前を選択してください）' if current_lang == 'ja' else ('Cannot select future dates (must be today or earlier)' if current_lang == 'en' else 'Không được chọn ngày trong tương lai (tối đa là ngày hôm nay)') }}
+            </div>
           </div>
 
           <div class="mb-2">
@@ -66,7 +69,7 @@
         </div>
 
         <div class="modal-footer bg-light px-4 py-3 border-top">
-          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" style="font-size: 13.5px;">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" data-dismiss="modal" onclick="closeAssetModal('modal-assign-asset')" style="font-size: 13.5px;">
             {{ 'キャンセル' if current_lang == 'ja' else ('Cancel' if current_lang == 'en' else 'Hủy bỏ') }}
           </button>
           <button type="submit" class="btn btn-primary text-white px-4 fw-semibold" id="btnSubmitAssign" style="font-size: 13.5px;">
@@ -79,8 +82,8 @@
 </div>
 
 <!-- Modal Thu hồi Thiết bị (Return Modal) -->
-<div class="modal fade" id="modal-return-asset" tabindex="-1" aria-hidden="true" style="backdrop-filter: blur(4px);">
-  <div class="modal-dialog modal-dialog-centered">
+<div class="modal fade" id="modal-return-asset" tabindex="-1" role="dialog" aria-hidden="true" style="backdrop-filter: blur(4px);">
+  <div class="modal-dialog modal-dialog-centered" role="document">
     <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
       <div class="modal-header bg-white border-bottom py-3 px-4">
         <div class="d-flex align-items-center gap-2">
@@ -94,7 +97,7 @@
             <small class="text-muted">{{ '割当を終了し機器ステータスを更新' if current_lang == 'ja' else ('Close assignment and update asset status' if current_lang == 'en' else 'Đóng đợt cấp phát và cập nhật trạng thái thiết bị') }}</small>
           </div>
         </div>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close" onclick="closeAssetModal('modal-return-asset')"></button>
       </div>
 
       <form id="returnAssetForm" onsubmit="submitReturnAsset(event)">
@@ -122,6 +125,9 @@
               <span class="input-group-text bg-white border-end-0 text-muted"><i class="fa-regular fa-calendar"></i></span>
               <input type="date" class="form-control border-start-0" id="returnDate" required style="font-size: 14px;">
             </div>
+            <div class="form-text text-muted small mt-1">
+              <i class="fa-solid fa-circle-info me-1"></i>{{ '未来の日付は指定できません（本日以前を選択してください）' if current_lang == 'ja' else ('Cannot select future dates (must be today or earlier)' if current_lang == 'en' else 'Không được chọn ngày trong tương lai (tối đa là ngày hôm nay)') }}
+            </div>
           </div>
 
           <div class="mb-3">
@@ -145,7 +151,7 @@
         </div>
 
         <div class="modal-footer bg-light px-4 py-3 border-top">
-          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" style="font-size: 13.5px;">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" data-dismiss="modal" onclick="closeAssetModal('modal-return-asset')" style="font-size: 13.5px;">
             {{ 'キャンセル' if current_lang == 'ja' else ('Cancel' if current_lang == 'en' else 'Hủy bỏ') }}
           </button>
           <button type="submit" class="btn btn-warning text-dark px-4 fw-bold" id="btnSubmitReturn" style="font-size: 13.5px;">
@@ -159,6 +165,14 @@
 
 <script>
 let cachedPersons = null;
+
+function getLocalDateString() {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 function loadPersonsDropdown() {
   if (cachedPersons) return;
@@ -180,29 +194,115 @@ function loadPersonsDropdown() {
     });
 }
 
+function showAssetModal(modalId) {
+  const modalEl = document.getElementById(modalId);
+  if (!modalEl) return;
+
+  // Xóa sạch backdrop cũ nếu có
+  document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+
+  // 1. Thử Bootstrap 5 (getOrCreateInstance)
+  if (window.bootstrap && bootstrap.Modal) {
+    try {
+      const inst = bootstrap.Modal.getOrCreateInstance(modalEl);
+      if (inst && typeof inst.show === 'function') {
+        inst.show();
+        return;
+      }
+    } catch (err) {
+      console.warn('Bootstrap 5 show warning:', err);
+    }
+  }
+
+  // 2. Thử jQuery / Bootstrap 4
+  if (window.jQuery && typeof jQuery(modalEl).modal === 'function') {
+    try {
+      jQuery(modalEl).modal('show');
+      return;
+    } catch (err) {
+      console.warn('jQuery modal show warning:', err);
+    }
+  }
+
+  // 3. Dự phòng DOM trực tiếp
+  modalEl.style.display = 'block';
+  modalEl.classList.add('show');
+  modalEl.removeAttribute('aria-hidden');
+  document.body.classList.add('modal-open');
+  let backdrop = document.querySelector('.modal-backdrop');
+  if (!backdrop) {
+    backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop fade show';
+    document.body.appendChild(backdrop);
+  }
+}
+
+function closeAssetModal(modalId) {
+  const modalEl = document.getElementById(modalId);
+  if (!modalEl) return;
+
+  // 1. Thử Bootstrap 5
+  if (window.bootstrap && bootstrap.Modal) {
+    try {
+      const inst = bootstrap.Modal.getInstance(modalEl);
+      if (inst && typeof inst.hide === 'function') {
+        inst.hide();
+      }
+    } catch (err) {
+      console.warn('Bootstrap 5 hide warning:', err);
+    }
+  }
+
+  // 2. Thử jQuery / Bootstrap 4
+  if (window.jQuery && typeof jQuery(modalEl).modal === 'function') {
+    try {
+      jQuery(modalEl).modal('hide');
+    } catch (err) {
+      console.warn('jQuery modal hide warning:', err);
+    }
+  }
+
+  // 3. Dự phòng dọn dẹp DOM (đảm bảo ẩn hoàn toàn trong mọi tình huống)
+  modalEl.classList.remove('show');
+  modalEl.style.display = 'none';
+  modalEl.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('modal-open');
+  document.body.style.removeProperty('padding-right');
+  document.body.style.removeProperty('overflow');
+  document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+}
+
 function openAssignModal(assetId, assetCode, model) {
   document.getElementById('assignAssetId').value = assetId;
   document.getElementById('assignAssetInfo').textContent = `${assetCode || 'ID #' + assetId} ${model ? '• ' + model : ''}`;
-  document.getElementById('assignBorrowedAt').value = new Date().toISOString().split('T')[0];
+  
+  const todayStr = getLocalDateString();
+  const dateInput = document.getElementById('assignBorrowedAt');
+  dateInput.value = todayStr;
+  dateInput.max = todayStr; // Chặn chọn ngày tương lai trên datepicker
+  
   document.getElementById('assignNote').value = '';
   document.getElementById('assignErrorMessage').classList.add('d-none');
   
   loadPersonsDropdown();
-  const modal = new bootstrap.Modal(document.getElementById('modal-assign-asset'));
-  modal.show();
+  showAssetModal('modal-assign-asset');
 }
 
 function openReturnModal(assetId, assetCode, currentHolder) {
   document.getElementById('returnAssetId').value = assetId;
   document.getElementById('returnAssetInfo').textContent = assetCode || ('ID #' + assetId);
   document.getElementById('returnHolderInfo').textContent = currentHolder || 'Chưa rõ';
-  document.getElementById('returnDate').value = new Date().toISOString().split('T')[0];
+  
+  const todayStr = getLocalDateString();
+  const dateInput = document.getElementById('returnDate');
+  dateInput.value = todayStr;
+  dateInput.max = todayStr; // Chặn chọn ngày tương lai trên datepicker
+  
   document.getElementById('returnTargetStatus').value = 'IN_STOCK';
   document.getElementById('returnNote').value = '';
   document.getElementById('returnErrorMessage').classList.add('d-none');
 
-  const modal = new bootstrap.Modal(document.getElementById('modal-return-asset'));
-  modal.show();
+  showAssetModal('modal-return-asset');
 }
 
 function submitAssignAsset(e) {
@@ -213,15 +313,22 @@ function submitAssignAsset(e) {
   const note = document.getElementById('assignNote').value;
   const btn = document.getElementById('btnSubmitAssign');
   const errBox = document.getElementById('assignErrorMessage');
+  const todayStr = getLocalDateString();
 
   if (!personId) {
-    errBox.textContent = 'Vui lòng chọn nhân viên nhận máy.';
+    errBox.textContent = '{{ "社員を選択してください。" if current_lang == "ja" else ("Please select a staff member." if current_lang == "en" else "Vui lòng chọn nhân viên nhận máy.") }}';
+    errBox.classList.remove('d-none');
+    return;
+  }
+
+  if (borrowedAt > todayStr) {
+    errBox.textContent = '{{ "未来の日付は指定できません（本日以前を選択してください）。" if current_lang == "ja" else ("Borrow date cannot be in the future (select today or earlier)." if current_lang == "en" else "Ngày bàn giao không được vượt quá ngày hiện tại (không được chọn ngày trong tương lai).") }}';
     errBox.classList.remove('d-none');
     return;
   }
 
   btn.disabled = true;
-  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Đang xử lý...';
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> {{ "処理中..." if current_lang == "ja" else ("Processing..." if current_lang == "en" else "Đang xử lý...") }}';
 
   fetch(`/admin/assets/${assetId}/assign`, {
     method: 'POST',
@@ -236,14 +343,14 @@ function submitAssignAsset(e) {
       errBox.textContent = result.body.detail || result.body.error || 'Có lỗi xảy ra khi bàn giao.';
       errBox.classList.remove('d-none');
       btn.disabled = false;
-      btn.innerHTML = '<i class="fa-solid fa-check me-1"></i> {{ "Xác nhận Bàn giao" if current_lang != "en" else "Confirm Assignment" }}';
+      btn.innerHTML = '<i class="fa-solid fa-check me-1"></i> {{ "割当の確定" if current_lang == "ja" else ("Confirm Assignment" if current_lang == "en" else "Xác nhận Bàn giao") }}';
     }
   })
   .catch(err => {
     errBox.textContent = 'Lỗi kết nối máy chủ: ' + err.message;
     errBox.classList.remove('d-none');
     btn.disabled = false;
-    btn.innerHTML = '<i class="fa-solid fa-check me-1"></i> {{ "Xác nhận Bàn giao" if current_lang != "en" else "Confirm Assignment" }}';
+    btn.innerHTML = '<i class="fa-solid fa-check me-1"></i> {{ "割当の確定" if current_lang == "ja" else ("Confirm Assignment" if current_lang == "en" else "Xác nhận Bàn giao") }}';
   });
 }
 
@@ -255,9 +362,16 @@ function submitReturnAsset(e) {
   const note = document.getElementById('returnNote').value;
   const btn = document.getElementById('btnSubmitReturn');
   const errBox = document.getElementById('returnErrorMessage');
+  const todayStr = getLocalDateString();
+
+  if (returnedAt > todayStr) {
+    errBox.textContent = '{{ "未来の日付は指定できません（本日以前を選択してください）。" if current_lang == "ja" else ("Return date cannot be in the future (select today or earlier)." if current_lang == "en" else "Ngày thu hồi không được vượt quá ngày hiện tại (không được chọn ngày trong tương lai).") }}';
+    errBox.classList.remove('d-none');
+    return;
+  }
 
   btn.disabled = true;
-  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Đang xử lý...';
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> {{ "処理中..." if current_lang == "ja" else ("Processing..." if current_lang == "en" else "Đang xử lý...") }}';
 
   fetch(`/admin/assets/${assetId}/return`, {
     method: 'POST',
@@ -272,14 +386,65 @@ function submitReturnAsset(e) {
       errBox.textContent = result.body.detail || result.body.error || 'Có lỗi xảy ra khi thu hồi.';
       errBox.classList.remove('d-none');
       btn.disabled = false;
-      btn.innerHTML = '<i class="fa-solid fa-arrow-rotate-left me-1"></i> {{ "Hoàn tất Thu hồi" if current_lang != "en" else "Complete Return" }}';
+      btn.innerHTML = '<i class="fa-solid fa-arrow-rotate-left me-1"></i> {{ "回収完了" if current_lang == "ja" else ("Complete Return" if current_lang == "en" else "Hoàn tất Thu hồi") }}';
     }
   })
   .catch(err => {
     errBox.textContent = 'Lỗi kết nối máy chủ: ' + err.message;
     errBox.classList.remove('d-none');
     btn.disabled = false;
-    btn.innerHTML = '<i class="fa-solid fa-arrow-rotate-left me-1"></i> {{ "Hoàn tất Thu hồi" if current_lang != "en" else "Complete Return" }}';
+    btn.innerHTML = '<i class="fa-solid fa-arrow-rotate-left me-1"></i> {{ "回収完了" if current_lang == "ja" else ("Complete Return" if current_lang == "en" else "Hoàn tất Thu hồi") }}';
   });
 }
+
+// Khởi tạo các sự kiện đóng popup & bảo vệ ngày tháng khi trang tải xong
+(function initModalEventHandlers() {
+  function attachHandlers() {
+    // 1. Lắng nghe click bên ngoài hộp thoại (trên backdrop) và các nút đóng
+    ['modal-assign-asset', 'modal-return-asset'].forEach(function(modalId) {
+      const modalEl = document.getElementById(modalId);
+      if (!modalEl) return;
+
+      modalEl.addEventListener('click', function(e) {
+        if (e.target === modalEl) {
+          closeAssetModal(modalId);
+        }
+      });
+
+      modalEl.querySelectorAll('.btn-close, [data-bs-dismiss="modal"], [data-dismiss="modal"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+          e.preventDefault();
+          closeAssetModal(modalId);
+        });
+      });
+    });
+
+    // 2. Phím Escape đóng mọi modal
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' || e.key === 'Esc') {
+        closeAssetModal('modal-assign-asset');
+        closeAssetModal('modal-return-asset');
+      }
+    });
+
+    // 3. Ràng buộc ngày thực tế: Tự động chặn nếu người dùng gõ tay ngày tương lai
+    ['assignBorrowedAt', 'returnDate'].forEach(function(inputId) {
+      const input = document.getElementById(inputId);
+      if (!input) return;
+      input.addEventListener('change', function() {
+        const todayStr = getLocalDateString();
+        if (this.value > todayStr) {
+          this.value = todayStr;
+          alert('{{ "未来の日付は指定できません（本日以前を選択してください）。" if current_lang == "ja" else ("Future date is not allowed. Reset to today." if current_lang == "en" else "Ngày không được vượt quá ngày hiện tại (không được chọn ngày trong tương lai).") }}');
+        }
+      });
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', attachHandlers);
+  } else {
+    attachHandlers();
+  }
+})();
 </script>

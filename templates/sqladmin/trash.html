@@ -117,7 +117,7 @@
               <div class="text-muted small">{{ item.details }}</div>
             </td>
             <td class="num-tabular text-muted" style="font-size: 12px;">
-              {{ item.deleted_at.strftime('%Y-%m-%d %H:%M') if item.deleted_at else '—' }}
+              {{ format_datetime_clean(item.deleted_at)[:16] if item.deleted_at else '—' }}
             </td>
             <td class="text-secondary fw-medium" style="font-size: 12.5px;">
               {{ item.deleter }}
@@ -129,7 +129,8 @@
             </td>
             <td class="text-end">
               <button type="button" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1"
-                      onclick="openRestoreModal('{{ item.entity_type }}', {{ item.id }}, '{{ item.display_name | escape }}', '{{ item.identifier | escape }}')"
+                      data-entity="{{ item.entity_type }}" data-id="{{ item.id }}" data-name="{{ item.display_name }}" data-identifier="{{ item.identifier }}"
+                      onclick="openRestoreModal(this.dataset.entity, this.dataset.id, this.dataset.name, this.dataset.identifier)"
                       style="border-radius: 8px; font-size: 12px; font-weight: 600; padding: 4px 10px;">
                 <i class="fa-solid fa-rotate-left"></i>
                 <span>{{ '復元' if current_lang == 'ja' else ('Restore' if current_lang == 'en' else 'Khôi phục') }}</span>

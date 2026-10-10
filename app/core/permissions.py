@@ -241,6 +241,15 @@ MODULE_METADATA: list[dict[str, str]] = [
         "desc_en": "View and restore soft-deleted records",
     },
     {
+        "code": Module.AUDIT.value,
+        "name_vi": "Nhật ký kiểm toán",
+        "name_en": "Audit Log",
+        "icon": "fa-solid fa-shield-halved",
+        "badge_color": "#0f766e",
+        "desc_vi": "Lịch sử thao tác bất biến (chỉ quyền Xem có hiệu lực)",
+        "desc_en": "Immutable activity history (only View takes effect)",
+    },
+    {
         "code": Module.USERS.value,
         "name_vi": "Tài khoản hệ thống",
         "name_en": "System Users",
@@ -372,7 +381,7 @@ def save_role_permissions_matrix(
             (Module.USERS.value, PermissionAction.VIEW.value),
             (Module.USERS.value, PermissionAction.ADD.value),
             (Module.USERS.value, PermissionAction.CHANGE.value),
-            (Module.AUDIT_LOGS.value, PermissionAction.VIEW.value),
+            (Module.AUDIT.value, PermissionAction.VIEW.value),
             (Module.SECRETS.value, PermissionAction.VIEW.value),
             (Module.TRASH.value, PermissionAction.VIEW.value),
         }

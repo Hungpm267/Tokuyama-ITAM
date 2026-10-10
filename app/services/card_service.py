@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.audit import record_audit
+from app.core.clock import today_local
 from app.enums import AuditAction, CardStatus, PersonStatus
 from app.models import AccessCard, CardLoan, Person
 
@@ -66,7 +67,13 @@ def loan_card(
     if active_loan:
         raise ValueError(f"Thẻ '{card.card_no}' đang được cho mượn")
 
-    eff_borrowed_at = borrowed_at or dt.date.today()
+    today = today_local()
+    eff_borrowed_at = borrowed_at or today
+    if eff_borrowed_at > today:
+        raise ValueError(
+            f"Ngày mượn thẻ ({eff_borrowed_at.strftime('%d/%m/%Y')}) không được ở tương lai "
+            f"(hôm nay là {today.strftime('%d/%m/%Y')})."
+        )
     if expected_return_at and expected_return_at < eff_borrowed_at:
         raise ValueError("Ngày dự kiến trả không được trước ngày mượn thẻ")
 
@@ -137,7 +144,15 @@ def return_card(
     if not loan:
         raise ValueError(f"Thẻ '{card.card_no}' hiện không có lượt mượn nào đang mở")
 
-    eff_returned_at = returned_at or dt.date.today()
+    today = today_local()
+    eff_returned_at = returned_at or today
+    # Ngày trả ở tương lai làm thẻ "đã trả" ngay hôm nay nhưng vẫn chặn lượt mượn
+    # mới đến tận ngày đó (do kiểm tra trùng thời gian).
+    if eff_returned_at > today:
+        raise ValueError(
+            f"Ngày trả thẻ ({eff_returned_at.strftime('%d/%m/%Y')}) không được ở tương lai "
+            f"(hôm nay là {today.strftime('%d/%m/%Y')})."
+        )
     if eff_returned_at < loan.borrowed_at:
         raise ValueError("Ngày trả thẻ không được trước ngày mượn")
 
@@ -150,7 +165,10 @@ def return_card(
     if note:
         loan.purpose = f"{loan.purpose or ''}\n[Trả thẻ: {note}]".strip()
 
-    card.status = CardStatus.IN_STOCK
+    # Thẻ đã bị đánh dấu LOST/DAMAGED trong lúc đang mượn thì giữ nguyên:
+    # đóng lượt mượn không làm thẻ mất tự nhiên "về kho" và cho mượn lại được.
+    if card.status == CardStatus.BORROWED:
+        card.status = CardStatus.IN_STOCK
     db.flush()
 
     record_audit(

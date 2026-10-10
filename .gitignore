@@ -4,6 +4,9 @@ __pycache__/
 .env
 .env.*
 *.dump
+*.sqlite3
+*.sqlite
+*.db
 .pytest_cache/
 .ruff_cache/
 

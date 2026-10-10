@@ -13,6 +13,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.admin import get_admin, invalidate_model_count_cache
@@ -35,9 +36,11 @@ from app.models import (
     Location,
     Person,
     Phone,
+    Role,
     User,
 )
-from app.services.contract_service import sync_contract_delivery_status
+from app.enums import ContractItemKind
+from app.services.contract_service import line_received_qty, sync_contract_delivery_status
 
 router = APIRouter(prefix="/admin/trash", tags=["Recycle Bin"])
 
@@ -54,11 +57,16 @@ ENTITY_MAP: dict[str, Any] = {
     "tag": AssetTag,
     "location": Location,
     "license_product": LicenseProduct,
+    # Hạng mục hợp đồng và vai trò xóa mềm được từ form quản trị nên cũng phải khôi phục được.
+    "contract_line": ContractLine,
+    "role": Role,
 }
 
 
-def get_current_admin_actor(request: Request, db: Session) -> User:
-    """Xác thực người dùng có quyền quản trị Thùng rác (Module.TRASH)."""
+def get_current_admin_actor(
+    request: Request, db: Session, action: PermissionAction = PermissionAction.VIEW
+) -> User:
+    """Xác thực người dùng có quyền trên Thùng rác (Module.TRASH): xem = VIEW, khôi phục = CHANGE."""
     user_id = request.session.get("user_id") if hasattr(request, "session") else None
 
     if not user_id:
@@ -88,7 +96,7 @@ def get_current_admin_actor(request: Request, db: Session) -> User:
         )
 
     # Chỉ Admin mới có quyền truy cập Thùng rác
-    if not has_permission(db, user, Module.TRASH, PermissionAction.VIEW):
+    if not has_permission(db, user, Module.TRASH, action):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Chỉ Quản trị viên (Admin) mới có quyền truy cập Thùng rác hệ thống.",
@@ -125,7 +133,10 @@ async def trash_list_view(
             continue
 
         query = select(model_cls).where(model_cls.is_deleted.is_(True))
-        records = db.scalars(query.order_by(model_cls.deleted_at.desc().nullslast()).limit(50)).all()
+        # Khi tìm kiếm phải xét toàn bộ bản ghi đã xóa: lọc sau LIMIT 50 thì không bao giờ
+        # tìm ra món đã xóa từ lâu.
+        row_limit = 1000 if clean_q else 50
+        records = db.scalars(query.order_by(model_cls.deleted_at.desc().nullslast()).limit(row_limit)).all()
 
         for rec in records:
             display_name = str(rec)
@@ -145,12 +156,18 @@ async def trash_list_view(
                 identifier = rec.card_no
                 details = f"Card #{rec.card_no}"
             elif ent_key == "phone":
-                identifier = rec.extension_number
-                details = f"Ext {rec.extension_number} ({rec.device_name})"
+                identifier = rec.extension_number or rec.device_name
+                details = f"Ext {rec.extension_number or '—'} ({rec.device_name})"
             elif ent_key == "license":
                 identifier = f"Lic #{rec.id}"
-                prod_name = rec.product.name_en if hasattr(rec, "product") and rec.product else "N/A"
+                prod_name = rec.product.name if rec.product else "N/A"
                 details = f"{prod_name} ({rec.seats} seats)"
+            elif ent_key == "contract_line":
+                identifier = f"Line #{rec.id}"
+                details = f"{rec.item_type} (x{rec.qty_ordered})"
+            elif ent_key == "role":
+                identifier = rec.code
+                details = rec.name_en
             elif ent_key == "user":
                 identifier = rec.username
                 details = f"{rec.display_name} (@{rec.username})"
@@ -214,7 +231,8 @@ async def restore_item(
     db: Session = Depends(get_db),
 ) -> JSONResponse:
     """Khôi phục bản ghi đã xóa mềm và ghi audit log RESTORE."""
-    user = get_current_admin_actor(request, db)
+    # Khôi phục là thao tác ghi: quyền chỉ-xem thùng rác không được phép làm sống lại bản ghi.
+    user = get_current_admin_actor(request, db, PermissionAction.CHANGE)
 
     if entity_type not in ENTITY_MAP:
         raise HTTPException(
@@ -248,39 +266,78 @@ async def restore_item(
     old_reason = rec.delete_reason
     old_deleted_at = rec.deleted_at
 
-    # Thực hiện khôi phục
-    rec.is_deleted = False
-    rec.deleted_at = None
-    rec.deleted_by = None
-    rec.delete_reason = None
-    rec.updated_at = dt.datetime.now(dt.timezone.utc)
-    rec.updated_by = user.id
+    # Lưới an toàn cho các partial unique index chưa được kiểm tra tường minh ở trên:
+    # trả 400 có thông báo thay vì để IntegrityError thành lỗi 500.
+    try:
+        # Thực hiện khôi phục
+        rec.is_deleted = False
+        rec.deleted_at = None
+        rec.deleted_by = None
+        rec.delete_reason = None
+        rec.updated_at = dt.datetime.now(dt.timezone.utc)
+        rec.updated_by = user.id
 
-    # Ghi nhận Audit Log RESTORE
-    client_ip = request.client.host if request.client else None
-    record_audit(
-        db,
-        action=AuditAction.RESTORE,
-        table_name=model_cls.__tablename__,
-        record_id=rec.id,
-        user_id=user.id,
-        before={"is_deleted": True, "delete_reason": old_reason, "deleted_at": str(old_deleted_at)},
-        after={"is_deleted": False},
-        ip_address=client_ip,
-    )
+        # Ghi nhận Audit Log RESTORE
+        client_ip = request.client.host if request.client else None
+        record_audit(
+            db,
+            action=AuditAction.RESTORE,
+            table_name=model_cls.__tablename__,
+            record_id=rec.id,
+            user_id=user.id,
+            before={"is_deleted": True, "delete_reason": old_reason, "deleted_at": str(old_deleted_at)},
+            after={"is_deleted": False},
+            ip_address=client_ip,
+        )
 
-    if entity_type == "asset" and getattr(rec, "contract_line_id", None):
-        line = db.get(ContractLine, rec.contract_line_id)
-        if line:
-            sync_contract_delivery_status(db, line.contract_id)
+        # Thiết bị và gói license đều được tính vào số đã nhận của hạng mục hợp đồng
+        if entity_type in ("asset", "license") and getattr(rec, "contract_line_id", None):
+            line = db.get(ContractLine, rec.contract_line_id)
+            if line:
+                db.flush()
+                sync_contract_delivery_status(db, line.contract_id)
+        elif entity_type == "contract_line":
+            db.flush()
+            sync_contract_delivery_status(db, rec.contract_id)
 
-    db.commit()
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Không thể khôi phục: dữ liệu của bản ghi này trùng với một bản ghi đang hoạt động.",
+        )
     invalidate_model_count_cache(model_cls)
 
     return JSONResponse({
         "success": True,
         "message": f"Khôi phục thành công bản ghi #{rec.id} ({model_cls.__name__}).",
     })
+
+
+def _check_contract_line_fit(db: Session, rec: Any, expected_kind: ContractItemKind, amount: int) -> str | None:
+    """Thiết bị / gói license được khôi phục sẽ lại được tính vào số đã nhận của hạng mục hợp đồng.
+
+    Trong lúc nó nằm trong thùng rác, hạng mục có thể đã bị xóa, đổi loại, hoặc đã
+    nhận đủ bằng hàng thay thế - khôi phục khi đó tạo ra dữ liệu sai.
+    """
+    if not getattr(rec, "contract_line_id", None):
+        return None
+    line = db.get(ContractLine, rec.contract_line_id)
+    if not line or line.is_deleted:
+        return "Không thể khôi phục: hạng mục hợp đồng của bản ghi này đã bị xóa. Hãy khôi phục hạng mục trước."
+    if line.item_kind != expected_kind:
+        return (
+            f"Không thể khôi phục: hạng mục hợp đồng '{line.item_type}' hiện là loại "
+            f"{'Phần mềm' if line.item_kind == ContractItemKind.SOFTWARE else 'Phần cứng'}, không khớp với bản ghi này."
+        )
+    received = line_received_qty(db, line, exclude_asset_id=rec.id, exclude_license_id=rec.id)
+    if received + amount > line.qty_ordered:
+        return (
+            f"Không thể khôi phục: hạng mục hợp đồng '{line.item_type}' đặt mua {line.qty_ordered}, "
+            f"đã nhận {received}. Khôi phục thêm {amount} sẽ vượt số lượng."
+        )
+    return None
 
 
 def check_restore_conflicts(db: Session, entity_type: str, rec: Any) -> str | None:
@@ -291,7 +348,7 @@ def check_restore_conflicts(db: Session, entity_type: str, rec: Any) -> str | No
             dup_serial = db.scalar(
                 select(Asset).where(
                     Asset.id != rec.id,
-                    Asset.serial == rec.serial,
+                    func.lower(Asset.serial) == rec.serial.lower(),
                     Asset.is_deleted.is_(False),
                 )
             )
@@ -303,19 +360,46 @@ def check_restore_conflicts(db: Session, entity_type: str, rec: Any) -> str | No
             dup_code = db.scalar(
                 select(Asset).where(
                     Asset.id != rec.id,
-                    Asset.asset_code == rec.asset_code,
+                    func.lower(Asset.asset_code) == rec.asset_code.lower(),
                     Asset.is_deleted.is_(False),
                 )
             )
             if dup_code:
                 return f"Không thể khôi phục: Mã GA '{rec.asset_code}' hiện đã được sử dụng bởi thiết bị #{dup_code.id}."
 
+        line_err = _check_contract_line_fit(db, rec, ContractItemKind.HARDWARE, 1)
+        if line_err:
+            return line_err
+
+        if rec.vendor_code:
+            dup_vendor = db.scalar(
+                select(Asset).where(
+                    Asset.id != rec.id,
+                    func.lower(Asset.vendor_code) == rec.vendor_code.lower(),
+                    Asset.is_deleted.is_(False),
+                )
+            )
+            if dup_vendor:
+                return f"Không thể khôi phục: Mã Vendor '{rec.vendor_code}' hiện đã được sử dụng bởi thiết bị #{dup_vendor.id}."
+
+    elif entity_type == "license":
+        # Khôi phục gói license làm tổng seat của hạng mục hợp đồng tăng lại:
+        # không được vượt số lượng đặt mua.
+        line_err = _check_contract_line_fit(db, rec, ContractItemKind.SOFTWARE, rec.seats)
+        if line_err:
+            return line_err
+
+    elif entity_type == "contract_line":
+        contract = db.get(Contract, rec.contract_id)
+        if not contract or contract.is_deleted:
+            return "Không thể khôi phục: hợp đồng của hạng mục này đã bị xóa. Hãy khôi phục hợp đồng trước."
+
     elif entity_type == "person":
         # Check Staff code
         dup_staff = db.scalar(
             select(Person).where(
                 Person.id != rec.id,
-                Person.staff_code == rec.staff_code,
+                func.lower(Person.staff_code) == rec.staff_code.lower(),
                 Person.is_deleted.is_(False),
             )
         )
@@ -327,18 +411,29 @@ def check_restore_conflicts(db: Session, entity_type: str, rec: Any) -> str | No
             dup_uid = db.scalar(
                 select(Person).where(
                     Person.id != rec.id,
-                    Person.user_login_id == rec.user_login_id,
+                    func.lower(Person.user_login_id) == rec.user_login_id.lower(),
                     Person.is_deleted.is_(False),
                 )
             )
             if dup_uid:
                 return f"Không thể khôi phục: User ID '{rec.user_login_id}' đã thuộc về nhân sự #{dup_uid.id}."
 
+        if rec.email:
+            dup_email = db.scalar(
+                select(Person).where(
+                    Person.id != rec.id,
+                    func.lower(Person.email) == rec.email.lower(),
+                    Person.is_deleted.is_(False),
+                )
+            )
+            if dup_email:
+                return f"Không thể khôi phục: Email '{rec.email}' đã thuộc về nhân sự #{dup_email.id} ({dup_email.full_name})."
+
     elif entity_type == "card":
         dup_card = db.scalar(
             select(AccessCard).where(
                 AccessCard.id != rec.id,
-                AccessCard.card_no == rec.card_no,
+                func.lower(AccessCard.card_no) == rec.card_no.lower(),
                 AccessCard.is_deleted.is_(False),
             )
         )
@@ -346,21 +441,34 @@ def check_restore_conflicts(db: Session, entity_type: str, rec: Any) -> str | No
             return f"Không thể khôi phục: Số thẻ '{rec.card_no}' hiện đã được cấp cho thẻ #{dup_card.id}."
 
     elif entity_type == "phone":
-        dup_ext = db.scalar(
+        # Máy không có số nhánh (PBX, DECT) thì không có gì để trùng: so sánh với
+        # None sẽ thành `IS NULL` và khớp nhầm mọi máy không số nhánh đang sống.
+        if rec.extension_number:
+            dup_ext = db.scalar(
+                select(Phone).where(
+                    Phone.id != rec.id,
+                    func.lower(Phone.extension_number) == rec.extension_number.lower(),
+                    Phone.is_deleted.is_(False),
+                )
+            )
+            if dup_ext:
+                return f"Không thể khôi phục: Số máy nhánh '{rec.extension_number}' hiện đang thuộc về thiết bị thoại #{dup_ext.id}."
+
+        dup_name = db.scalar(
             select(Phone).where(
                 Phone.id != rec.id,
-                Phone.extension_number == rec.extension_number,
+                func.lower(Phone.device_name) == rec.device_name.lower(),
                 Phone.is_deleted.is_(False),
             )
         )
-        if dup_ext:
-            return f"Không thể khôi phục: Số máy nhánh '{rec.extension_number}' hiện đang thuộc về thiết bị thoại #{dup_ext.id}."
+        if dup_name:
+            return f"Không thể khôi phục: Tên thiết bị thoại '{rec.device_name}' hiện đang thuộc về thiết bị #{dup_name.id}."
 
     elif entity_type == "contract":
         dup_contract = db.scalar(
             select(Contract).where(
                 Contract.id != rec.id,
-                Contract.code == rec.code,
+                func.lower(Contract.code) == rec.code.lower(),
                 Contract.is_deleted.is_(False),
             )
         )
@@ -371,7 +479,7 @@ def check_restore_conflicts(db: Session, entity_type: str, rec: Any) -> str | No
         dup_user = db.scalar(
             select(User).where(
                 User.id != rec.id,
-                User.username == rec.username,
+                func.lower(User.username) == rec.username.lower(),
                 User.is_deleted.is_(False),
             )
         )

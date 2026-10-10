@@ -12,7 +12,7 @@ from starlette.responses import FileResponse, RedirectResponse, Response
 
 from app.admin import RequestContextMiddleware, setup_admin
 from app.config import settings
-from app.core.security import SESSION_SECRET
+from app.core.security import SESSION_IDLE_SECONDS, SESSION_SECRET, renew_session_token
 from app.db import engine
 from app.routers.assets import router as assets_router
 from app.routers.auth import router as auth_router
@@ -22,6 +22,7 @@ from app.routers.global_search import router as global_search_router
 from app.routers.portal import router as portal_router
 from app.routers.role_matrix import router as role_matrix_router
 from app.routers.secrets import router as secrets_router
+from app.routers.software_receive import router as software_receive_router
 from app.routers.trash import router as trash_router
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -54,6 +55,39 @@ async def cache_headers_middleware(request: Request, call_next) -> Response:
     return response
 
 
+@app.middleware("http")
+async def sliding_session_middleware(request: Request, call_next) -> Response:
+    """Gia hạn cookie phiên khi người dùng còn thao tác.
+
+    BRD yêu cầu tự đăng xuất sau 30 phút KHÔNG thao tác. Token chỉ cấp một lần
+    lúc đăng nhập thì người đang làm việc liên tục vẫn bị đá ra ở phút 30 và mất
+    dữ liệu form đang nhập.
+    """
+    response = await call_next(request)
+    token = request.cookies.get("itam_session")
+    if not token or "/logout" in request.url.path:
+        return response
+    # Tải trước khi rê chuột (<link rel="prefetch">) không phải là thao tác của người dùng.
+    # Gia hạn cho nó còn có thể ghi lại cookie ngay sau khi người dùng vừa đăng xuất.
+    purpose = (request.headers.get("sec-purpose") or request.headers.get("purpose") or "").lower()
+    if "prefetch" in purpose:
+        return response
+    # Không ghi đè cookie mà chính endpoint vừa đặt hoặc vừa xoá (đăng nhập/đăng xuất).
+    if any(c.startswith("itam_session=") for c in response.headers.getlist("set-cookie")):
+        return response
+    renewed = renew_session_token(token)
+    if renewed:
+        response.set_cookie(
+            key="itam_session",
+            value=renewed,
+            httponly=True,
+            samesite="lax",
+            secure=(request.url.scheme == "https"),
+            max_age=SESSION_IDLE_SECONDS,
+        )
+    return response
+
+
 # 2. Mount thư mục tĩnh Static (phục vụ logo công ty, stylesheet)
 static_dir = BASE_DIR / "static"
 if static_dir.exists():
@@ -65,6 +99,7 @@ app.include_router(portal_router)
 app.include_router(role_matrix_router)
 app.include_router(secrets_router)
 app.include_router(batch_receive_router)
+app.include_router(software_receive_router)
 app.include_router(global_search_router)
 app.include_router(trash_router)
 app.include_router(assets_router)

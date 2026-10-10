@@ -1,6 +1,6 @@
 # GEMINI.md — Bất biến của dự án ITAM Tokuyama Vietnam
 
-**Đọc hết file này trước khi viết dòng code đầu tiên của mỗi phiên làm việc.**
+**Đọc hết file này và file `HANDOVER.md` trước khi viết dòng code đầu tiên của mỗi phiên làm việc.**
 
 Dự án: web app nội bộ quản lý tài sản IT, thay thế một loạt file Excel.
 Stack: FastAPI + SQLAlchemy 2.x + Alembic + PostgreSQL + Jinja2 + SQLAdmin.

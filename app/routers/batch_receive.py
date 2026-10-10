@@ -3,20 +3,21 @@
 from __future__ import annotations
 
 import re
-from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.admin import get_admin, invalidate_model_count_cache
 from app.core.audit import record_audit
 from app.core.i18n import get_current_lang
+from app.core.inputs import optional_text, read_json_object, require_positive_int
 from app.core.permissions import has_permission
 from app.core.security import verify_session_token
 from app.db import get_db
-from app.enums import AssetStatus, AuditAction, DeliveryStatus, Module, PermissionAction
+from app.enums import AssetStatus, AuditAction, ContractItemKind, Module, PermissionAction
 from app.models import Asset, AssetCategory, Contract, ContractLine, User
+from app.services.contract_service import sync_contract_delivery_status
 
 router = APIRouter(prefix="/admin/contract-line", tags=["Batch Receive"])
 
@@ -71,6 +72,15 @@ async def batch_receive_page(
 ) -> HTMLResponse:
     """Hiển thị trang giao diện Nhập kho theo lô cho một Hạng mục Hợp đồng."""
     user = get_current_actor(request, db)
+
+    # Hạng mục phần mềm không có serial để nhập: chuyển sang màn hình nhận phần mềm TRƯỚC
+    # khi kiểm quyền nhập thiết bị - màn hình đó tự kiểm quyền của nó (licenses, add).
+    kind = db.scalar(
+        select(ContractLine.item_kind).where(ContractLine.id == line_id, ContractLine.is_deleted.is_(False))
+    )
+    if kind == ContractItemKind.SOFTWARE:
+        return RedirectResponse(f"/admin/contract-line/{line_id}/receive-software", status_code=303)
+
     check_batch_receive_permission(db, user)
 
     line = db.scalar(
@@ -202,28 +212,36 @@ async def process_batch_receive(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Hạng mục hợp đồng không tồn tại hoặc đã bị xóa.",
         )
+    if not line.contract or line.contract.is_deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Hợp đồng của hạng mục này không tồn tại hoặc đã bị xóa.",
+        )
+    if line.item_kind == ContractItemKind.SOFTWARE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Hạng mục này là phần mềm, không thể nhập kho bằng thiết bị.",
+        )
 
-    try:
-        body: dict[str, Any] = await request.json()
-    except Exception:
-        raise HTTPException(status_code=400, detail="Dữ liệu JSON gửi lên không hợp lệ.")
+    body = await read_json_object(request)
 
-    category_id = body.get("category_id")
-    if not category_id:
+    if not body.get("category_id"):
         raise HTTPException(status_code=400, detail="Vui lòng chọn Loại tài sản (Category).")
+    category_pk = require_positive_int(body.get("category_id"), "Loại tài sản không hợp lệ hoặc đã bị xóa.")
 
     cat = db.scalar(
         select(AssetCategory).where(
-            AssetCategory.id == int(category_id),
+            AssetCategory.id == category_pk,
             AssetCategory.is_deleted.is_(False),
         )
     )
     if not cat:
         raise HTTPException(status_code=400, detail="Loại tài sản không hợp lệ hoặc đã bị xóa.")
 
-    model = str(body.get("model") or "").strip()
-    form_factor = str(body.get("form_factor") or "").strip()
-    batch_note = str(body.get("note") or "").strip()
+    # Độ dài theo đúng cột trong bảng assets: quá dài thì báo 400 thay vì để DB ném lỗi 500.
+    model = optional_text(body.get("model"), 150, "Model thiết bị") or ""
+    form_factor = optional_text(body.get("form_factor"), 30, "Kiểu dáng") or ""
+    batch_note = optional_text(body.get("note"), 2000, "Ghi chú") or ""
     items_raw = body.get("items", [])
 
     if not items_raw or not isinstance(items_raw, list):
@@ -240,12 +258,12 @@ async def process_batch_receive(
     for idx, item in enumerate(items_raw, 1):
         if not isinstance(item, dict):
             continue
-        serial = str(item.get("serial") or "").strip() or None
-        asset_code = str(item.get("asset_code") or "").strip() or None
-        vendor_code = str(item.get("vendor_code") or "").strip() or None
-        mac_eth = str(item.get("mac_ethernet") or "").strip() or None
-        mac_wifi = str(item.get("mac_wifi") or "").strip() or None
-        note = str(item.get("note") or "").strip() or None
+        serial = optional_text(item.get("serial"), 100, f"Dòng {idx}: Số Serial")
+        asset_code = optional_text(item.get("asset_code"), 50, f"Dòng {idx}: Mã GA")
+        vendor_code = optional_text(item.get("vendor_code"), 50, f"Dòng {idx}: Mã Vendor")
+        mac_eth = optional_text(item.get("mac_ethernet"), 20, f"Dòng {idx}: MAC Ethernet")
+        mac_wifi = optional_text(item.get("mac_wifi"), 20, f"Dòng {idx}: MAC Wi-Fi")
+        note = optional_text(item.get("note"), 2000, f"Dòng {idx}: Ghi chú")
 
         # Check constraint DB: asset_code IS NOT NULL OR vendor_code IS NOT NULL OR serial IS NOT NULL
         if not serial and not asset_code and not vendor_code:
@@ -309,7 +327,7 @@ async def process_batch_receive(
     if all_serials:
         existing_serials = db.execute(
             select(Asset.serial, Asset.asset_code)
-            .where(Asset.is_deleted.is_(False), Asset.serial.in_(all_serials))
+            .where(Asset.is_deleted.is_(False), func.lower(Asset.serial).in_([v.lower() for v in all_serials]))
         ).all()
         if existing_serials:
             dup_serial, dup_asset = existing_serials[0]
@@ -323,7 +341,7 @@ async def process_batch_receive(
     if all_asset_codes:
         existing_assets = db.execute(
             select(Asset.asset_code)
-            .where(Asset.is_deleted.is_(False), Asset.asset_code.in_(all_asset_codes))
+            .where(Asset.is_deleted.is_(False), func.lower(Asset.asset_code).in_([v.lower() for v in all_asset_codes]))
         ).all()
         if existing_assets:
             dup_code = existing_assets[0][0]
@@ -336,7 +354,7 @@ async def process_batch_receive(
     if all_vendor_codes:
         existing_vendors = db.execute(
             select(Asset.vendor_code)
-            .where(Asset.is_deleted.is_(False), Asset.vendor_code.in_(all_vendor_codes))
+            .where(Asset.is_deleted.is_(False), func.lower(Asset.vendor_code).in_([v.lower() for v in all_vendor_codes]))
         ).all()
         if existing_vendors:
             dup_vcode = existing_vendors[0][0]
@@ -355,7 +373,7 @@ async def process_batch_receive(
             combined_note = f"{batch_note}; {item['note']}"
 
         asset = Asset(
-            category_id=int(category_id),
+            category_id=category_pk,
             contract_line_id=line.id,
             contract_line=line,
             model=model or None,
@@ -398,28 +416,10 @@ async def process_batch_receive(
             ip_address=client_ip,
         )
 
-    # Tự động cập nhật tiến độ hợp đồng nếu tất cả các hạng mục đều đã nhận đủ
-    contract = line.contract
-    all_lines = db.scalars(
-        select(ContractLine)
-        .where(ContractLine.contract_id == contract.id, ContractLine.is_deleted.is_(False))
-    ).all()
-
-    all_delivered = True
-    for cl in all_lines:
-        delivered_count = db.scalar(
-            select(func.count(Asset.id)).where(
-                Asset.contract_line_id == cl.id,
-                Asset.is_deleted.is_(False),
-            )
-        ) or 0
-        if delivered_count < cl.qty_ordered:
-            all_delivered = False
-            break
-
-    if all_delivered and contract.delivery_status != DeliveryStatus.DELIVERED:
-        contract.delivery_status = DeliveryStatus.DELIVERED
-        contract.updated_by = user.id
+    # Cập nhật tiến độ hợp đồng bằng cùng một phép tính với mọi nơi khác
+    # (hợp đồng có thể gồm cả hạng mục phần mềm, đếm theo seat chứ không theo thiết bị).
+    db.flush()
+    sync_contract_delivery_status(db, line.contract.id)
 
     db.commit()
     invalidate_model_count_cache(Asset)

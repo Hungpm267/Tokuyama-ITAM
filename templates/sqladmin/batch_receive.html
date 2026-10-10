@@ -593,7 +593,6 @@ function addRow(data = {}) {
       <input type="text" class="form-control toku-grid-input font-monospace col-serial" 
              value="${escapeHtml(data.serial || '')}" 
              placeholder="vd: 8HG9X41" 
-             required
              onkeydown="handleSerialKeyDown(event, this)"
              onpaste="handleSerialPaste(event, this)"
              oninput="updateCounter()">

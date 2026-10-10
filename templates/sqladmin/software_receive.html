@@ -1,0 +1,305 @@
+{% extends "sqladmin/layout.html" %}
+{% block content %}
+{% set current_lang = current_lang or get_current_lang(request) %}
+{% macro L(vi, en, ja) %}{{ ja if current_lang == 'ja' else (en if current_lang == 'en' else vi) }}{% endmacro %}
+{% set qty_ordered = contract_line.qty_ordered %}
+{% set qty_delivered = contract_line.qty_delivered %}
+{% set qty_remaining = contract_line.qty_remaining %}
+{% set pct = (qty_delivered / qty_ordered * 100) | round(0) | int if qty_ordered > 0 else 0 %}
+
+<style>
+  /* Cùng ngôn ngữ hình ảnh với màn hình "Nhập kho theo lô" (batch_receive.html) */
+  .toku-wrapper { max-width: 1180px; margin: 0 auto; padding-bottom: 40px; }
+  .toku-card {
+    background: #ffffff;
+    border-radius: 20px !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.05), 0 4px 10px -2px rgba(15, 23, 42, 0.02) !important;
+    padding: 28px 32px;
+    margin-bottom: 24px;
+  }
+  .toku-label { font-size: 13px !important; font-weight: 700 !important; color: #1e293b !important; margin-bottom: 6px !important; display: flex; align-items: center; }
+  .toku-input, .toku-select {
+    background-color: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 10px !important;
+    padding: 10px 14px !important;
+    font-size: 13.5px !important;
+    color: #0f172a !important;
+    transition: all 0.15s ease-in-out !important;
+  }
+  .toku-input:focus, .toku-select:focus {
+    background-color: #ffffff !important;
+    border-color: #4D5CB0 !important;
+    box-shadow: 0 0 0 3px rgba(77, 92, 176, 0.15) !important;
+    outline: none !important;
+  }
+  .toku-btn-primary {
+    background-color: #4D5CB0 !important; border: 1px solid #4D5CB0 !important; color: #ffffff !important;
+    border-radius: 10px !important; font-weight: 600 !important; padding: 10px 22px !important; font-size: 13.5px !important;
+  }
+  .toku-btn-primary:hover, .toku-btn-primary:focus { background-color: #3f4c96 !important; border-color: #3f4c96 !important; }
+  .toku-btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+  .toku-btn-secondary {
+    background-color: #ffffff !important; border: 1px solid #e2e8f0 !important; color: #334155 !important;
+    border-radius: 10px !important; font-weight: 600 !important; text-decoration: none; display: inline-flex; align-items: center;
+  }
+  .toku-btn-secondary:hover { background-color: #f8fafc !important; color: #0f172a !important; }
+  .toku-metric-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px 18px; height: 100%; }
+  .toku-metric-label { font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em; }
+  .toku-hint { font-size: 12px; color: #64748b; margin-top: 4px; }
+</style>
+
+<div class="col-12 toku-wrapper">
+
+  <div class="toku-card">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 pb-3 mb-3 border-bottom" style="border-color: #f1f5f9 !important;">
+      <img src="/static/img/logo.svg" alt="Tokuyama" style="height: 36px; width: auto; object-fit: contain;">
+      <div class="text-uppercase fw-bold" style="font-size: 11.5px; letter-spacing: 0.06em; color: #64748b;">
+        {{ L('HỢP ĐỒNG', 'CONTRACT', '契約') }} {{ contract.code }}{% if contract.vendor_name %} • {{ contract.vendor_name }}{% endif %}
+      </div>
+    </div>
+
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+      <div>
+        <h2 class="fw-bold m-0" style="font-size: 22px; color: #0f172a; letter-spacing: -0.01em;">
+          {{ L('Nhận phần mềm', 'Receive Software', 'ソフトウェア受入') }}
+        </h2>
+        <div class="text-muted mt-1" style="font-size: 13.5px;">
+          <span class="text-secondary fw-semibold">{{ L('Hạng mục hàng hóa', 'Contract Item', '品目種別') }}:</span>
+          <strong class="text-dark">{{ contract_line.item_type }}</strong>
+          {% if contract_line.spec %}
+          <span class="mx-1 text-muted">•</span>
+          <span class="text-muted small">{{ contract_line.spec }}</span>
+          {% endif %}
+        </div>
+      </div>
+      <a href="/admin/contract-line/details/{{ contract_line.id }}" class="toku-btn-secondary py-2 px-3" style="font-size: 13px;">
+        <i class="fa-solid fa-arrow-left me-2"></i>{{ L('Quay lại Hạng mục', 'Back to Item', '明細詳細に戻る') }}
+      </a>
+    </div>
+
+    <div class="row g-3">
+      <div class="col-6 col-md-3">
+        <div class="toku-metric-box">
+          <div class="toku-metric-label text-muted">{{ L('Số lượng đặt mua', 'Quantity Ordered', '発注数量') }}</div>
+          <div class="mt-2 fs-3 fw-bold text-dark">{{ qty_ordered }} <span class="fs-6 fw-normal text-muted">seats</span></div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="toku-metric-box">
+          <div class="toku-metric-label text-muted">{{ L('Đã nhận trước đó', 'Delivered', '受入済み数量') }}</div>
+          <div class="mt-2 fs-3 fw-bold text-secondary">{{ qty_delivered }} <span class="fs-6 fw-normal text-muted">seats</span></div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="toku-metric-box" style="background-color: #EEF2FF; border-color: #C7D2FE;">
+          <div class="toku-metric-label" style="color: #4D5CB0;">{{ L('Còn cần nhận', 'Remaining', '受入残数量') }}</div>
+          <div class="mt-2 fs-3 fw-bold" style="color: #4D5CB0;">{{ qty_remaining }} <span class="fs-6 fw-normal" style="color: #6366f1;">seats</span></div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="toku-metric-box d-flex flex-column justify-content-between">
+          <div class="d-flex justify-content-between align-items-center">
+            <span class="toku-metric-label text-muted">{{ L('Tiến độ giao hàng', 'Delivery Progress', '納品進捗率') }}</span>
+            <span class="badge rounded-pill text-white px-2" style="background-color: #4D5CB0; font-size: 11px;">{{ pct }}%</span>
+          </div>
+          <div class="progress mt-2" style="height: 10px; border-radius: 6px; background-color: #e2e8f0;">
+            <div class="progress-bar" role="progressbar" style="width: {{ pct }}%; background-color: #4D5CB0;" aria-valuenow="{{ pct }}" aria-valuemin="0" aria-valuemax="100"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="alertContainer" class="d-none mb-3"></div>
+
+  {% if qty_remaining <= 0 %}
+  <div class="toku-card">
+    <div class="d-flex align-items-center gap-3">
+      <span style="width: 40px; height: 40px; border-radius: 12px; background: #dcfce7; color: #15803d; display: inline-flex; align-items: center; justify-content: center;">
+        <i class="fa-solid fa-circle-check"></i>
+      </span>
+      <div>
+        <div class="fw-bold text-dark">{{ L('Hạng mục này đã nhận đủ số lượng đặt mua.', 'This item has been fully received.', 'この明細は全数受入済みです。') }}</div>
+        <div class="toku-hint">{{ L('Không thể nhận thêm. Nếu số lượng mua thay đổi, hãy sửa số lượng đặt mua của hạng mục trước.', 'Nothing more can be received. If the purchased quantity changed, edit the ordered quantity first.', 'これ以上受入できません。購入数量が変わった場合は、先に発注数量を修正してください。') }}</div>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <form id="softwareReceiveForm" onsubmit="submitSoftwareReceive(event)" novalidate>
+    <div class="toku-card">
+      <div class="d-flex align-items-center gap-2 mb-3 pb-2 border-bottom" style="border-color: #f1f5f9 !important;">
+        <span style="width: 28px; height: 28px; border-radius: 8px; background: #EEF2FF; color: #4D5CB0; display: inline-flex; align-items: center; justify-content: center; font-size: 13px;">
+          <i class="fa-solid fa-compact-disc"></i>
+        </span>
+        <h3 class="fw-bold m-0" style="font-size: 15px; color: #0f172a;">
+          {{ L('Thông tin gói phần mềm nhận về', 'Software package received', '受入するソフトウェアパッケージ') }}
+        </h3>
+      </div>
+
+      {% if not products %}
+      <div class="alert alert-warning border" style="border-radius: 14px;">
+        <i class="fa-solid fa-triangle-exclamation me-2"></i>
+        {{ L('Chưa có sản phẩm nào trong Danh mục Phần mềm.', 'No products exist in the software catalogue yet.', 'ソフトウェア一覧に製品がまだありません。') }}
+        <a href="/admin/license-product/create" class="fw-semibold">{{ L('Thêm sản phẩm phần mềm', 'Add a software product', 'ソフトウェア製品を追加') }}</a>
+      </div>
+      {% endif %}
+
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="toku-label" for="swProductId">
+            {{ L('Sản phẩm phần mềm', 'Software product', 'ソフトウェア製品') }} <span class="text-danger ms-1">*</span>
+          </label>
+          <select id="swProductId" class="form-select toku-select">
+            <option value="">{{ L('— Chọn sản phẩm —', '— Select a product —', '— 製品を選択 —') }}</option>
+            {% for p in products %}
+            <option value="{{ p.id }}" {% if p.id == suggested_product_id %}selected{% endif %}>{{ p.name }}{% if p.vendor %} ({{ p.vendor }}){% endif %}</option>
+            {% endfor %}
+          </select>
+          <div class="toku-hint">
+            {{ L('Không thấy sản phẩm cần chọn?', 'Product not listed?', '製品が見つかりませんか？') }}
+            <a href="/admin/license-product/create">{{ L('Thêm vào Danh mục Phần mềm', 'Add it to the catalogue', '一覧に追加') }}</a>
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <label class="toku-label" for="swSeats">
+            {{ L('Số lượng nhận đợt này (seats)', 'Seats received this time', '今回の受入数（seats）') }} <span class="text-danger ms-1">*</span>
+          </label>
+          <input type="number" id="swSeats" class="form-control toku-input font-monospace" min="1" max="{{ qty_remaining }}" step="1" value="{{ qty_remaining }}">
+          <div class="toku-hint">{{ L('Tối đa', 'Up to', '最大') }} {{ qty_remaining }} — {{ L('có thể nhận thành nhiều đợt.', 'you can receive in several batches.', '複数回に分けて受入できます。') }}</div>
+        </div>
+
+        <div class="col-md-6">
+          <label class="toku-label" for="swStartDate">{{ L('Ngày kích hoạt', 'Start date', '開始日') }}</label>
+          <input type="date" id="swStartDate" class="form-control toku-input">
+        </div>
+
+        <div class="col-md-6">
+          <label class="toku-label" for="swExpiryDate">{{ L('Ngày hết hạn', 'Expiry date', '有効期限') }}</label>
+          <input type="date" id="swExpiryDate" class="form-control toku-input">
+          <div class="toku-hint">{{ L('Để trống nếu là bản quyền vĩnh viễn.', 'Leave empty for a perpetual license.', '永続ライセンスの場合は空欄にしてください。') }}</div>
+        </div>
+
+        <div class="col-12">
+          <label class="toku-label" for="swNote">{{ L('Ghi chú', 'Note', '備考') }}</label>
+          <textarea id="swNote" class="form-control toku-input" rows="2" maxlength="1000"></textarea>
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-end gap-2 mt-4">
+        <a href="/admin/contract-line/details/{{ contract_line.id }}" class="toku-btn-secondary py-2 px-3" style="font-size: 13.5px;">{{ L('Hủy bỏ', 'Cancel', 'キャンセル') }}</a>
+        <button type="submit" id="swSubmitBtn" class="btn toku-btn-primary" {% if not products %}disabled{% endif %}>
+          <i class="fa-solid fa-check me-2"></i>{{ L('Xác nhận nhận phần mềm', 'Confirm receipt', '受入を確定') }}
+        </button>
+      </div>
+    </div>
+  </form>
+  {% endif %}
+
+  {% if received_licenses %}
+  <div class="toku-card">
+    <h3 class="fw-bold mb-3" style="font-size: 15px; color: #0f172a;">
+      {{ L('Các gói đã nhận cho hạng mục này', 'Packages already received for this item', 'この明細で受入済みのパッケージ') }}
+    </h3>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0" style="font-size: 13px;">
+        <thead>
+          <tr class="text-muted" style="font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.04em;">
+            <th>{{ L('Sản phẩm', 'Product', '製品') }}</th>
+            <th class="text-end">Seats</th>
+            <th>{{ L('Ngày kích hoạt', 'Start date', '開始日') }}</th>
+            <th>{{ L('Ngày hết hạn', 'Expiry date', '有効期限') }}</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for lic in received_licenses %}
+          <tr>
+            <td class="fw-semibold text-dark">{{ lic.product.name if lic.product else '—' }}</td>
+            <td class="text-end font-monospace">{{ lic.seats }}</td>
+            <td>{{ lic.start_date.strftime('%d/%m/%Y') if lic.start_date else '—' }}</td>
+            <td>{{ lic.expiry_date.strftime('%d/%m/%Y') if lic.expiry_date else L('Vĩnh viễn', 'Perpetual', '永続') }}</td>
+            <td class="text-end"><a href="/admin/license/details/{{ lic.id }}" class="text-decoration-none">{{ L('Xem', 'View', '表示') }}</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+const SW_MAX_SEATS = {{ qty_remaining }};
+const SW_TEXT = {
+  pickProduct: {{ L('Vui lòng chọn sản phẩm phần mềm.', 'Please select a software product.', 'ソフトウェア製品を選択してください。') | trim | tojson }},
+  badSeats: {{ L('Số lượng phải là số nguyên từ 1 đến', 'Seats must be a whole number from 1 to', '数量は1から次の値までの整数で入力してください：') | trim | tojson }},
+  badDates: {{ L('Ngày hết hạn không được trước ngày kích hoạt.', 'Expiry date cannot be before start date.', '有効期限を開始日より前にすることはできません。') | trim | tojson }},
+  saving: {{ L('Đang ghi nhận...', 'Saving...', '保存中...') | trim | tojson }},
+  failed: {{ L('Không thể ghi nhận phần mềm.', 'Could not record the software.', 'ソフトウェアを登録できませんでした。') | trim | tojson }},
+  network: {{ L('Lỗi kết nối máy chủ', 'Server connection error', 'サーバー接続エラー') | trim | tojson }}
+};
+
+function showAlert(message, type) {
+  const container = document.getElementById('alertContainer');
+  container.className = 'mb-4';
+  container.textContent = '';
+  const box = document.createElement('div');
+  box.className = 'alert alert-' + (type || 'danger') + ' shadow-sm border';
+  box.style.borderRadius = '14px';
+  box.setAttribute('role', 'alert');
+  box.textContent = message;
+  container.appendChild(box);
+  container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function submitSoftwareReceive(event) {
+  event.preventDefault();
+  const btn = document.getElementById('swSubmitBtn');
+  const productId = document.getElementById('swProductId').value;
+  const seatsRaw = document.getElementById('swSeats').value.trim();
+  const startDate = document.getElementById('swStartDate').value;
+  const expiryDate = document.getElementById('swExpiryDate').value;
+  const seats = Number(seatsRaw);
+
+  if (!productId) { showAlert(SW_TEXT.pickProduct); return; }
+  if (!/^\d+$/.test(seatsRaw) || seats < 1 || seats > SW_MAX_SEATS) {
+    showAlert(SW_TEXT.badSeats + ' ' + SW_MAX_SEATS + '.');
+    return;
+  }
+  if (startDate && expiryDate && expiryDate < startDate) { showAlert(SW_TEXT.badDates); return; }
+
+  const originalHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.textContent = SW_TEXT.saving;
+
+  try {
+    const response = await fetch(window.location.pathname, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        product_id: parseInt(productId, 10),
+        seats: seats,
+        start_date: startDate || null,
+        expiry_date: expiryDate || null,
+        note: document.getElementById('swNote').value
+      })
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      showAlert(typeof result.detail === 'string' ? result.detail : SW_TEXT.failed);
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+      return;
+    }
+    window.location.href = result.redirect_url || '/admin/contract-line/list';
+  } catch (error) {
+    showAlert(SW_TEXT.network + ': ' + error.message);
+    btn.disabled = false;
+    btn.innerHTML = originalHtml;
+  }
+}
+</script>
+{% endblock %}

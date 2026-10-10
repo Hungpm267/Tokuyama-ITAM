@@ -109,7 +109,7 @@
     </a>
   </li>
 
-  {% if request.session.get('role') == 'ADMIN' or request.session.get('role_code') == 'ADMIN' or request.session.get('username') == 'it.admin' %}
+  {% if can(request, 'trash', 'view') %}
   <li class="nav-item mb-1">
     <a class="nav-link d-flex align-items-center justify-content-start {% if request.url.path == '/admin/trash' %}active{% endif %}"
        href="/admin/trash">
