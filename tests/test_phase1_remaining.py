@@ -18,22 +18,15 @@ from app.db import get_db
 from app.enums import (
     AssetStatus,
     AuditAction,
-    CardStatus,
     DEFAULT_ROLE_PERMISSIONS,
-    LicenseType,
     PersonStatus,
     RoleCode,
 )
 from app.main import app
 from app.models import (
-    AccessCard,
     Asset,
     AssetCategory,
     AuditLog,
-    CardLoan,
-    Contract,
-    License,
-    LicenseProduct,
     Person,
     Role,
     RolePermission,
@@ -151,60 +144,8 @@ def _auth_cookie_token(user: User) -> str:
 # 1. DASHBOARD ALERTS TESTS (FR-17)
 # =========================================================================
 
-def test_dashboard_alerts_overdue_card_loans(client: TestClient, db: Session):
-    """Kiểm tra widget cảnh báo thẻ mượn quá hạn hẹn trả trên Dashboard."""
-    admin_user = _get_or_create_admin_user(db)
-    client.cookies.set("itam_session", _auth_cookie_token(admin_user))
-
-    today = dt.date.today()
-    card = AccessCard(card_no="CARD-ALERT-999", status=CardStatus.IN_STOCK)
-    db.add(card)
-    db.flush()
-
-    loan = CardLoan(
-        card_id=card.id,
-        external_name="Contractor Overdue",
-        external_company="Overdue Co.",
-        borrowed_at=today - dt.timedelta(days=10),
-        expected_return_at=today - dt.timedelta(days=3),  # Quá hạn 3 ngày
-        returned_at=None,
-    )
-    db.add(loan)
-    db.flush()
-
-    resp = client.get("/admin/", follow_redirects=True)
-    assert resp.status_code == 200
-    html = resp.text
-    assert "CARD-ALERT-999" in html
-    assert "Contractor Overdue" in html
-    assert "Trễ" in html or "quá hạn" in html
 
 
-def test_dashboard_alerts_expiring_licenses(client: TestClient, db: Session):
-    """Kiểm tra widget cảnh báo bản quyền sắp hết hạn trong vòng 60 ngày."""
-    admin_user = _get_or_create_admin_user(db)
-    client.cookies.set("itam_session", _auth_cookie_token(admin_user))
-
-    today = dt.date.today()
-    prod = LicenseProduct(name="Trend Micro Test Apex", license_type=LicenseType.SUBSCRIPTION)
-    db.add(prod)
-    db.flush()
-
-    lic = License(
-        product_id=prod.id,
-        seats=10,
-        start_date=today - dt.timedelta(days=300),
-        expiry_date=today + dt.timedelta(days=20),  # Hết hạn sau 20 ngày
-        note="Sắp hết hạn gói 2026",
-    )
-    db.add(lic)
-    db.flush()
-
-    resp = client.get("/admin/", follow_redirects=True)
-    assert resp.status_code == 200
-    html = resp.text
-    assert "Trend Micro Test Apex" in html
-    assert "Sắp hết hạn gói 2026" in html
 
 
 # =========================================================================
@@ -250,40 +191,24 @@ def test_global_search_finds_asset_by_serial_and_mac(client: TestClient, db: Ses
     assert "Dell Latitude 5540 SearchTest" in resp_ga.text
 
 
-def test_global_search_finds_person_and_contract(client: TestClient, db: Session):
-    """Kiểm tra tìm kiếm toàn cục tìm thấy nhân sự và hợp đồng."""
+def test_global_search_finds_person(client: TestClient, db: Session):
+    """Kiểm tra tìm kiếm toàn cục tìm thấy nhân sự."""
     admin_user = _get_or_create_admin_user(db)
     client.cookies.set("itam_session", _auth_cookie_token(admin_user))
 
-    # Person
-    p = Person(
+    db.add(Person(
         staff_code="TVC-SRCH-777",
         full_name="Nguyen Van Tim Kiem",
         user_login_id="timkiem.nguyen",
         email="timkiem@tokuyama.vn",
         status=PersonStatus.ACTIVE,
-    )
-    db.add(p)
-
-    # Contract
-    c = Contract(
-        code="KHCM-SRCH-8888",
-        vendor_name="KDDI Search Partner",
-        signed_date=dt.date(2026, 8, 15),
-    )
-    db.add(c)
+    ))
     db.flush()
 
-    # Search Person
     resp_p = client.get("/admin/global-search?q=TVC-SRCH-777", follow_redirects=True)
     assert resp_p.status_code == 200
     assert "Nguyen Van Tim Kiem" in resp_p.text
     assert "timkiem.nguyen" in resp_p.text
-
-    # Search Contract
-    resp_c = client.get("/admin/global-search?q=KHCM-SRCH-8888", follow_redirects=True)
-    assert resp_c.status_code == 200
-    assert "KDDI Search Partner" in resp_c.text
 
 
 def test_global_search_empty_result(client: TestClient, db: Session):
@@ -443,55 +368,3 @@ def test_trash_access_denied_for_non_admin(client: TestClient, db: Session):
     assert "Chỉ Quản trị viên" in resp.json()["detail"]
 
 
-def test_trash_restore_card_and_contract_success(client: TestClient, db: Session):
-    """Kiểm tra xem Thùng rác và Khôi phục hoạt động chính xác với Thẻ từ và Hợp đồng."""
-    admin_user = _get_or_create_admin_user(db)
-    client.cookies.set("itam_session", _auth_cookie_token(admin_user))
-
-    # 1. Thẻ bị xóa mềm
-    del_card = AccessCard(
-        card_no="CARD-TRASH-999",
-        status=CardStatus.IN_STOCK,
-        is_deleted=True,
-        deleted_at=dt.datetime.now(dt.timezone.utc),
-        deleted_by=admin_user.id,
-        delete_reason="Thẻ hỏng cũ",
-    )
-    # 2. Hợp đồng bị xóa mềm
-    del_contract = Contract(
-        code="HD-TRASH-999",
-        vendor_name="FPT Telecom",
-        is_deleted=True,
-        deleted_at=dt.datetime.now(dt.timezone.utc),
-        deleted_by=admin_user.id,
-        delete_reason="Hợp đồng hủy",
-    )
-    db.add_all([del_card, del_contract])
-    db.flush()
-
-    # Truy cập trang /admin/trash (không được crash 500)
-    res_list = client.get("/admin/trash")
-    assert res_list.status_code == 200
-    assert "CARD-TRASH-999" in res_list.text
-    assert "HD-TRASH-999" in res_list.text
-
-    # Khôi phục thẻ thành công
-    res_card = client.post(
-        "/admin/trash/restore",
-        data={"entity_type": "card", "item_id": del_card.id},
-    )
-    assert res_card.status_code == 200
-    assert res_card.json()["success"] is True
-
-    # Khôi phục hợp đồng thành công
-    res_contract = client.post(
-        "/admin/trash/restore",
-        data={"entity_type": "contract", "item_id": del_contract.id},
-    )
-    assert res_contract.status_code == 200
-    assert res_contract.json()["success"] is True
-
-    db.refresh(del_card)
-    db.refresh(del_contract)
-    assert del_card.is_deleted is False
-    assert del_contract.is_deleted is False

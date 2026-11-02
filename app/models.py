@@ -287,7 +287,8 @@ class Person(BizBase):
 
     __tablename__ = "persons"
 
-    staff_code: Mapped[str] = mapped_column(String(50), nullable=False)
+    #: Để trống được: người mới có thể chưa được cấp mã.
+    staff_code: Mapped[str | None] = mapped_column(String(50), nullable=True)
     user_login_id: Mapped[str | None] = mapped_column(String(50), nullable=True)
     full_name: Mapped[str] = mapped_column(String(100), nullable=False)
     department_id: Mapped[int | None] = mapped_column(
@@ -309,14 +310,14 @@ class Person(BizBase):
     assignments: Mapped[list[Assignment]] = relationship(back_populates="person")
 
     __table_args__ = biz_args(
-        alive_unique("persons", "staff_code"),
+        alive_unique("persons", "staff_code", extra="staff_code IS NOT NULL"),
         alive_unique("persons", "user_login_id", extra="user_login_id IS NOT NULL"),
         alive_unique("persons", "email", extra="email IS NOT NULL"),
         Index("ix_persons_full_name", "full_name"),
     )
 
     def __str__(self) -> str:
-        return f"{self.full_name} ({self.staff_code})"
+        return f"{self.full_name} ({self.staff_code})" if self.staff_code else self.full_name
 
 
 class PersonSecret(Base):
@@ -424,7 +425,7 @@ class Asset(BizBase):
         try:
             for asgn in self.assignments:
                 if asgn.returned_at is None and asgn.person:
-                    return f"{asgn.person.full_name} ({asgn.person.staff_code})"
+                    return str(asgn.person)
         except Exception:
             return None
         return None

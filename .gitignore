@@ -13,3 +13,8 @@ __pycache__/
 # Khoá mã hoá KHÔNG BAO GIỜ vào repo
 *.key
 secrets/
+
+# File Excel nghiệp vụ có dữ liệu nhân sự / mật khẩu dạng chữ thường - không bao giờ commit
+*.xlsx
+*.xls
+~$*

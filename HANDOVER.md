@@ -1,7 +1,7 @@
 # BÀN GIAO DỰ ÁN ITAM TOKUYAMA VIETNAM (HANDOVER FOR AI AGENT)
 
 > **Dành cho Model AI tiếp nhận phiên làm việc (Gemini / Astra / Cursor / Claude)**  
-> Hãy đọc kỹ tài liệu này kết hợp cùng `GEMINI.md` trước khi viết bất kỳ dòng code nào.
+> Hãy đọc kỹ tài liệu này kết hợp cùng `CLAUDE.md` trước khi viết bất kỳ dòng code nào.
 
 ---
 
@@ -115,6 +115,17 @@ Test: `tests/test_wave6_owner_decisions.py`.
 
 ---
 
+### 3f. Sổ tổng (02/11/2026, CHƯA COMMIT)
+
+Thiết kế: `docs/superpowers/specs/2026-11-02-so-tong-design.md`. Đã xong cả 3 giai đoạn: các phân hệ hợp đồng, license, thẻ, danh bạ, dashboard, ma trận quyền đã gỡ khỏi code, bản đầy đủ ở git tag `v1-full`, bảng trong database giữ nguyên. Các mục 2 đến 3e phía trên mô tả bản trước khi gỡ.
+
+- Trang `/admin/so-tong` (`app/routers/so_tong.py`, `app/services/ledger_service.py`, `templates/sqladmin/so_tong.html`, Tabulator trong `static/vendor/`). Là trang đích sau đăng nhập.
+- Bấm đúp để sửa ô (serial, mã GA, ghi chú, email, userId, phòng ban); bảng bên phải có lịch sử, Bàn giao / Thu hồi, dấu phần mềm.
+- Phần mềm là nhãn `asset_tags` mã `SW-*`, 32 máy đã được đánh dấu từ Excel. Thêm phần mềm mới: tạo nhãn mã `SW-...` trong Danh mục Nhãn.
+- Chưa nhập mật khẩu từ Excel vào kho mật khẩu. Cột Windows License trong Excel chứa key, không được đưa vào app.
+
+---
+
 ## 4. CẤU TRÚC CODEBASE & NGUỒN SỰ THẬT
 
 ```
@@ -147,7 +158,7 @@ toku-app/
 │
 ├── tests/                     # 372 bài test tự động bao quát toàn bộ hệ thống
 ├── docs/                      # Tài liệu phân tích yêu cầu nghiệp vụ BRD.md
-├── GEMINI.md                  # Bản quy ước bất biến tối thượng của dự án
+├── CLAUDE.md                  # Lệnh, kiến trúc và quy ước của dự án
 └── HANDOVER.md                # File này (hướng dẫn bàn giao cho AI Agent)
 ```
 

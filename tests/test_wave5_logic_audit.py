@@ -20,20 +20,13 @@ from app.admin import (
     AssetCategoryAdmin,
     AssignmentAdmin,
     AuditLogAdmin,
-    CardLoanAdmin,
-    ContractLineAdmin,
     DepartmentAdmin,
-    LicenseAdmin,
-    LicenseAssignmentAdmin,
-    LicenseProductAdmin,
-    LocationAdmin,
     RoleAdmin,
-    RolePermissionAdmin,
     invalidate_model_count_cache,
     invalidate_user_cache,
 )
 from app.core.i18n import format_datetime_clean
-from app.core.security import create_session_token, hash_password
+from app.core.security import create_session_token
 from app.db import get_db
 from app.enums import (
     AssetStatus,
@@ -41,9 +34,6 @@ from app.enums import (
     ContractItemKind,
     DEFAULT_ROLE_PERMISSIONS,
     DeliveryStatus,
-    Module,
-    PermissionAction,
-    PhoneDeviceType,
     RoleCode,
 )
 from app.main import app
@@ -52,20 +42,14 @@ from app.models import (
     Asset,
     Assignment,
     AuditLog,
-    CardLoan,
     Contract,
     ContractLine,
     Department,
-    LicenseAssignment,
-    LicenseProduct,
-    Phone,
     Role,
     RolePermission,
     User,
-    UserPermissionOverride,
 )
 from app.services.assignment_service import assign_asset
-from app.services.license_service import assign_license, receive_license_for_line
 
 TODAY = dt.date.today()
 PAST = TODAY - dt.timedelta(days=30)
@@ -193,18 +177,8 @@ def test_department_in_use_cannot_be_deleted(db, seed):
     assert seed["dept"].is_deleted is False
 
 
-def test_license_product_in_use_cannot_be_deleted(db, seed):
-    with pytest.raises(HTTPException):
-        _run(LicenseProductAdmin().delete_model(_delete_req(db, seed), seed["product"].id))
-    assert seed["product"].is_deleted is False
 
 
-def test_location_in_use_cannot_be_deleted(db, seed):
-    db.add(Phone(device_name="W5-PHONE", device_type=PhoneDeviceType.IP_PHONE, location_id=seed["location"].id))
-    db.flush()
-    with pytest.raises(HTTPException):
-        _run(LocationAdmin().delete_model(_delete_req(db, seed), seed["location"].id))
-    assert seed["location"].is_deleted is False
 
 
 def test_role_with_users_cannot_be_deleted(db, seed):
@@ -223,32 +197,10 @@ def test_role_with_users_cannot_be_deleted(db, seed):
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("status", [AssetStatus.DISPOSED, AssetStatus.LOST])
-def test_license_cannot_be_assigned_to_a_disposed_or_lost_asset(db, seed, status):
-    seed["asset"].status = status
-    db.flush()
-    data = {"license": str(seed["license"].id), "asset": str(seed["asset"].id), "assigned_at": PAST, "removed_at": None}
-    with pytest.raises(ValueError):
-        _run(LicenseAssignmentAdmin().on_model_change(data, LicenseAssignment(), True, _req(db)))
-    with pytest.raises(ValueError):
-        assign_license(db, seed["license"].id, asset_id=seed["asset"].id, assigned_at=PAST)
 
 
-def test_license_assignment_expiry_cannot_precede_assignment_date(db, seed):
-    data = {
-        "license": str(seed["license"].id), "person": str(seed["person"].id),
-        "assigned_at": PAST, "expiry_date": PAST - dt.timedelta(days=1), "removed_at": None,
-    }
-    with pytest.raises(ValueError):
-        _run(LicenseAssignmentAdmin().on_model_change(data, LicenseAssignment(), True, _req(db)))
 
 
-@pytest.mark.parametrize("status", ["DISPOSED", "LOST"])
-def test_asset_holding_license_seat_cannot_be_disposed_or_lost(db, seed, status):
-    db.add(LicenseAssignment(license_id=seed["license"].id, asset_id=seed["asset"].id, assigned_at=PAST))
-    db.flush()
-    with pytest.raises(ValueError):
-        _run(AssetAdmin().on_model_change({"status": status}, seed["asset"], False, _req(db)))
 
 
 def test_asset_with_drifted_status_can_still_be_edited_when_status_unchanged(db, seed):
@@ -280,34 +232,10 @@ def test_closed_assignment_cannot_be_repointed(db, seed):
         {**base, "asset": str(seed["asset"].id), "person": str(seed["person"].id), "note": "đính chính"}, asgn, False, _req(db)))
 
 
-def test_closed_license_assignment_cannot_be_repointed(db, seed):
-    row = LicenseAssignment(
-        license_id=seed["license"].id, person_id=seed["person"].id, assigned_at=PAST, removed_at=PAST
-    )
-    db.add(row)
-    db.flush()
-    data = {"license": str(seed["license"].id), "person": str(seed["person_b"].id), "assigned_at": PAST, "removed_at": PAST}
-    with pytest.raises(ValueError):
-        _run(LicenseAssignmentAdmin().on_model_change(data, row, False, _req(db)))
 
 
-def test_closed_card_loan_cannot_be_repointed(db, seed):
-    loan = CardLoan(card_id=seed["card"].id, person_id=seed["person"].id, borrowed_at=PAST, returned_at=PAST)
-    other = AccessCard(card_no="W5-CARD")
-    db.add_all([loan, other])
-    db.flush()
-    data = {"card": str(other.id), "person": str(seed["person"].id), "borrowed_at": PAST, "returned_at": PAST}
-    with pytest.raises(ValueError):
-        _run(CardLoanAdmin().on_model_change(data, loan, False, _req(db)))
 
 
-def test_card_loan_cannot_have_both_employee_and_external_borrower(db, seed):
-    data = {
-        "card": str(seed["card"].id), "person": str(seed["person"].id), "external_name": "Mr. Tanaka",
-        "borrowed_at": PAST, "returned_at": None,
-    }
-    with pytest.raises(ValueError):
-        _run(CardLoanAdmin().on_model_change(data, CardLoan(), True, _req(db)))
 
 
 # ---------------------------------------------------------------------------
@@ -315,69 +243,16 @@ def test_card_loan_cannot_have_both_employee_and_external_borrower(db, seed):
 # ---------------------------------------------------------------------------
 
 
-def test_license_product_cannot_change_once_assigned(db, seed):
-    other = LicenseProduct(name="W5 Other Product")
-    db.add(other)
-    db.add(LicenseAssignment(license_id=seed["license"].id, person_id=seed["person"].id, assigned_at=PAST, removed_at=PAST))
-    db.flush()
-    with pytest.raises(ValueError):
-        _run(LicenseAdmin().on_model_change({"product": str(other.id), "seats": 13}, seed["license"], False, _req(db)))
-    _run(LicenseAdmin().on_model_change({"product": str(seed["product"].id), "seats": 13}, seed["license"], False, _req(db)))
 
 
-def test_clearing_license_contract_line_also_clears_contract(db, seed):
-    contract, line = _software_line(db)
-    lic = receive_license_for_line(db, line.id, product_id=seed["product"].id, seats=5)
-    assert lic.contract_id == contract.id
-    data = {"product": str(seed["product"].id), "seats": 5, "contract_line": None}
-    _run(LicenseAdmin().on_model_change(data, lic, False, _req(db)))
-    assert "contract_id" in data and data["contract_id"] is None
 
 
-def test_contract_line_cannot_move_to_another_contract_after_receiving(db, seed):
-    contract, line = _software_line(db)
-    receive_license_for_line(db, line.id, product_id=seed["product"].id, seats=5)
-    other = Contract(code="HD-W5-B", vendor_name="V")
-    db.add(other)
-    db.flush()
-    data = {"contract": str(other.id), "item_kind": "SOFTWARE", "qty_ordered": 30}
-    with pytest.raises(ValueError):
-        _run(ContractLineAdmin().on_model_change(data, line, False, _req(db)))
 
 
-def test_restoring_an_asset_cannot_overfill_its_contract_line(admin_client, db, seed):
-    _, line = _software_line(db, qty=1, kind=ContractItemKind.HARDWARE, code="HD-W5-HW")
-    old = Asset(asset_code="W5-OLD", category_id=seed["cat"].id, contract_line_id=line.id)
-    _soft_delete(old)
-    db.add_all([old, Asset(asset_code="W5-NEW", category_id=seed["cat"].id, contract_line_id=line.id)])
-    db.flush()
-    res = admin_client.post("/admin/trash/restore", data={"entity_type": "asset", "item_id": old.id})
-    assert res.status_code == 400
-    assert old.is_deleted is True
 
 
-def test_restoring_an_asset_onto_a_software_line_is_refused(admin_client, db, seed):
-    _, line = _software_line(db, qty=5, kind=ContractItemKind.HARDWARE, code="HD-W5-KIND")
-    old = Asset(asset_code="W5-KIND", category_id=seed["cat"].id, contract_line_id=line.id)
-    _soft_delete(old)
-    db.add(old)
-    db.flush()
-    line.item_kind = ContractItemKind.SOFTWARE
-    db.flush()
-    res = admin_client.post("/admin/trash/restore", data={"entity_type": "asset", "item_id": old.id})
-    assert res.status_code == 400
-    assert old.is_deleted is True
 
 
-def test_deleted_contract_line_can_be_restored_from_trash(admin_client, db, seed):
-    contract, line = _software_line(db, qty=5, code="HD-W5-LINE")
-    _soft_delete(line)
-    db.flush()
-    page = admin_client.get("/admin/trash?entity=contract_line")
-    assert page.status_code == 200
-    res = admin_client.post("/admin/trash/restore", data={"entity_type": "contract_line", "item_id": line.id})
-    assert res.status_code == 200, res.text
-    assert line.is_deleted is False
 
 
 def test_trash_search_reaches_items_beyond_the_first_50(admin_client, db, seed):
@@ -442,35 +317,14 @@ def test_new_user_password_has_minimum_length(admin_client, db, seed):
     assert db.scalar(select(User).where(User.username == "w5_short")) is None
 
 
-def test_role_permission_rows_are_only_editable_through_the_matrix():
-    view = RolePermissionAdmin()
-    assert view.can_create is False
-    assert view.can_edit is False
-    assert view.can_delete is False
 
 
 def test_custom_roles_cannot_be_created_because_they_cannot_log_in():
     assert RoleAdmin().can_create is False
 
 
-def test_user_permission_override_can_be_created_from_the_form(admin_client, db, seed):
-    page = admin_client.get("/admin/user-permission-override/create")
-    assert page.status_code == 200
-    assert 'name="user_id"' in page.text
-    res = admin_client.post("/admin/user-permission-override/create", data={
-        "user_id": str(seed["user"].id), "module": "licenses", "action": "view", "granted": "y",
-    }, follow_redirects=True)
-    assert res.status_code == 200
-    row = db.scalar(select(UserPermissionOverride).where(UserPermissionOverride.user_id == seed["user"].id))
-    assert row is not None and row.module == "licenses" and row.granted is True
 
 
-def test_user_permission_override_rejects_unknown_module(admin_client, db, seed):
-    res = admin_client.post("/admin/user-permission-override/create", data={
-        "user_id": str(seed["user"].id), "module": "asset", "action": "view", "granted": "y",
-    })
-    assert res.status_code == 400
-    assert db.scalar(select(UserPermissionOverride)) is None
 
 
 def test_validation_messages_follow_the_language_switcher(admin_client, db, seed):
@@ -502,19 +356,6 @@ def test_return_endpoint_rejects_non_object_body(admin_client, db, seed):
     assert res.status_code == 400
 
 
-def test_batch_receive_rejects_non_object_body_and_overlong_values(admin_client, db, seed):
-    _, line = _software_line(db, qty=5, kind=ContractItemKind.HARDWARE, code="HD-W5-BR")
-    assert admin_client.post(f"/admin/contract-line/{line.id}/receive", json=[]).status_code == 400
-    res = admin_client.post(
-        f"/admin/contract-line/{line.id}/receive",
-        json={"category_id": seed["cat"].id, "items": [{"serial": "S" * 150}]},
-    )
-    assert res.status_code == 400
-    res = admin_client.post(
-        f"/admin/contract-line/{line.id}/receive",
-        json={"category_id": True, "items": [{"serial": "W5-OK"}]},
-    )
-    assert res.status_code == 400
 
 
 @pytest.mark.parametrize("body", [[], {"person_id": "abc"}, {"person_id": True}])
@@ -523,18 +364,6 @@ def test_secret_save_rejects_malformed_input(admin_client, db, seed, body):
     assert res.status_code == 400
 
 
-def test_software_line_receive_link_does_not_need_asset_permission(client, db, seed):
-    role = Role(code=RoleCode.GA_MANAGER.value, name_en="GA")
-    db.add(role)
-    db.flush()
-    _grant(db, role, {Module.LICENSES: [PermissionAction.VIEW, PermissionAction.ADD]})
-    user = User(username="w5_lic", password_hash=hash_password("Passw0rd!xyz"), display_name="L", role_id=role.id)
-    db.add(user)
-    db.flush()
-    _, line = _software_line(db, qty=5, code="HD-W5-PERM")
-    _login(client, user, RoleCode.GA_MANAGER.value)
-    res = client.get(f"/admin/contract-line/{line.id}/receive", follow_redirects=False)
-    assert res.status_code == 303
 
 
 # ---------------------------------------------------------------------------
@@ -569,28 +398,10 @@ def test_date_only_values_are_shown_without_a_fake_time():
     assert format_datetime_clean(dt.date(2026, 10, 10)) == "2026-10-10"
 
 
-def test_dashboard_stock_counts_only_assets_in_stock(admin_client, db, seed):
-    for i, status in enumerate([AssetStatus.REPAIR, AssetStatus.DISPOSED, AssetStatus.LOST, AssetStatus.IN_STOCK]):
-        db.add(Asset(asset_code=f"W5-DASH-{i}", category_id=seed["cat"].id, status=status))
-    db.flush()
-    html = admin_client.get("/admin/", follow_redirects=True).text
-    # seed có 1 máy IN_STOCK + 1 máy IN_STOCK vừa thêm = 2; cách tính cũ (tổng - đang mượn) cho ra 5
-    assert "2 thiết bị trong kho" in html
 
 
-def test_contract_list_search_actually_filters(admin_client, db, seed):
-    db.add_all([Contract(code="W5-FIND-ME", vendor_name="V"), Contract(code="W5-OTHER-ONE", vendor_name="V")])
-    db.flush()
-    html = admin_client.get("/admin/contract/list?search=FIND-ME").text
-    assert "W5-FIND-ME" in html
-    assert "W5-OTHER-ONE" not in html
 
 
-def test_contract_line_row_has_no_second_hardcoded_receive_link(admin_client, db, seed):
-    _, line = _software_line(db, qty=5, code="HD-W5-LINK")
-    html = admin_client.get("/admin/contract-line/list").text
-    assert f"/admin/contract-line/{line.id}/receive-software" in html
-    assert f'/admin/contract-line/{line.id}/receive"' not in html
 
 
 def test_audit_log_with_unknown_action_filter_does_not_crash(admin_client, db, seed):

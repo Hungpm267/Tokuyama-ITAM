@@ -158,7 +158,7 @@
           <tbody>
             {% for item in results.persons %}
             <tr>
-              <td class="font-monospace fw-bold text-dark">{{ item.staff_code }}</td>
+              <td class="font-monospace fw-bold text-dark">{{ item.staff_code or '—' }}</td>
               <td>
                 <a href="{{ url_for('admin:details', identity='person', pk=item.id) }}" class="fw-bold text-dark text-decoration-none">
                   {{ item.full_name }}

@@ -30,10 +30,30 @@
     box-shadow: 0 0 0 3px rgba(77, 92, 176, 0.12) !important;
   }
 </style>
+<style>
+  /* Điện thoại: sidebar 260px không còn chỗ, chuyển thành menu trượt mở bằng nút ba gạch. */
+  .toku-menu-btn { display: none; border: 0; background: transparent; color: #334155; font-size: 18px; padding: 6px 10px 6px 0; }
+  .toku-sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, .45); z-index: 1030; }
+  @media (max-width: 991.98px) {
+    .toku-menu-btn { display: inline-flex; align-items: center; }
+    #tokuSidebar {
+      position: fixed !important; left: 0; top: 0; bottom: 0; height: 100dvh !important; z-index: 1035 !important;
+      transform: translateX(-100%); transition: transform .2s ease;
+    }
+    body.toku-menu-open #tokuSidebar { transform: translateX(0); }
+    body.toku-menu-open .toku-sidebar-backdrop { display: block; }
+    .toku-topbar { padding-left: 12px !important; padding-right: 12px !important; }
+    .toku-content { padding-left: 8px !important; padding-right: 8px !important; }
+    .toku-hide-mobile { display: none !important; }
+    .table-responsive, .card-body { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .form-control, .form-select, input, select, textarea { font-size: 16px !important; } /* iOS không tự phóng to khi gõ */
+  }
+</style>
 <div class="page d-flex flex-row min-vh-100" style="background-color: var(--toku-canvas);">
+  <div class="toku-sidebar-backdrop" id="tokuSidebarBackdrop"></div>
   
   <!-- Swiss Sidebar (Pure White Surface, 1px Hairline Border, Zero Jitter) -->
-  <aside class="navbar navbar-vertical d-flex flex-column flex-shrink-0" style="width: 260px; min-width: 260px; max-width: 260px; height: 100vh; position: sticky; top: 0; background-color: #ffffff; border-right: 1px solid var(--toku-border); z-index: 1000; overflow: hidden;">
+  <aside id="tokuSidebar" class="navbar navbar-vertical d-flex flex-column flex-shrink-0" style="width: 260px; min-width: 260px; max-width: 260px; height: 100vh; position: sticky; top: 0; background-color: #ffffff; border-right: 1px solid var(--toku-border); z-index: 1000; overflow: hidden;">
     <div class="d-flex flex-column h-100 w-100 p-0" style="overflow: hidden;">
       
       <!-- Brand Masthead (Clean Swiss Alignment with Tokuyama Brand Colors) -->
@@ -93,10 +113,11 @@
   <div class="page-wrapper flex-grow-1 d-flex flex-column min-vh-100" style="min-width: 0; background-color: var(--toku-canvas);">
     
     <!-- Top Utility Bar (Clean Swiss Alignment) - Fixed Sticky Top -->
-    <header class="w-100 bg-white border-bottom px-4 d-flex align-items-center justify-content-between d-print-none flex-shrink-0" style="position: sticky; top: 0; z-index: 1020; height: 56px; background-color: #ffffff !important; border-color: var(--toku-border) !important; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.02);">
+    <header class="toku-topbar w-100 bg-white border-bottom px-4 d-flex align-items-center justify-content-between d-print-none flex-shrink-0" style="position: sticky; top: 0; z-index: 1020; height: 56px; background-color: #ffffff !important; border-color: var(--toku-border) !important; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.02);">
       
       <!-- Left: Contextual Breadcrumb & Current View -->
       <div class="d-flex align-items-center gap-2 min-w-0" style="font-size: 13px;">
+        <button type="button" class="toku-menu-btn" id="tokuMenuBtn" aria-label="Menu"><i class="fa-solid fa-bars"></i></button>
         <a href="{{ url_for('admin:index') }}" class="text-decoration-none text-muted d-flex align-items-center gap-1.5 toku-topbar-crumb" style="transition: color 0.15s ease;">
           <i class="fa-solid fa-house" style="font-size: 11.5px; color: #94a3b8;"></i>
           <span class="fw-medium d-none d-lg-inline">{{ t('Trang chủ', current_lang) }}</span>
@@ -225,7 +246,7 @@
       </div>
     </header>
 
-    <div class="container-fluid px-4 py-3 flex-grow-1" style="max-width: 1600px; width: 100%;">
+    <div class="toku-content container-fluid px-4 py-3 flex-grow-1" style="max-width: 1600px; width: 100%;">
       
       <!-- Content Header (Left-aligned, crisp) -->
       <div class="page-header d-print-none mb-3">
@@ -263,5 +284,14 @@
       }
     }
   });
+</script>
+<script>
+  (function () {
+    function setMenu(open) { document.body.classList.toggle('toku-menu-open', open); }
+    document.getElementById('tokuMenuBtn').addEventListener('click', function () {
+      setMenu(!document.body.classList.contains('toku-menu-open'));
+    });
+    document.getElementById('tokuSidebarBackdrop').addEventListener('click', function () { setMenu(false); });
+  })();
 </script>
 {% endblock %}
