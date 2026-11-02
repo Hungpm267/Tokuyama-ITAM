@@ -1,0 +1,279 @@
+// ITAM Tokuyama Vietnam: schema sau migration 0005 (12 bảng).
+// Dán toàn bộ file này vào https://dbdiagram.io để xem sơ đồ.
+//
+// Bảng nghiệp vụ đều có created_by, updated_by, deleted_by trỏ tới users.id.
+// Sơ đồ không vẽ ba đường này để khỏi rối.
+// "Duy nhất" trong các ghi chú chỉ tính trên bản ghi chưa xóa mềm (is_deleted = false).
+
+Project itam_tokuyama {
+  database_type: 'PostgreSQL'
+  Note: 'Quản lý laptop và nhân sự. Nguồn sự thật của schema là app/models.py.'
+}
+
+Enum person_status {
+  SCHEDULED [note: 'Sắp vào làm']
+  ACTIVE [note: 'Đang làm']
+  RESIGNED [note: 'Đã nghỉ việc']
+}
+
+Enum asset_status {
+  IN_STOCK [note: 'Trong kho']
+  IN_USE [note: 'Đang bàn giao']
+  REPAIR [note: 'Đang sửa']
+  DISPOSED [note: 'Đã thanh lý']
+  LOST [note: 'Mất']
+}
+
+Enum audit_action {
+  CREATE
+  UPDATE
+  DELETE
+  RESTORE
+  LOGIN
+  LOGIN_FAIL
+  REVEAL [note: 'Xem mật khẩu']
+}
+
+TableGroup he_thong {
+  users
+  roles
+  role_permissions
+  audit_logs
+}
+
+TableGroup danh_muc {
+  departments
+  asset_categories
+  asset_tags
+}
+
+TableGroup nghiep_vu {
+  persons
+  person_secrets
+  assets
+  asset_tag_links
+  assignments
+}
+
+Table users {
+  id integer [pk]
+  username varchar(50) [not null, note: 'Duy nhất']
+  password_hash text [not null, note: 'Argon2id, không bao giờ hiển thị']
+  display_name varchar(100) [not null]
+  role_id integer [not null]
+  preferred_lang varchar(5) [not null, default: 'en', note: 'en, ja hoặc vi']
+  is_active boolean [not null, default: true]
+  last_login_at timestamptz
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+  created_by integer
+  updated_by integer
+  is_deleted boolean [not null, default: false]
+  deleted_at timestamptz
+  delete_reason varchar(300)
+  deleted_by integer
+
+  Note: 'Tài khoản đăng nhập app'
+}
+
+Table roles {
+  id integer [pk]
+  code varchar(30) [not null, note: 'ADMIN, GA_MANAGER, EXECUTIVE. Duy nhất']
+  name_en varchar(100) [not null]
+  name_ja varchar(100)
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+  created_by integer
+  updated_by integer
+  is_deleted boolean [not null, default: false]
+  deleted_at timestamptz
+  delete_reason varchar(300)
+  deleted_by integer
+}
+
+Table role_permissions {
+  id integer [pk]
+  role_id integer [not null]
+  module varchar(40) [not null, note: 'persons, secrets, assets, assignments, audit, trash, users']
+  action varchar(10) [not null, note: 'view, add, change, delete']
+
+  indexes {
+    (role_id, module, action) [unique]
+  }
+}
+
+Table departments {
+  id integer [pk]
+  code varchar(30) [note: 'Duy nhất nếu có']
+  name_en varchar(100) [not null, note: 'Duy nhất']
+  name_ja varchar(100)
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+  created_by integer
+  updated_by integer
+  is_deleted boolean [not null, default: false]
+  deleted_at timestamptz
+  delete_reason varchar(300)
+  deleted_by integer
+}
+
+Table asset_categories {
+  id integer [pk]
+  name_en varchar(100) [not null, note: 'Laptop, Monitor... Duy nhất']
+  name_ja varchar(100)
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+  created_by integer
+  updated_by integer
+  is_deleted boolean [not null, default: false]
+  deleted_at timestamptz
+  delete_reason varchar(300)
+  deleted_by integer
+}
+
+Table asset_tags {
+  id integer [pk]
+  code varchar(30) [not null, note: 'ZSCALER, MES... Mã bắt đầu SW- là phần mềm. Duy nhất']
+  name_en varchar(100) [not null]
+  name_ja varchar(100)
+  color varchar(7)
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+  created_by integer
+  updated_by integer
+  is_deleted boolean [not null, default: false]
+  deleted_at timestamptz
+  delete_reason varchar(300)
+  deleted_by integer
+}
+
+Table persons {
+  id integer [pk]
+  staff_code varchar(50) [note: 'Mã nhân viên, được để trống. Duy nhất nếu có']
+  user_id varchar(50) [note: 'UserID phía Nhật, không phải khóa tới users. Duy nhất nếu có']
+  full_name varchar(100) [not null]
+  department_id integer
+  email varchar(150) [note: 'Duy nhất nếu có']
+  status person_status [not null, default: 'ACTIVE']
+  start_working_date date
+  note text
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+  created_by integer
+  updated_by integer
+  is_deleted boolean [not null, default: false]
+  deleted_at timestamptz
+  delete_reason varchar(300)
+  deleted_by integer
+
+  indexes {
+    full_name
+  }
+
+  Note: 'Nhân sự. Mật khẩu nằm riêng ở person_secrets'
+}
+
+Table person_secrets {
+  person_id integer [pk]
+  pc_password_enc bytea [note: 'Mã hóa AES-256-GCM']
+  pc_password_note varchar(200)
+  email_password_enc bytea [note: 'Mã hóa AES-256-GCM']
+  email_password_note varchar(200)
+  key_version smallint [not null, default: 1]
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+  updated_by integer
+
+  Note: 'Mỗi nhân sự tối đa một dòng'
+}
+
+Table assets {
+  id integer [pk]
+  asset_code varchar(50) [note: 'Mã tem GA, vd TVC-E00027. Duy nhất nếu có']
+  pc_name varchar(50) [note: 'Tên máy, vd TKY-PC0001. Duy nhất nếu có']
+  category_id integer [not null]
+  model varchar(150)
+  form_factor varchar(30)
+  serial varchar(100) [note: 'Duy nhất nếu có']
+  hwid varchar(100)
+  mac_ethernet varchar(20)
+  mac_wifi varchar(20)
+  status asset_status [not null, default: 'IN_STOCK']
+  note text
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+  created_by integer
+  updated_by integer
+  is_deleted boolean [not null, default: false]
+  deleted_at timestamptz
+  delete_reason varchar(300)
+  deleted_by integer
+
+  indexes {
+    hwid
+    mac_ethernet
+    mac_wifi
+  }
+
+  Note: 'Thiết bị. Phải có ít nhất một trong asset_code, pc_name, serial'
+}
+
+Table asset_tag_links {
+  asset_id integer [not null]
+  tag_id integer [not null]
+
+  indexes {
+    (asset_id, tag_id) [pk]
+  }
+
+  Note: 'Nhãn và phần mềm gắn trên từng máy'
+}
+
+Table assignments {
+  id integer [pk]
+  asset_id integer [not null, note: 'Mỗi máy chỉ có một lượt đang mở']
+  person_id integer [not null]
+  borrowed_at date [not null]
+  returned_at date [note: 'Trống là đang giữ máy. Không được trước borrowed_at']
+  note text
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+  created_by integer
+  updated_by integer
+  is_deleted boolean [not null, default: false]
+  deleted_at timestamptz
+  delete_reason varchar(300)
+  deleted_by integer
+
+  Note: 'Lịch sử bàn giao máy. Không xóa, chỉ đóng bằng returned_at'
+}
+
+Table audit_logs {
+  id bigint [pk]
+  user_id integer
+  created_at timestamptz [not null, default: `now()`]
+  table_name varchar(50) [not null]
+  record_id integer
+  action audit_action [not null]
+  before_after jsonb [note: 'Giá trị trước và sau khi sửa, đã che dữ liệu nhạy cảm']
+  ip_address inet
+
+  indexes {
+    (table_name, record_id)
+    created_at
+    (user_id, action)
+  }
+
+  Note: 'Nhật ký chỉ được thêm. Trigger trong DB chặn UPDATE và DELETE'
+}
+
+Ref: users.role_id > roles.id [delete: restrict]
+Ref: role_permissions.role_id > roles.id [delete: cascade]
+Ref: audit_logs.user_id > users.id [delete: restrict]
+Ref: persons.department_id > departments.id [delete: restrict]
+Ref: person_secrets.person_id - persons.id [delete: cascade]
+Ref: assets.category_id > asset_categories.id [delete: restrict]
+Ref: asset_tag_links.asset_id > assets.id [delete: cascade]
+Ref: asset_tag_links.tag_id > asset_tags.id [delete: restrict]
+Ref: assignments.asset_id > assets.id [delete: restrict]
+Ref: assignments.person_id > persons.id [delete: restrict]

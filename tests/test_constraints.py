@@ -87,107 +87,6 @@ def test_asset_can_be_loaned_again_after_return(db: Session, seed):
 
 
 # ===========================================================================
-# 2. Một thẻ chỉ được cho mượn một lần tại một thời điểm
-# ===========================================================================
-
-
-def test_card_cannot_be_loaned_twice_at_once(db: Session, seed):
-    db.add(
-        m.CardLoan(
-            card_id=seed["card"].id,
-            external_name="Nhan vien kho",
-            external_company="倉庫管理業者",
-            borrowed_at=YESTERDAY,
-        )
-    )
-    db.flush()
-    _violates(
-        db,
-        m.CardLoan(
-            card_id=seed["card"].id,
-            external_name="Nhan vien ve sinh",
-            borrowed_at=TODAY,
-        ),
-    )
-
-
-# ===========================================================================
-# 3. Một license không gán hai lần cho cùng một máy / cùng một người
-# ===========================================================================
-
-
-def test_license_cannot_be_double_assigned_to_same_asset(db: Session, seed):
-    db.add(
-        m.LicenseAssignment(
-            license_id=seed["license"].id,
-            asset_id=seed["asset"].id,
-            assigned_at=YESTERDAY,
-        )
-    )
-    db.flush()
-    _violates(
-        db,
-        m.LicenseAssignment(
-            license_id=seed["license"].id,
-            asset_id=seed["asset"].id,
-            assigned_at=TODAY,
-        ),
-    )
-
-
-def test_license_can_be_reassigned_after_removal(db: Session, seed):
-    """Gỡ rồi gán lại được. Thiết kế của Gemini chặn luôn trường hợp này."""
-    db.add(
-        m.LicenseAssignment(
-            license_id=seed["license"].id,
-            asset_id=seed["asset"].id,
-            assigned_at=YESTERDAY,
-            removed_at=TODAY,
-        )
-    )
-    db.flush()
-    db.add(
-        m.LicenseAssignment(
-            license_id=seed["license"].id,
-            asset_id=seed["asset"].id,
-            assigned_at=TODAY,
-        )
-    )
-    db.flush()  # không được lỗi
-
-
-# ===========================================================================
-# 4. Gán license phải có máy hoặc người
-# ===========================================================================
-
-
-def test_license_assignment_needs_a_target(db: Session, seed):
-    _violates(
-        db,
-        m.LicenseAssignment(license_id=seed["license"].id, assigned_at=TODAY),
-    )
-
-
-# ===========================================================================
-# 5. Mượn thẻ phải có nhân viên hoặc tên người ngoài
-# ===========================================================================
-
-
-def test_card_loan_needs_a_borrower(db: Session, seed):
-    _violates(db, m.CardLoan(card_id=seed["card"].id, borrowed_at=TODAY))
-
-
-def test_card_loan_rejects_blank_external_name(db: Session, seed):
-    """Chuỗi rỗng hoặc toàn khoảng trắng không tính là có người mượn."""
-    _violates(
-        db,
-        m.CardLoan(
-            card_id=seed["card"].id, external_name="   ", borrowed_at=TODAY
-        ),
-    )
-
-
-# ===========================================================================
 # 6. Ngày trả không được trước ngày mượn
 # ===========================================================================
 
@@ -201,49 +100,6 @@ def test_return_date_cannot_precede_borrow_date(db: Session, seed):
             borrowed_at=TODAY,
             returned_at=YESTERDAY,
         ),
-    )
-
-
-def test_card_return_date_cannot_precede_borrow_date(db: Session, seed):
-    _violates(
-        db,
-        m.CardLoan(
-            card_id=seed["card"].id,
-            external_name="X",
-            borrowed_at=TODAY,
-            returned_at=YESTERDAY,
-        ),
-    )
-
-
-# ===========================================================================
-# 7. Ngày hết hạn không được trước ngày bắt đầu; seats phải dương
-# ===========================================================================
-
-
-def test_expiry_cannot_precede_start(db: Session, seed):
-    _violates(
-        db,
-        m.License(
-            product_id=seed["product"].id,
-            seats=5,
-            start_date=TODAY,
-            expiry_date=YESTERDAY,
-        ),
-    )
-
-
-def test_seats_must_be_positive(db: Session, seed):
-    _violates(db, m.License(product_id=seed["product"].id, seats=0))
-
-
-def test_contract_line_qty_must_be_positive(db: Session, seed):
-    contract = m.Contract(code="KHCM-2510-0130")
-    db.add(contract)
-    db.flush()
-    _violates(
-        db,
-        m.ContractLine(contract_id=contract.id, item_type="PC 16 inch", qty_ordered=0),
     )
 
 
@@ -265,14 +121,6 @@ def test_status_rejects_free_text(db: Session, seed):
             {"i": seed["asset"].id},
         )
     db.rollback()
-
-
-def test_phone_extension_rejects_na_literal(db: Session, seed):
-    """Excel cũ ghi 'N/A'. Trong DB phải là ô trống."""
-    _violates(
-        db,
-        m.Phone(device_name="TELG101", device_type="IP_PHONE", extension_number="N/A"),
-    )
 
 
 # ===========================================================================
@@ -371,52 +219,6 @@ def test_audit_log_can_be_inserted_and_read(db: Session, seed):
 
 def test_asset_needs_an_identifier(db: Session, seed):
     _violates(db, m.Asset(category_id=seed["cat"].id, model="Dell Pro 16"))
-
-
-# ===========================================================================
-# 13. Số đã nhận được ĐẾM, không gõ tay
-# ===========================================================================
-
-
-def test_contract_line_has_no_delivered_qty_column(db: Session):
-    """Chốt chặn chống trôi thiết kế.
-
-    Nếu ai đó (hoặc một agent code) thêm lại delivered_qty / remaining_qty vào
-    contract_lines, test này đỏ. Số đã nhận phải đếm từ assets.contract_line_id -
-    cột gõ tay chính là nguồn sai lệch của sheet "PC_Qty summary".
-    """
-    cols = {c.name for c in m.ContractLine.__table__.columns}
-    assert "delivered_qty" not in cols
-    assert "remaining_qty" not in cols
-
-
-def test_received_count_derives_from_assets(db: Session, seed):
-    from sqlalchemy import func, select
-
-    contract = m.Contract(code="KHCM-2408-0113")
-    db.add(contract)
-    db.flush()
-    line = m.ContractLine(
-        contract_id=contract.id, item_type="PC 16 inch", qty_ordered=10
-    )
-    db.add(line)
-    db.flush()
-
-    for i in range(3):
-        db.add(
-            m.Asset(
-                serial=f"SN-X{i}", category_id=seed["cat"].id, contract_line_id=line.id
-            )
-        )
-    db.flush()
-
-    received = db.scalar(
-        select(func.count())
-        .select_from(m.Asset)
-        .where(m.Asset.contract_line_id == line.id, m.Asset.is_deleted.is_(False))
-    )
-    assert received == 3
-    assert line.qty_ordered - received == 7
 
 
 # ===========================================================================

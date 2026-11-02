@@ -120,16 +120,6 @@ ON CONFLICT (id) DO NOTHING;
 
 SELECT setval('departments_id_seq', (SELECT MAX(id) FROM departments));
 
--- 6. Initial Locations
-INSERT INTO locations (id, building, floor, room_en, room_ja, created_at, updated_at, is_deleted) VALUES
-(1, 'Main Building', '1', 'GA & Admin Office', '総務事務所', now(), now(), false),
-(2, 'Main Building', '1', 'Server Room', 'サーバー室', now(), now(), false),
-(3, 'Main Building', '2', 'Director Office', '役員室', now(), now(), false),
-(4, 'Main Building', '2', 'Meeting Room A', '会議室A', now(), now(), false),
-(5, 'Factory Plant', '1', 'Control Room', '中央制御室', now(), now(), false)
-ON CONFLICT (id) DO NOTHING;
-
-SELECT setval('locations_id_seq', (SELECT MAX(id) FROM locations));
 """
 
 full_sql = f"""-- =============================================================================

@@ -206,7 +206,7 @@ def _csv_safe(value: Any) -> str:
     return text_val
 
 
-#: Từ khóa cho thấy một "loại tài sản" thực ra là phần mềm - phải quản lý ở Kho License.
+#: Từ khóa cho thấy một "loại tài sản" thực ra là phần mềm, không phải thiết bị.
 _SOFTWARE_CATEGORY_WORDS = (
     "license", "licence", "software", "phần mềm", "phan mem", "bản quyền", "ban quyen",
     "ライセンス", "ソフトウェア", "ソフト",
@@ -590,7 +590,7 @@ def humanize_error_str(msg: str, lang: str = "vi") -> str:
     """Chuyển đổi các thông báo lỗi kỹ thuật/SQL/Constraint thành thông báo tiếng Việt/Anh/Nhật thân thiện."""
     if not msg:
         return ""
-    # Cắt phần "[SQL: INSERT INTO assets (asset_code, vendor_code, serial...)]" trước khi
+    # Cắt phần "[SQL: INSERT INTO assets (asset_code, pc_name, serial...)]" trước khi
     # so khớp: câu SQL liệt kê mọi cột nên trùng asset_code từng bị báo thành trùng serial.
     full = str(msg)
     m = full.split("[SQL:")[0]
@@ -612,18 +612,8 @@ def humanize_error_str(msg: str, lang: str = "vi") -> str:
         return _tr("Ngày thu hồi bản quyền không được trước ngày cấp phát.", "Removal date cannot be before assignment date.", "ライセンス回収日を割当日より前にすることはできません。")
     if "expected_after_borrowed" in m:
         return _tr("Ngày dự kiến trả không được trước ngày mượn.", "Expected return date cannot be before borrow date.", "返却予定日を貸出日より前にすることはできません。")
-    if "no_na_literal" in m:
-        return _tr("Không nhập 'N/A' vào ô này. Nếu không có giá trị, hãy để trống.", "Do not type 'N/A'. Leave the field empty if there is no value.", "「N/A」は入力できません。値がない場合は空欄にしてください。")
-    if "seats_positive" in m:
-        return _tr("Số lượng bản quyền (Seats) phải lớn hơn 0.", "Seats count must be greater than 0.", "ライセンス数（Seats）は1以上である必要があります。")
-    if "qty_positive" in m:
-        return _tr("Số lượng đặt hàng phải lớn hơn 0.", "Ordered quantity must be greater than 0.", "発注数量は1以上である必要があります。")
     if "has_some_identifier" in m:
-        return _tr("Tài sản phải có ít nhất một mã định danh (Mã GA, Mã Vendor hoặc Số Serial).", "Asset must have at least one identifier (GA code, Vendor code or Serial).", "資産には少なくとも1つの識別子（GAコード、ベンダーコード、またはシリアル）が必要です。")
-    if "target_required" in m:
-        return _tr("Bản quyền phải được gán cho thiết bị hoặc nhân viên.", "License must be assigned to either an asset or a person.", "ライセンスは機器または担当者のいずれかに割り当てる必要があります。")
-    if "borrower_required" in m:
-        return _tr("Mượn thẻ phải chọn nhân viên hoặc nhập tên người mượn ngoài.", "Must select a person or enter external borrower name.", "担当者を選択するか、外部借用者名を入力してください。")
+        return _tr("Tài sản phải có ít nhất một mã định danh (Mã GA, PC Name hoặc Số Serial).", "Asset must have at least one identifier (GA code, PC Name or Serial).", "資産には少なくとも1つの識別子（GAコード、PC名、またはシリアル）が必要です。")
     if "staff_code_format" in m:
         return _tr("Mã nhân viên không đúng định dạng chuẩn TVC (Ví dụ: TVC00001).", "Staff code does not match standard TVC format (e.g. TVC00001).", "社員番号の形式が正しくありません（例：TVC00001）。")
     if "smallint out of range" in m or "numericvalueoutofrange" in m.lower():
@@ -631,51 +621,27 @@ def humanize_error_str(msg: str, lang: str = "vi") -> str:
 
     if "unique constraint" in m.lower() or "uniqueviolation" in m.lower() or "uq_" in m:
         # Kiểm tra các ràng buộc one_open_per (đang có hiệu lực chưa kết thúc)
-        if "uq_open_license_assignments_license_id_asset_id" in m:
-            return _tr(
-                "Thiết bị này đã được gán gói bản quyền này từ trước (chưa thu hồi). Một thiết bị không thể nhận 2 bản quyền cùng loại cùng lúc. Vui lòng cập nhật Ngày thu hồi (removed_at) ở lượt gán trước trước khi gán lại.",
-                "This device already has an active assignment for this license. Please record the removal date on the existing assignment before reassigning.",
-                "この機器にはすでにこのライセンスが割り当てられています（未返却）。再割り当てする前に回収日を入力してください。",
-            )
-        if "uq_open_license_assignments_license_id_person_id" in m:
-            return _tr(
-                "Nhân sự này đã được gán gói bản quyền này từ trước (chưa thu hồi). Một nhân sự không thể nhận 2 bản quyền cùng loại cùng lúc. Vui lòng cập nhật Ngày thu hồi (removed_at) ở lượt gán trước trước khi gán lại.",
-                "This person already has an active assignment for this license. Please record the removal date on the existing assignment before reassigning.",
-                "この担当者にはすでにこのライセンスが割り当てられています（未返却）。再割り当てする前に回収日を入力してください。",
-            )
         if "uq_open_assignments_asset_id" in m:
             return _tr(
                 "Thiết bị này hiện đang được bàn giao cho nhân viên khác sử dụng (chưa thu hồi). Vui lòng cập nhật Ngày thu hồi ở lượt bàn giao trước đó trước khi bàn giao lại.",
                 "This asset is currently in use and has not been returned yet. Please record the return date before reassigning.",
                 "この機器は現在他の担当者に貸出中です（未返却）。再貸出する前に前回の返却日を入力してください。",
             )
-        if "uq_open_card_loans_card_id" in m:
-            return _tr(
-                "Thẻ này hiện đang có người mượn chưa trả. Vui lòng cập nhật Ngày trả ở lượt mượn trước đó trước khi cho người khác mượn.",
-                "This access card is currently borrowed and has not been returned yet. Please record the return date before loaning it out again.",
-                "このカードは現在貸出中です（未返却）。再貸出する前に前回の返却日を入力してください。",
-            )
 
         if "serial" in m:
             return _tr("Số Serial này đã tồn tại trong hệ thống (bị trùng lặp).", "Serial number already exists in system.", "このシリアル番号はすでにシステムに存在します。")
         if "asset_code" in m:
             return _tr("Mã tài sản này đã tồn tại trong hệ thống (bị trùng lặp).", "Asset code already exists in system.", "この資産コードはすでにシステムに存在します。")
-        if "vendor_code" in m:
-            return _tr("Mã Vendor này đã tồn tại trong hệ thống (bị trùng lặp).", "Vendor code already exists in system.", "このベンダーコードはすでにシステムに存在します。")
-        if "card_no" in m:
-            return _tr("Số thẻ này đã tồn tại trong hệ thống (bị trùng lặp).", "Card number already exists in system.", "このカード番号はすでにシステムに存在します。")
+        if "pc_name" in m:
+            return _tr("PC Name này đã tồn tại trong hệ thống (bị trùng lặp).", "PC Name already exists in system.", "このPC名はすでにシステムに存在します。")
         if "staff_code" in m:
             return _tr("Mã nhân viên này đã tồn tại trong hệ thống (bị trùng lặp).", "Staff code already exists in system.", "この社員番号はすでにシステムに存在します。")
-        if "user_login_id" in m:
-            return _tr("Tài khoản đăng nhập này đã được liên kết với nhân sự khác.", "Login account already linked to another person.", "このログインアカウントはすでに別の社員に紐付けられています。")
+        if "persons_user_id" in m:
+            return _tr("UserID này đã thuộc về nhân sự khác.", "UserID already belongs to another person.", "このUserIDはすでに別の社員に紐付けられています。")
         if "username" in m:
             return _tr("Tên đăng nhập này đã tồn tại trong hệ thống (bị trùng lặp).", "Username already exists in system.", "このユーザー名はすでにシステムに存在します。")
         if "email" in m:
             return _tr("Email này đã được dùng cho một nhân sự khác (bị trùng lặp).", "Email already belongs to another employee.", "このEmailはすでに別の社員に使用されています。")
-        if "extension_number" in m:
-            return _tr("Số máy nhánh này đã tồn tại trong hệ thống (bị trùng lặp).", "Extension number already exists in system.", "この内線番号はすでにシステムに存在します。")
-        if "device_name" in m:
-            return _tr("Tên thiết bị thoại này đã tồn tại trong hệ thống (bị trùng lặp).", "Phone device name already exists in system.", "この電話機器名はすでにシステムに存在します。")
         return _tr("Dữ liệu bị trùng lặp với bản ghi đã tồn tại trong hệ thống.", "Record already exists in system (duplicate).", "システム内に重複するデータが存在します。")
 
     if "foreign key" in m.lower() or "foreignkeyviolation" in m.lower():
@@ -1361,11 +1327,9 @@ class AssetCategoryAdmin(BaseAdminView, model=AssetCategory):
             if any(word in name for word in _SOFTWARE_CATEGORY_WORDS):
                 raise ValueError(_msg(
                     lang,
-                    "Loại tài sản chỉ dành cho thiết bị vật lý. Phần mềm / bản quyền được quản lý ở mục "
-                    "License (Danh mục Phần mềm, Kho License Phần mềm) và nhận hàng qua hạng mục hợp đồng loại 'Phần mềm'.",
-                    "Asset categories are for physical devices only. Software is managed under License "
-                    "(software catalogue and license packages) and received through 'Software' contract lines.",
-                    "資産カテゴリは物理機器専用です。ソフトウェアは License メニューで管理し、区分「ソフトウェア」の契約明細で受入してください。",
+                    "Loại tài sản chỉ dành cho thiết bị vật lý. Phần mềm / bản quyền được đánh dấu theo máy ở Sổ tổng.",
+                    "Asset categories are for physical devices only. Software is marked per machine in the Ledger.",
+                    "資産カテゴリは物理機器専用です。ソフトウェアは台帳で機器ごとに記録してください。",
                 ))
     module = Module.ASSETS
     name = "Loại tài sản"
@@ -1400,7 +1364,7 @@ class AssetTagAdmin(BaseAdminView, model=AssetTag):
 
 
 class PersonAdmin(BaseAdminView, model=Person):
-    unique_text_fields = ("staff_code", "email", "user_login_id")
+    unique_text_fields = ("staff_code", "email", "user_id")
     module = Module.PERSONS
     name = "Nhân sự"
     name_plural = "Hồ sơ Nhân sự"
@@ -1413,7 +1377,7 @@ class PersonAdmin(BaseAdminView, model=Person):
         Person.full_name,
         Person.department,
         Person.email,
-        Person.user_login_id,
+        Person.user_id,
         Person.status,
         Person.start_working_date,
         Person.note,
@@ -1426,7 +1390,7 @@ class PersonAdmin(BaseAdminView, model=Person):
         "status": "Tình trạng",
         "email": "Email",
         "start_working_date": "Ngày vào làm việc",
-        "user_login_id": "Tài khoản đăng nhập",
+        "user_id": "UserID",
         "note": "Ghi chú",
     }
     column_formatters = {
@@ -1545,7 +1509,7 @@ class PersonSecretAdmin(BaseAdminView, model=PersonSecret):
 
 
 class AssetAdmin(BaseAdminView, model=Asset):
-    unique_text_fields = ("asset_code", "vendor_code", "serial")
+    unique_text_fields = ("asset_code", "pc_name", "serial")
     module = Module.ASSETS
     name = "Tài sản IT"
     name_plural = "Danh sách Thiết bị"
@@ -1554,7 +1518,7 @@ class AssetAdmin(BaseAdminView, model=Asset):
     column_list = [
         Asset.id,
         Asset.asset_code,
-        Asset.vendor_code,
+        Asset.pc_name,
         Asset.serial,
         Asset.category,
         "status_badge",
@@ -1565,7 +1529,7 @@ class AssetAdmin(BaseAdminView, model=Asset):
     column_details_list = [
         Asset.id,
         Asset.asset_code,
-        Asset.vendor_code,
+        Asset.pc_name,
         Asset.serial,
         Asset.category,
         Asset.status,
@@ -1582,7 +1546,7 @@ class AssetAdmin(BaseAdminView, model=Asset):
         "current_holder": "Người đang sử dụng",
         "actions_quick": "Thao tác nhanh",
         "asset_code": "Mã GA",
-        "vendor_code": "Mã KDDI",
+        "pc_name": "PC Name",
         "serial": "Số Serial",
         "status": "Trạng thái",
         "model": "Model thiết bị",
@@ -1654,8 +1618,8 @@ class AssetAdmin(BaseAdminView, model=Asset):
             else Markup(f'<span class="text-muted fst-italic">- ({translate("Trong kho", get_admin_lang())})</span>')
         ),
     }
-    column_searchable_list = [Asset.asset_code, Asset.serial, Asset.vendor_code, Asset.model]
-    form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["assignments", "contract_line"]
+    column_searchable_list = [Asset.asset_code, Asset.serial, Asset.pc_name, Asset.model]
+    form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["assignments"]
 
     def list_query(self, request: Request) -> Select:
         stmt = super().list_query(request)

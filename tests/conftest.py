@@ -107,23 +107,12 @@ def seed(db: Session):
     db.add_all([person, person_b])
     db.flush()
 
-    asset = m.Asset(asset_code="TVC-E00027", vendor_code="TKY-PC0001",
+    asset = m.Asset(asset_code="TVC-E00027", pc_name="TKY-PC0001",
                     serial="SN-0001", category_id=cat.id)
     db.add(asset)
-
-    product = m.LicenseProduct(name="Trend Micro")
-    db.add(product)
-    db.flush()
-
-    lic = m.License(product_id=product.id, seats=13)
-    card = m.AccessCard(card_no="CARD-001")
-    loc = m.Location(building="Office", floor="1F", room_en="Server Room",
-                     is_access_controlled=True)
-    db.add_all([lic, card, loc])
     db.flush()
 
     return {
         "role": role, "user": user, "dept": dept, "cat": cat,
         "person": person, "person_b": person_b, "asset": asset,
-        "product": product, "license": lic, "card": card, "location": loc,
     }

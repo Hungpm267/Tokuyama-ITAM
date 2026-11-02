@@ -3,10 +3,6 @@
 Hỗ trợ tìm kiếm nhanh theo:
 - Asset: mã GA, mã vendor, model, serial, HWID, MAC LAN, MAC Wi-Fi
 - Person: họ tên, mã nhân viên (staff code), user ID, email
-- Contract: mã hợp đồng, tên vendor
-- AccessCard: số thẻ
-- Phone: số extension, tên thiết bị thoại
-- License: tên phần mềm (name_en, name_ja), ghi chú
 
 Tuân thủ nghiêm ngặt RBAC: chỉ trả về kết quả ở các module mà người dùng có quyền VIEW.
 """
@@ -83,15 +79,11 @@ async def global_search_view(
     results: dict[str, list[Any]] = {
         "assets": [],
         "persons": [],
-        "contracts": [],
-        "cards": [],
-        "phones": [],
-        "licenses": [],
     }
     total_count = 0
 
     if clean_query:
-        # 1. Assets (Mã GA, Vendor code, Model, Serial, HWID, MAC LAN/Wi-Fi)
+        # 1. Assets (Mã GA, PC Name, Model, Serial, HWID, MAC LAN/Wi-Fi)
         if has_permission(db, user, Module.ASSETS, PermissionAction.VIEW):
             assets = db.scalars(
                 select(Asset)
@@ -100,7 +92,7 @@ async def global_search_view(
                     Asset.is_deleted.is_(False),
                     or_(
                         Asset.asset_code.ilike(pattern),
-                        Asset.vendor_code.ilike(pattern),
+                        Asset.pc_name.ilike(pattern),
                         Asset.serial.ilike(pattern),
                         Asset.hwid.ilike(pattern),
                         Asset.mac_ethernet.ilike(pattern),
@@ -124,7 +116,7 @@ async def global_search_view(
                     or_(
                         Person.full_name.ilike(pattern),
                         Person.staff_code.ilike(pattern),
-                        Person.user_login_id.ilike(pattern),
+                        Person.user_id.ilike(pattern),
                         Person.email.ilike(pattern),
                     ),
                 )

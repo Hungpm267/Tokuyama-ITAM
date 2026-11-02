@@ -1,19 +1,15 @@
-"""Toàn bộ 23 bảng của hệ thống ITAM - Tokuyama Vietnam.
+"""Toàn bộ 12 bảng của hệ thống ITAM - Tokuyama Vietnam.
 
 FILE NÀY LÀ NGUỒN SỰ THẬT DUY NHẤT CỦA SCHEMA.
 Không tạo file model khác. Không sửa bảng bằng SQL tay. Mọi thay đổi đi qua
 Alembic. Trước khi thêm/bớt một cột, đọc lại GEMINI.md mục "Bất biến".
 
 Phân hệ:
-  1. Hệ thống & phân quyền   users, roles, role_permissions, user_permission_overrides
-  2. Danh mục dùng chung     departments, asset_categories, asset_tags, locations
+  1. Hệ thống & phân quyền   users, roles, role_permissions
+  2. Danh mục dùng chung     departments, asset_categories, asset_tags
   3. Nhân sự                 persons, person_secrets
   4. Tài sản                 assets, asset_tag_links, assignments
-  5. License                 license_products, licenses, license_assignments
-  6. Thẻ ra vào              access_cards, access_card_locations, card_loans
-  7. Hợp đồng                contracts, contract_lines
-  8. Danh bạ thoại           phones
-  9. Truy vết                audit_logs
+  5. Truy vết                audit_logs
 """
 
 from __future__ import annotations
@@ -53,13 +49,7 @@ from app.db import (
 from app.enums import (
     AssetStatus,
     AuditAction,
-    CardStatus,
-    CardType,
-    ContractItemKind,
-    DeliveryStatus,
-    LicenseType,
     PersonStatus,
-    PhoneDeviceType,
 )
 
 
@@ -164,31 +154,6 @@ class RolePermission(Base):
         return f"{self.module}:{self.action}"
 
 
-class UserPermissionOverride(Base):
-    """Admin cấp thêm / thu hồi quyền lẻ cho một người, không đổi vai trò."""
-
-    __tablename__ = "user_permission_overrides"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
-    )
-    module: Mapped[str] = mapped_column(String(40), nullable=False)
-    action: Mapped[str] = mapped_column(String(10), nullable=False)
-    granted: Mapped[bool] = mapped_column(Boolean, nullable=False)
-
-    __table_args__ = (
-        UniqueConstraint("user_id", "module", "action"),
-        CheckConstraint(
-            "action IN ('view', 'add', 'change', 'delete')", name="action_allowed"
-        ),
-    )
-
-    def __str__(self) -> str:
-        status = "Allow" if self.granted else "Deny"
-        return f"User #{self.user_id} - {self.module}:{self.action} ({status})"
-
-
 # =============================================================================
 # 2. DANH MỤC DÙNG CHUNG
 # =============================================================================
@@ -245,33 +210,6 @@ class AssetTag(BizBase):
         return f"{self.name_en} ({self.code})"
 
 
-class Location(BizBase):
-    """Danh mục vị trí, dùng chung cho Phone List và Thẻ ra vào.
-
-    Tên phòng chỉ nhập một lần ở đây. Mọi nơi khác chọn từ danh sách.
-    Lỗi chính tả trong Excel cũ (Offce Room, Analysys Room) sửa khi seed.
-    """
-
-    __tablename__ = "locations"
-
-    building: Mapped[str] = mapped_column(String(50), nullable=False)
-    floor: Mapped[str] = mapped_column(String(50), nullable=False)
-    room_en: Mapped[str] = mapped_column(String(100), nullable=False)
-    room_ja: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    is_access_controlled: Mapped[bool] = mapped_column(
-        Boolean, server_default=text("false"), nullable=False
-    )
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)
-
-    __table_args__ = biz_args(
-        alive_unique("locations", "building", "floor", "room_en")
-    )
-
-    def __str__(self) -> str:
-        parts = [p for p in (self.building, self.floor, self.room_en) if p]
-        return " - ".join(parts) if parts else f"Location #{self.id}"
-
-
 # =============================================================================
 # 3. NHÂN SỰ
 # =============================================================================
@@ -289,7 +227,7 @@ class Person(BizBase):
 
     #: Để trống được: người mới có thể chưa được cấp mã.
     staff_code: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    user_login_id: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    user_id: Mapped[str | None] = mapped_column(String(50), nullable=True)
     full_name: Mapped[str] = mapped_column(String(100), nullable=False)
     department_id: Mapped[int | None] = mapped_column(
         ForeignKey("departments.id", ondelete="RESTRICT"), nullable=True
@@ -311,7 +249,7 @@ class Person(BizBase):
 
     __table_args__ = biz_args(
         alive_unique("persons", "staff_code", extra="staff_code IS NOT NULL"),
-        alive_unique("persons", "user_login_id", extra="user_login_id IS NOT NULL"),
+        alive_unique("persons", "user_id", extra="user_id IS NOT NULL"),
         alive_unique("persons", "email", extra="email IS NOT NULL"),
         Index("ix_persons_full_name", "full_name"),
     )
@@ -371,18 +309,15 @@ class Asset(BizBase):
 
     Hai mã song song, cả hai đều có thể trống:
       asset_code  - mã tem GA tự dán, vd TVC-E00027
-      vendor_code - mã KDDI gán khi giao, vd TKY-PC0001
+      pc_name     - tên máy KDDI gán khi giao, vd TKY-PC0001
     """
 
     __tablename__ = "assets"
 
     asset_code: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    vendor_code: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    pc_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
     category_id: Mapped[int] = mapped_column(
         ForeignKey("asset_categories.id", ondelete="RESTRICT"), nullable=False
-    )
-    contract_line_id: Mapped[int | None] = mapped_column(
-        ForeignKey("contract_lines.id", ondelete="RESTRICT"), nullable=True
     )
     model: Mapped[str | None] = mapped_column(String(150), nullable=True)
     form_factor: Mapped[str | None] = mapped_column(String(30), nullable=True)
@@ -398,26 +333,23 @@ class Asset(BizBase):
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     category: Mapped[AssetCategory] = relationship()
-    contract_line: Mapped[ContractLine | None] = relationship(
-        back_populates="assets"
-    )
     assignments: Mapped[list[Assignment]] = relationship(back_populates="asset")
 
     __table_args__ = biz_args(
         alive_unique("assets", "asset_code", extra="asset_code IS NOT NULL"),
-        alive_unique("assets", "vendor_code", extra="vendor_code IS NOT NULL"),
+        alive_unique("assets", "pc_name", extra="pc_name IS NOT NULL"),
         alive_unique("assets", "serial", extra="serial IS NOT NULL"),
         Index("ix_assets_hwid", "hwid"),
         Index("ix_assets_mac_ethernet", "mac_ethernet"),
         Index("ix_assets_mac_wifi", "mac_wifi"),
         CheckConstraint(
-            "asset_code IS NOT NULL OR vendor_code IS NOT NULL OR serial IS NOT NULL",
+            "asset_code IS NOT NULL OR pc_name IS NOT NULL OR serial IS NOT NULL",
             name="has_some_identifier",
         ),
     )
 
     def __str__(self) -> str:
-        code = self.asset_code or self.vendor_code or self.serial or f"Asset #{self.id}"
+        code = self.asset_code or self.pc_name or self.serial or f"Asset #{self.id}"
         return f"{code} ({self.model})" if self.model else str(code)
 
     @property
@@ -470,375 +402,15 @@ class Assignment(BizBase):
 
 
 # =============================================================================
-# 5. LICENSE
-# =============================================================================
-
-
-class LicenseProduct(BizBase):
-    """Windows, Office LTSC 2024 CSP, IJCAD, Visio, PDF, Trend Micro, MS365."""
-
-    __tablename__ = "license_products"
-
-    name: Mapped[str] = mapped_column(String(100), nullable=False)
-    vendor: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    license_type: Mapped[LicenseType | None] = mapped_column(
-        _enum(LicenseType, "license_type"), nullable=True
-    )
-
-    __table_args__ = biz_args(alive_unique("license_products", "name"))
-
-    def __str__(self) -> str:
-        return self.name
-
-
-class License(BizBase):
-    """Một gói license đã mua."""
-
-    __tablename__ = "licenses"
-
-    product_id: Mapped[int] = mapped_column(
-        ForeignKey("license_products.id", ondelete="RESTRICT"), nullable=False
-    )
-    license_key_enc: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
-    key_version: Mapped[int] = mapped_column(
-        SmallInteger, server_default=text("1"), nullable=False
-    )
-    seats: Mapped[int] = mapped_column(Integer, nullable=False)
-    start_date: Mapped[dt.date | None] = mapped_column(Date, nullable=True)
-    expiry_date: Mapped[dt.date | None] = mapped_column(Date, nullable=True)
-    contract_id: Mapped[int | None] = mapped_column(
-        ForeignKey("contracts.id", ondelete="RESTRICT"), nullable=True
-    )
-    #: Hạng mục hợp đồng (loại SOFTWARE) mà gói này được nhận về. Số đã nhận của
-    #: hạng mục = SUM(seats) các gói còn sống trỏ tới nó.
-    contract_line_id: Mapped[int | None] = mapped_column(
-        ForeignKey("contract_lines.id", ondelete="RESTRICT"), nullable=True, index=True
-    )
-    note: Mapped[str | None] = mapped_column(Text, nullable=True)
-
-    product: Mapped[LicenseProduct] = relationship(lazy="joined")
-    contract_line: Mapped[ContractLine | None] = relationship(back_populates="licenses")
-    assignments: Mapped[list[LicenseAssignment]] = relationship(
-        back_populates="license"
-    )
-
-    __table_args__ = biz_args(
-        CheckConstraint("seats > 0", name="seats_positive"),
-        CheckConstraint(
-            "expiry_date IS NULL OR start_date IS NULL OR expiry_date >= start_date",
-            name="expiry_after_start",
-        ),
-    )
-
-    def __str__(self) -> str:
-        try:
-            prod = self.product.name if self.product else "License"
-        except Exception:
-            prod = "License"
-        return f"{prod} ({self.seats} seats)"
-
-    @property
-    def assigned_seats(self) -> int:
-        try:
-            return sum(
-                1
-                for asgn in self.assignments
-                if asgn.removed_at is None and not asgn.is_deleted
-            )
-        except Exception:
-            return 0
-
-    @property
-    def remaining_seats(self) -> int:
-        return self.seats - self.assigned_seats
-
-
-class LicenseAssignment(BizBase):
-    """Gán license cho MỘT máy hoặc MỘT người.
-
-    expiry_date ở đây là hạn riêng của lần gán, ghi đè hạn của gói. Cần cho
-    Trend Micro vì sheet Excel hiện tại ghi expire date theo từng PC.
-    """
-
-    __tablename__ = "license_assignments"
-
-    license_id: Mapped[int] = mapped_column(
-        ForeignKey("licenses.id", ondelete="RESTRICT"), nullable=False
-    )
-    asset_id: Mapped[int | None] = mapped_column(
-        ForeignKey("assets.id", ondelete="RESTRICT"), nullable=True
-    )
-    person_id: Mapped[int | None] = mapped_column(
-        ForeignKey("persons.id", ondelete="RESTRICT"), nullable=True
-    )
-    assigned_at: Mapped[dt.date] = mapped_column(Date, nullable=False)
-    expiry_date: Mapped[dt.date | None] = mapped_column(Date, nullable=True)
-    removed_at: Mapped[dt.date | None] = mapped_column(Date, nullable=True)
-    note: Mapped[str | None] = mapped_column(Text, nullable=True)
-
-    license: Mapped[License] = relationship(back_populates="assignments")
-    asset: Mapped[Asset | None] = relationship()
-    person: Mapped[Person | None] = relationship()
-
-    __table_args__ = biz_args(
-        CheckConstraint(
-            "asset_id IS NOT NULL OR person_id IS NOT NULL",
-            name="target_required",
-        ),
-        closes_after_opens("assigned_at", "removed_at", "removed_after_assigned"),
-        one_open_per(
-            "license_assignments",
-            "license_id",
-            "asset_id",
-            close_col="removed_at",
-            extra="asset_id IS NOT NULL",
-        ),
-        one_open_per(
-            "license_assignments",
-            "license_id",
-            "person_id",
-            close_col="removed_at",
-            extra="person_id IS NOT NULL",
-        ),
-    )
-
-    def __str__(self) -> str:
-        return f"LicenseAssignment #{self.id}"
-
-
-# =============================================================================
-# 6. THẺ RA VÀO
-# =============================================================================
-
-
-class AccessCard(BizBase):
-    __tablename__ = "access_cards"
-
-    card_no: Mapped[str] = mapped_column(String(50), nullable=False)
-    card_type: Mapped[CardType] = mapped_column(
-        _enum(CardType, "card_type"),
-        server_default=text("'CONTRACTOR'"),
-        nullable=False,
-    )
-    status: Mapped[CardStatus] = mapped_column(
-        _enum(CardStatus, "card_status"),
-        server_default=text("'IN_STOCK'"),
-        nullable=False,
-    )
-    note: Mapped[str | None] = mapped_column(Text, nullable=True)
-
-    loans: Mapped[list[CardLoan]] = relationship(back_populates="card")
-
-    __table_args__ = biz_args(alive_unique("access_cards", "card_no"))
-
-    def __str__(self) -> str:
-        card_type_val = (
-            self.card_type.value
-            if hasattr(self.card_type, "value")
-            else str(self.card_type)
-        )
-        return f"{self.card_no} ({card_type_val})"
-
-    @property
-    def current_borrower(self) -> str | None:
-        try:
-            for loan in self.loans:
-                if loan.returned_at is None:
-                    if loan.person:
-                        return f"{loan.person.full_name} ({loan.person.staff_code})"
-                    if loan.external_name:
-                        if loan.external_company:
-                            return f"{loan.external_name} [{loan.external_company}]"
-                        return loan.external_name
-        except Exception:
-            return None
-        return None
-
-
-class AccessCardLocation(LinkBase):
-    """Thẻ nào vào được phòng nào.
-
-    Câu tiếng Nhật kiểu "Document Room, Server Room, Master Room 以外の部屋"
-    phải được QUY ĐỔI thành danh sách phòng cụ thể khi nhập liệu. Không lưu câu.
-    """
-
-    __tablename__ = "access_card_locations"
-
-    card_id: Mapped[int] = mapped_column(
-        ForeignKey("access_cards.id", ondelete="CASCADE"), primary_key=True
-    )
-    location_id: Mapped[int] = mapped_column(
-        ForeignKey("locations.id", ondelete="RESTRICT"), primary_key=True
-    )
-
-
-class CardLoan(BizBase):
-    """Một lần cho mượn thẻ. Người mượn là nhân viên HOẶC người bên ngoài."""
-
-    __tablename__ = "card_loans"
-
-    card_id: Mapped[int] = mapped_column(
-        ForeignKey("access_cards.id", ondelete="RESTRICT"), nullable=False
-    )
-    person_id: Mapped[int | None] = mapped_column(
-        ForeignKey("persons.id", ondelete="RESTRICT"), nullable=True
-    )
-    external_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    external_company: Mapped[str | None] = mapped_column(String(150), nullable=True)
-    purpose: Mapped[str | None] = mapped_column(Text, nullable=True)
-    borrowed_at: Mapped[dt.date] = mapped_column(Date, nullable=False)
-    expected_return_at: Mapped[dt.date | None] = mapped_column(Date, nullable=True)
-    returned_at: Mapped[dt.date | None] = mapped_column(Date, nullable=True)
-
-    card: Mapped[AccessCard] = relationship(back_populates="loans")
-    person: Mapped[Person | None] = relationship()
-
-    __table_args__ = biz_args(
-        CheckConstraint(
-            "person_id IS NOT NULL"
-            " OR (external_name IS NOT NULL AND length(btrim(external_name)) > 0)",
-            name="borrower_required",
-        ),
-        closes_after_opens("borrowed_at", "returned_at", "returned_after_borrowed"),
-        closes_after_opens(
-            "borrowed_at", "expected_return_at", "expected_after_borrowed"
-        ),
-        one_open_per("card_loans", "card_id", close_col="returned_at"),
-    )
-
-    def __str__(self) -> str:
-        return f"Loan #{self.id}"
-
-
-# =============================================================================
-# 7. HỢP ĐỒNG
-# =============================================================================
-
-
-class Contract(BizBase):
-    __tablename__ = "contracts"
-
-    code: Mapped[str] = mapped_column(String(50), nullable=False)
-    vendor_name: Mapped[str | None] = mapped_column(
-        String(100), server_default=text("'KDDI Vietnam'"), nullable=True
-    )
-    signed_date: Mapped[dt.date | None] = mapped_column(Date, nullable=True)
-    delivery_status: Mapped[DeliveryStatus] = mapped_column(
-        _enum(DeliveryStatus, "delivery_status"),
-        server_default=text("'PENDING'"),
-        nullable=False,
-    )
-    note: Mapped[str | None] = mapped_column(Text, nullable=True)
-
-    lines: Mapped[list[ContractLine]] = relationship(back_populates="contract")
-
-    __table_args__ = biz_args(alive_unique("contracts", "code"))
-
-    def __str__(self) -> str:
-        vendor = f" - {self.vendor_name}" if self.vendor_name else ""
-        return f"{self.code}{vendor}"
-
-
-class ContractLine(BizBase):
-    """Một dòng hàng trong hợp đồng.
-
-    KHÔNG có delivered_qty hay remaining_qty. Số đã nhận được ĐẾM từ
-    assets.contract_line_id. Đây là điểm sửa quan trọng nhất so với sheet
-    "PC_Qty summary" - cột gõ tay đó chính là nguồn sai lệch.
-
-    Hạng mục loại SOFTWARE không có thiết bị để đếm: số đã nhận của nó là tổng
-    seat của các gói license trỏ tới (licenses.contract_line_id), và qty_ordered
-    khi đó là số seat đặt mua.
-    """
-
-    __tablename__ = "contract_lines"
-
-    contract_id: Mapped[int] = mapped_column(
-        ForeignKey("contracts.id", ondelete="RESTRICT"), nullable=False
-    )
-    item_type: Mapped[str] = mapped_column(String(100), nullable=False)
-    item_kind: Mapped[ContractItemKind] = mapped_column(
-        _enum(ContractItemKind, "contract_item_kind"),
-        server_default=text("'HARDWARE'"),
-        nullable=False,
-    )
-    spec: Mapped[str | None] = mapped_column(Text, nullable=True)
-    qty_ordered: Mapped[int] = mapped_column(Integer, nullable=False)
-
-    contract: Mapped[Contract] = relationship(back_populates="lines")
-    assets: Mapped[list[Asset]] = relationship(back_populates="contract_line")
-    licenses: Mapped[list[License]] = relationship(back_populates="contract_line")
-
-    __table_args__ = biz_args(
-        CheckConstraint("qty_ordered > 0", name="qty_positive")
-    )
-
-    def __str__(self) -> str:
-        return f"{self.item_type} (x{self.qty_ordered})"
-
-    @property
-    def qty_delivered(self) -> int:
-        try:
-            if self.item_kind == ContractItemKind.SOFTWARE:
-                return sum(lic.seats for lic in self.licenses if not lic.is_deleted)
-            return sum(1 for a in self.assets if not a.is_deleted)
-        except Exception:
-            return 0
-
-    @property
-    def qty_remaining(self) -> int:
-        return max(0, self.qty_ordered - self.qty_delivered)
-
-
-# =============================================================================
-# 8. DANH BẠ THOẠI
-# =============================================================================
-
-
-class Phone(BizBase):
-    __tablename__ = "phones"
-
-    device_name: Mapped[str] = mapped_column(String(50), nullable=False)
-    device_type: Mapped[PhoneDeviceType] = mapped_column(
-        _enum(PhoneDeviceType, "phone_device_type"), nullable=False
-    )
-    extension_number: Mapped[str | None] = mapped_column(String(10), nullable=True)
-    location_id: Mapped[int | None] = mapped_column(
-        ForeignKey("locations.id", ondelete="RESTRICT"), nullable=True
-    )
-    is_active: Mapped[bool] = mapped_column(
-        Boolean, server_default=text("true"), nullable=False
-    )
-    remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
-
-    location: Mapped[Location | None] = relationship()
-
-    __table_args__ = biz_args(
-        alive_unique("phones", "device_name"),
-        alive_unique(
-            "phones", "extension_number", extra="extension_number IS NOT NULL"
-        ),
-        CheckConstraint(
-            "extension_number IS NULL OR extension_number <> 'N/A'",
-            name="no_na_literal",
-        ),
-    )
-
-    def __str__(self) -> str:
-        ext = f" (Ext: {self.extension_number})" if self.extension_number else ""
-        return f"{self.device_name}{ext}"
-
-
-# =============================================================================
-# 9. TRUY VẾT
+# 5. TRUY VẾT
 # =============================================================================
 
 
 class AuditLog(Base):
     """Nhật ký chỉ-thêm. Trigger DB chặn mọi UPDATE và DELETE, kể cả của Admin.
 
-    before_after KHÔNG BAO GIỜ được chứa giá trị của *_enc, password_hash hay
-    license key. Lớp ghi audit phải lọc theo danh sách REDACTED_FIELDS.
+    before_after KHÔNG BAO GIỜ được chứa giá trị của *_enc hay password_hash.
+    Lớp ghi audit phải lọc theo danh sách REDACTED_FIELDS.
     """
 
     __tablename__ = "audit_logs"

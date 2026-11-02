@@ -152,7 +152,7 @@ def test_edit_clears_optional_field(admin_client, db, seed):
 
 
 def test_edit_person_field_on_holder_row_updates_all_their_rows(admin_client, db, seed):
-    second = Asset(vendor_code="TKY-PC0999", category_id=seed["cat"].id)
+    second = Asset(pc_name="TKY-PC0999", category_id=seed["cat"].id)
     db.add(second)
     db.flush()
     assign_asset(db, seed["asset"].id, seed["person"].id, PAST)
@@ -169,7 +169,7 @@ def test_edit_person_field_on_machine_without_holder_is_refused(admin_client, db
 
 
 def test_edit_user_id_rejects_duplicate(admin_client, db, seed):
-    seed["person"].user_login_id = "57959"
+    seed["person"].user_id = "57959"
     db.flush()
     assert _patch(admin_client, f"person-{seed['person_b'].id}", "user_id", "57959").status_code == 400
 

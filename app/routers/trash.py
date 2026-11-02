@@ -299,16 +299,16 @@ def check_restore_conflicts(db: Session, entity_type: str, rec: Any) -> str | No
             if dup_code:
                 return f"Không thể khôi phục: Mã GA '{rec.asset_code}' hiện đã được sử dụng bởi thiết bị #{dup_code.id}."
 
-        if rec.vendor_code:
+        if rec.pc_name:
             dup_vendor = db.scalar(
                 select(Asset).where(
                     Asset.id != rec.id,
-                    func.lower(Asset.vendor_code) == rec.vendor_code.lower(),
+                    func.lower(Asset.pc_name) == rec.pc_name.lower(),
                     Asset.is_deleted.is_(False),
                 )
             )
             if dup_vendor:
-                return f"Không thể khôi phục: Mã Vendor '{rec.vendor_code}' hiện đã được sử dụng bởi thiết bị #{dup_vendor.id}."
+                return f"Không thể khôi phục: PC Name '{rec.pc_name}' hiện đã được sử dụng bởi thiết bị #{dup_vendor.id}."
 
     elif entity_type == "person":
         # Check Staff code
@@ -323,16 +323,16 @@ def check_restore_conflicts(db: Session, entity_type: str, rec: Any) -> str | No
             return f"Không thể khôi phục: Mã nhân viên '{rec.staff_code}' đã tồn tại ở nhân sự #{dup_staff.id} ({dup_staff.full_name})."
 
         # Check User ID
-        if rec.user_login_id:
+        if rec.user_id:
             dup_uid = db.scalar(
                 select(Person).where(
                     Person.id != rec.id,
-                    func.lower(Person.user_login_id) == rec.user_login_id.lower(),
+                    func.lower(Person.user_id) == rec.user_id.lower(),
                     Person.is_deleted.is_(False),
                 )
             )
             if dup_uid:
-                return f"Không thể khôi phục: User ID '{rec.user_login_id}' đã thuộc về nhân sự #{dup_uid.id}."
+                return f"Không thể khôi phục: UserID '{rec.user_id}' đã thuộc về nhân sự #{dup_uid.id}."
 
         if rec.email:
             dup_email = db.scalar(
