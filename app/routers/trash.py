@@ -130,7 +130,7 @@ async def trash_list_view(
                 identifier = rec.asset_code or (f"Asset #{rec.id}")
                 details = f"Model: {rec.model or '—'} | S/N: {rec.serial or '—'}"
             elif ent_key == "person":
-                identifier = rec.staff_code
+                identifier = rec.staff_code or f"#{rec.id}"
                 details = f"{rec.full_name} ({rec.email or 'No email'})"
             elif ent_key == "role":
                 identifier = rec.code
@@ -312,7 +312,7 @@ def check_restore_conflicts(db: Session, entity_type: str, rec: Any) -> str | No
 
     elif entity_type == "person":
         # Check Staff code
-        dup_staff = db.scalar(
+        dup_staff = rec.staff_code and db.scalar(
             select(Person).where(
                 Person.id != rec.id,
                 func.lower(Person.staff_code) == rec.staff_code.lower(),

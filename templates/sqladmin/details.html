@@ -490,7 +490,7 @@
                 {% if asgn.person %}
                 <div class="fw-semibold text-dark">
                   <i class="fa-solid fa-user me-1 text-primary"></i>{{ asgn.person.full_name }}
-                  <span class="text-muted small">({{ asgn.person.staff_code }})</span>
+                  {% if asgn.person.staff_code %}<span class="text-muted small">({{ asgn.person.staff_code }})</span>{% endif %}
                 </div>
                 {% else %}
                 <span class="text-muted">-</span>

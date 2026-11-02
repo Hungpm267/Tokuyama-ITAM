@@ -97,7 +97,7 @@ def search_active_persons(
         content=[
             {
                 "id": p.id,
-                "staff_code": p.staff_code,
+                "staff_code": p.staff_code or "",
                 "full_name": p.full_name,
                 "department": p.department.name_en if p.department else "",
                 "email": p.email or "",
@@ -266,7 +266,7 @@ def api_get_asset_history(
             {
                 "id": a.id,
                 "person_name": a.person.full_name if a.person else "Chưa rõ",
-                "staff_code": a.person.staff_code if a.person else "",
+                "staff_code": (a.person.staff_code or "") if a.person else "",
                 "department": a.person.department.name_en if a.person and a.person.department else "",
                 "borrowed_at": a.borrowed_at.strftime("%d/%m/%Y") if a.borrowed_at else "",
                 "returned_at": a.returned_at.strftime("%d/%m/%Y") if a.returned_at else None,

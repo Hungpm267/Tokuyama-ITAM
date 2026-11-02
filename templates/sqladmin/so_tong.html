@@ -305,7 +305,7 @@
       items.forEach(function (item) {
         const line = document.createElement('div');
         line.className = 'st-history-item';
-        line.textContent = item.person_name + ' (' + item.staff_code + ')';
+        line.textContent = item.person_name + (item.staff_code ? ' (' + item.staff_code + ')' : '');
         const when = document.createElement('small');
         when.textContent = item.borrowed_at + ' → ' + (item.returned_at || TEXT.current);
         line.appendChild(when);
