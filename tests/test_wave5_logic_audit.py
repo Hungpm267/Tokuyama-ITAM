@@ -31,19 +31,14 @@ from app.db import get_db
 from app.enums import (
     AssetStatus,
     AuditAction,
-    ContractItemKind,
     DEFAULT_ROLE_PERMISSIONS,
-    DeliveryStatus,
     RoleCode,
 )
 from app.main import app
 from app.models import (
-    AccessCard,
     Asset,
     Assignment,
     AuditLog,
-    Contract,
-    ContractLine,
     Department,
     Role,
     RolePermission,
@@ -139,16 +134,6 @@ def admin_client(client, db, seed):
     return client
 
 
-def _software_line(db, qty=30, kind=ContractItemKind.SOFTWARE, code="HD-W5"):
-    contract = Contract(code=code, vendor_name="V", delivery_status=DeliveryStatus.PENDING)
-    db.add(contract)
-    db.flush()
-    line = ContractLine(contract_id=contract.id, item_type="Item", qty_ordered=qty, item_kind=kind)
-    db.add(line)
-    db.flush()
-    return contract, line
-
-
 # ---------------------------------------------------------------------------
 # 1. Không xóa danh mục / vai trò còn đang được dùng
 # ---------------------------------------------------------------------------
@@ -177,10 +162,6 @@ def test_department_in_use_cannot_be_deleted(db, seed):
     assert seed["dept"].is_deleted is False
 
 
-
-
-
-
 def test_role_with_users_cannot_be_deleted(db, seed):
     role = Role(code=RoleCode.GA_MANAGER.value, name_en="GA")
     db.add(role)
@@ -195,12 +176,6 @@ def test_role_with_users_cannot_be_deleted(db, seed):
 # ---------------------------------------------------------------------------
 # 2. Gán license / trạng thái thiết bị
 # ---------------------------------------------------------------------------
-
-
-
-
-
-
 
 
 def test_asset_with_drifted_status_can_still_be_edited_when_status_unchanged(db, seed):
@@ -232,39 +207,21 @@ def test_closed_assignment_cannot_be_repointed(db, seed):
         {**base, "asset": str(seed["asset"].id), "person": str(seed["person"].id), "note": "đính chính"}, asgn, False, _req(db)))
 
 
-
-
-
-
-
-
 # ---------------------------------------------------------------------------
 # 4. License và hạng mục hợp đồng
 # ---------------------------------------------------------------------------
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 def test_trash_search_reaches_items_beyond_the_first_50(admin_client, db, seed):
     base = dt.datetime.now(dt.timezone.utc)
     for i in range(55):
-        card = AccessCard(card_no=f"W5-TRASH-{i:03d}")
-        card.is_deleted = True
-        card.deleted_at = base - dt.timedelta(days=i)
-        card.delete_reason = "test"
-        db.add(card)
+        asset = Asset(serial=f"W5-TRASH-{i:03d}", category_id=seed["cat"].id)
+        asset.is_deleted = True
+        asset.deleted_at = base - dt.timedelta(days=i)
+        asset.delete_reason = "test"
+        db.add(asset)
     db.flush()
-    html = admin_client.get("/admin/trash?entity=card&q=W5-TRASH-054").text
+    html = admin_client.get("/admin/trash?entity=asset&q=W5-TRASH-054").text
     assert "W5-TRASH-054" in html
 
 
@@ -317,14 +274,8 @@ def test_new_user_password_has_minimum_length(admin_client, db, seed):
     assert db.scalar(select(User).where(User.username == "w5_short")) is None
 
 
-
-
 def test_custom_roles_cannot_be_created_because_they_cannot_log_in():
     assert RoleAdmin().can_create is False
-
-
-
-
 
 
 def test_validation_messages_follow_the_language_switcher(admin_client, db, seed):
@@ -356,14 +307,10 @@ def test_return_endpoint_rejects_non_object_body(admin_client, db, seed):
     assert res.status_code == 400
 
 
-
-
 @pytest.mark.parametrize("body", [[], {"person_id": "abc"}, {"person_id": True}])
 def test_secret_save_rejects_malformed_input(admin_client, db, seed, body):
     res = admin_client.post("/admin/person-secret/save", json=body)
     assert res.status_code == 400
-
-
 
 
 # ---------------------------------------------------------------------------
@@ -396,12 +343,6 @@ def test_datetime_is_shown_in_vietnam_time():
 
 def test_date_only_values_are_shown_without_a_fake_time():
     assert format_datetime_clean(dt.date(2026, 10, 10)) == "2026-10-10"
-
-
-
-
-
-
 
 
 def test_audit_log_with_unknown_action_filter_does_not_crash(admin_client, db, seed):

@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Web app nội bộ quản lý laptop và nhân sự của Tokuyama Vietnam (ITAM), thay cho sheet Excel "List of TVC Employees". Đã thu hẹp phạm vi: hợp đồng, license, thẻ, danh bạ, dashboard, ma trận quyền được gỡ khỏi code (bản đầy đủ ở git tag `v1-full`), **các bảng tương ứng vẫn còn trong database**. 3 mã vai trò `ADMIN`, `GA_MANAGER`, `EXECUTIVE`, nhưng chỉ còn hai mức: Admin và chỉ xem. Giao diện ba ngôn ngữ (vi / en / ja). Người dùng trao đổi bằng tiếng Việt; comment và thông báo trong code cũng bằng tiếng Việt.
+Web app nội bộ quản lý laptop và nhân sự của Tokuyama Vietnam (ITAM), thay cho sheet Excel "List of TVC Employees". Đã thu hẹp phạm vi: hợp đồng, license, thẻ, danh bạ, dashboard, ma trận quyền được gỡ khỏi code (bản đầy đủ ở git tag `v1-full`), các bảng tương ứng bị xóa ở migration `0005`. 3 mã vai trò `ADMIN`, `GA_MANAGER`, `EXECUTIVE`, nhưng chỉ còn hai mức: Admin và chỉ xem. Giao diện ba ngôn ngữ (vi / en / ja). Người dùng trao đổi bằng tiếng Việt; comment và thông báo trong code cũng bằng tiếng Việt.
 
 **Đọc trước khi sửa code:** `HANDOVER.md` (trạng thái hiện tại, các việc còn tồn chờ người dùng quyết định). Yêu cầu nghiệp vụ gốc ở `docs/BRD.md`; thiết kế từng tính năng ở `docs/superpowers/specs/`.
 
@@ -52,7 +52,7 @@ FastAPI + SQLAlchemy 2.0 (`Mapped[...]`) + PostgreSQL + Alembic. Gần như toà
 
 ### Dữ liệu
 
-- `app/models.py` là nguồn sự thật duy nhất của schema; đổi schema chỉ qua Alembic (`alembic/versions/`, hiện tới `0004`). Trạng thái là ENUM native của PostgreSQL, lưu theo `.value`.
+- `app/models.py` là nguồn sự thật duy nhất của schema; đổi schema chỉ qua Alembic (`alembic/versions/`, hiện tới `0005`, 12 bảng; sơ đồ ở `docs/database.dbml`, đổi schema thì cập nhật cả file này). Trạng thái là ENUM native của PostgreSQL, lưu theo `.value`.
 - Xóa là xóa mềm (`is_deleted`, bắt buộc `delete_reason`, có CHECK ở DB). Ràng buộc duy nhất là partial unique index `WHERE is_deleted = false` (`alive_unique`); "chỉ một bản ghi đang mở" là partial index `WHERE <cột đóng> IS NULL` (`one_open_per`) — xem `app/db.py`.
 - Lịch sử `assignments` không xóa, chỉ đóng bằng ngày kết thúc; dòng đã đóng không được đổi máy / người. `audit_logs` chỉ INSERT / SELECT, có trigger DB chặn.
 - `assets.status` phải khớp với lượt bàn giao đang mở: `IN_USE` chỉ sinh ra qua bàn giao, không gõ tay (`_sync_asset_status`).

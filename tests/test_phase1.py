@@ -25,7 +25,7 @@ from app.core.security import (
 from app.enums import AuditAction, Module, PermissionAction, RoleCode, DEFAULT_ROLE_PERMISSIONS
 from app.db import get_db
 from app.main import app
-from app.models import AuditLog, Role, RolePermission, User, UserPermissionOverride
+from app.models import AuditLog, Role, RolePermission, User
 
 
 @pytest.fixture(autouse=True)
@@ -252,37 +252,6 @@ def test_rbac_executive_read_only_permissions(db: Session, rbac_roles_and_users)
     assert has_permission(db, exec_user, Module.USERS, PermissionAction.VIEW) is False
 
 
-def test_rbac_user_permission_overrides(db: Session, rbac_roles_and_users):
-    ga = rbac_roles_and_users["ga"]
-    admin = rbac_roles_and_users["admin"]
-
-    # Ban đầu GA không có quyền xem Audit
-    assert has_permission(db, ga, Module.AUDIT, PermissionAction.VIEW) is False
-
-    # Cấp override cho GA được xem Audit
-    override_grant = UserPermissionOverride(
-        user_id=ga.id,
-        module=Module.AUDIT.value,
-        action=PermissionAction.VIEW.value,
-        granted=True,
-    )
-    db.add(override_grant)
-    db.flush()
-
-    # Sau override, GA xem được Audit
-    assert has_permission(db, ga, Module.AUDIT, PermissionAction.VIEW) is True
-
-    # Thu hồi override từ Admin (ví dụ thu hồi quyền xoá Users)
-    override_revoke = UserPermissionOverride(
-        user_id=admin.id,
-        module=Module.USERS.value,
-        action=PermissionAction.DELETE.value,
-        granted=False,
-    )
-    db.add(override_revoke)
-    db.flush()
-
-    assert has_permission(db, admin, Module.USERS, PermissionAction.DELETE) is False
 
 
 # --------------------------------------------------------------------------

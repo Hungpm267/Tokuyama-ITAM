@@ -2,8 +2,6 @@
 
 Mô hình phân quyền theo GEMINI.md:
 - users -> roles -> role_permissions (module, action)
-- Cộng user_permission_overrides để Admin tinh chỉnh quyền lẻ cho từng cá nhân mà không đổi vai trò.
-- MẶC ĐỊNH LÀ TỪ CHỐI (DENY BY DEFAULT).
 - Thiếu quyền trả lỗi 403 với thông báo chung. Không tiết lộ thông tin dữ liệu hay cấu trúc.
 """
 
@@ -15,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.enums import Module, PermissionAction
-from app.models import RolePermission, User, UserPermissionOverride
+from app.models import RolePermission, User
 
 
 def has_permission(
@@ -28,9 +26,8 @@ def has_permission(
 
     Thứ tự ưu tiên:
     1. Kiểm tra tài khoản: phải active và chưa bị xoá mềm.
-    2. Kiểm tra user_permission_overrides: nếu có bản ghi ghi đè thì theo cờ `granted`.
-    3. Nếu không có ghi đè, kiểm tra role_permissions theo vai trò của người dùng.
-    4. Mặc định: từ chối (False).
+    2. Kiểm tra role_permissions theo vai trò của người dùng.
+    3. Mặc định: từ chối (False).
     """
     if not user or not user.is_active or user.is_deleted:
         return False
@@ -38,18 +35,6 @@ def has_permission(
     mod_val = module.value if isinstance(module, Module) else str(module)
     act_val = action.value if isinstance(action, PermissionAction) else str(action)
 
-    # 1. Kiểm tra ghi đè cá nhân (Override)
-    override = db.scalar(
-        select(UserPermissionOverride).where(
-            UserPermissionOverride.user_id == user.id,
-            UserPermissionOverride.module == mod_val,
-            UserPermissionOverride.action == act_val,
-        )
-    )
-    if override is not None:
-        return override.granted
-
-    # 2. Kiểm tra quyền của vai trò (Role Permission)
     role_perm = db.scalar(
         select(RolePermission).where(
             RolePermission.role_id == user.role_id,
@@ -71,24 +56,7 @@ def get_user_permissions(db: Session, user: User) -> set[tuple[str, str]]:
             RolePermission.role_id == user.role_id
         )
     ).all()
-    perms = {(row.module, row.action) for row in role_perms}
-
-    # Áp dụng overrides
-    overrides = db.execute(
-        select(
-            UserPermissionOverride.module,
-            UserPermissionOverride.action,
-            UserPermissionOverride.granted,
-        ).where(UserPermissionOverride.user_id == user.id)
-    ).all()
-
-    for mod, act, granted in overrides:
-        if granted:
-            perms.add((mod, act))
-        else:
-            perms.discard((mod, act))
-
-    return perms
+    return {(row.module, row.action) for row in role_perms}
 
 
 def require(

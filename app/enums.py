@@ -28,43 +28,6 @@ ASSET_NOT_LOANABLE = frozenset(
 )
 
 
-class CardStatus(str, Enum):
-    IN_STOCK = "IN_STOCK"
-    BORROWED = "BORROWED"
-    LOST = "LOST"
-    DAMAGED = "DAMAGED"
-
-
-class CardType(str, Enum):
-    STAFF = "STAFF"
-    CONTRACTOR = "CONTRACTOR"
-    GUEST = "GUEST"
-
-
-class DeliveryStatus(str, Enum):
-    PENDING = "PENDING"  # chưa nhận đủ
-    DELIVERED = "DELIVERED"  # đã nhận đủ
-
-
-class ContractItemKind(str, Enum):
-    """Hạng mục hợp đồng mua gì - quyết định cách đếm số đã nhận."""
-
-    HARDWARE = "HARDWARE"  # nhận bằng thiết bị (assets.contract_line_id)
-    SOFTWARE = "SOFTWARE"  # nhận bằng gói license, đếm theo số seat
-
-
-class LicenseType(str, Enum):
-    PERPETUAL = "PERPETUAL"
-    SUBSCRIPTION = "SUBSCRIPTION"
-
-
-class PhoneDeviceType(str, Enum):
-    IP_PHONE = "IP_PHONE"
-    DECT_STATION = "DECT_STATION"
-    PBX = "PBX"
-    WIFI_PHONE = "WIFI_PHONE"
-
-
 class AuditAction(str, Enum):
     CREATE = "CREATE"
     UPDATE = "UPDATE"
@@ -72,7 +35,7 @@ class AuditAction(str, Enum):
     RESTORE = "RESTORE"
     LOGIN = "LOGIN"
     LOGIN_FAIL = "LOGIN_FAIL"
-    REVEAL = "REVEAL"  # xem mật khẩu / license key
+    REVEAL = "REVEAL"  # xem mật khẩu
 
 
 class PermissionAction(str, Enum):
@@ -89,10 +52,6 @@ class Module(str, Enum):
     SECRETS = "secrets"  # xem mật khẩu nhân viên - quyền RIÊNG, chỉ Admin
     ASSETS = "assets"
     ASSIGNMENTS = "assignments"
-    LICENSES = "licenses"
-    CARDS = "cards"
-    CONTRACTS = "contracts"
-    PHONES = "phones"
     AUDIT = "audit"
     TRASH = "trash"
     USERS = "users"

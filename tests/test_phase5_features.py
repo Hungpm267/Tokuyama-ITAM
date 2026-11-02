@@ -37,11 +37,7 @@ def auth_client(db: Session, seed, monkeypatch):
     # Đảm bảo role có đủ quyền VIEW các module
     modules = [
         Module.ASSETS,
-        Module.LICENSES,
-        Module.CARDS,
         Module.PERSONS,
-        Module.PHONES,
-        Module.CONTRACTS,
     ]
     for mod in modules:
         existing = db.query(RolePermission).filter_by(

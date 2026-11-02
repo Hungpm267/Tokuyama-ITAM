@@ -199,7 +199,7 @@ def test_global_search_finds_person(client: TestClient, db: Session):
     db.add(Person(
         staff_code="TVC-SRCH-777",
         full_name="Nguyen Van Tim Kiem",
-        user_login_id="timkiem.nguyen",
+        user_id="timkiem.nguyen",
         email="timkiem@tokuyama.vn",
         status=PersonStatus.ACTIVE,
     ))

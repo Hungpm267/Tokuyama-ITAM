@@ -29,7 +29,7 @@ Toàn bộ các giai đoạn nghiệp vụ cốt lõi đã được hoàn thiệ
 
 | Giai đoạn | Nội dung | Trạng thái | Đánh giá / Ghi chú |
 |---|---|:---:|---|
-| **Nền tảng** | Schema 23 bảng đóng băng (`app/models.py`), migration Alembic, mã hóa AES-256-GCM (`app/core/crypto.py`), cổng xem mật khẩu RevealGate (`app/core/reveal.py`), DB triggers chống sửa/xóa audit log. | ✅ **100% ĐẠT** | 20 test ràng buộc DB xanh |
+| **Nền tảng** | Schema 12 bảng từ migration `0005`, sơ đồ ở `docs/database.dbml` (`app/models.py`), migration Alembic, mã hóa AES-256-GCM (`app/core/crypto.py`), cổng xem mật khẩu RevealGate (`app/core/reveal.py`), DB triggers chống sửa/xóa audit log. | ✅ **100% ĐẠT** | 20 test ràng buộc DB xanh |
 | **Giai đoạn 1** | Bảo mật Argon2id, RBAC 3 vai trò (`ADMIN`, `GA_MANAGER`, `EXECUTIVE`), ghi Audit Log tự động loại bỏ trường nhạy cảm, SQLAdmin Portal, Ma trận phân quyền động (`/admin/role-permission-matrix`). | ✅ **100% ĐẠT** | Default-deny; phân quyền cấp router |
 | **Giai đoạn 2** | **Tài sản Phần cứng & Vòng đời Mượn - Trả**: Service gán/thu hồi thiết bị, lịch sử mượn, modal thao tác nhanh, chống trùng lặp thời gian, kiểm soát trạng thái máy (`IN_STOCK`, `IN_USE`, `REPAIR`). | ✅ **100% ĐẠT** | Đã chặn ngày tương lai; sửa popup thu hồi |
 | **Giai đoạn 3** | **Quản lý Nhân sự & Kho Mật khẩu (FR-06)**: CRUD nhân sự, chặn xóa mềm khi đang giữ máy/thẻ/bản quyền, màn hình Password Vault (`/admin/person-secret/list`) với xác thực mật khẩu 2 phút, tự ẩn sau 60s, lockout 15 phút nếu sai 5 lần. | ✅ **100% ĐẠT** | Tuyệt đối tuân thủ bảo mật |
@@ -132,7 +132,7 @@ Thiết kế: `docs/superpowers/specs/2026-11-02-so-tong-design.md`. Đã xong c
 toku-app/
 │
 ├── app/
-│   ├── models.py              # 23 bảng SQLAlchemy. [SCHEMA ĐÃ ĐÓNG BĂNG - KHÔNG SỬA]
+│   ├── models.py              # 12 bảng SQLAlchemy, đổi schema qua Alembic
 │   ├── enums.py               # ENUM native PostgreSQL + DEFAULT_ROLE_PERMISSIONS
 │   ├── db.py                  # Base, session maker, mixin SoftDelete, Auditable
 │   ├── config.py              # Settings đọc biến môi trường

@@ -30,7 +30,6 @@ from app.enums import (
     AssetStatus,
     AuditAction,
     DEFAULT_ROLE_PERMISSIONS,
-    DeliveryStatus,
     Module,
     PermissionAction,
     PersonStatus,
@@ -41,10 +40,6 @@ from app.models import (
     Asset,
     Assignment,
     AuditLog,
-    Contract,
-    ContractLine,
-    License,
-    LicenseAssignment,
     Person,
     Role,
     RolePermission,
@@ -184,15 +179,6 @@ def test_assign_accepts_vietnam_today_when_server_clock_is_utc(db, seed, monkeyp
 
 
 # ---------------------------------------------------------------------------
-# 2. Ma trận quyền
-# ---------------------------------------------------------------------------
-
-
-
-
-
-
-# ---------------------------------------------------------------------------
 # 3. Form "Bàn giao thiết bị" của SQLAdmin phải theo đúng luật của service
 # ---------------------------------------------------------------------------
 
@@ -273,24 +259,6 @@ def test_asset_form_allows_normal_status_change(db, seed):
     _run(AssetAdmin().on_model_change({"status": "REPAIR"}, seed["asset"], False, _req(db)))
 
 
-def _contract_with_line(db, qty=1, code="HD-W4"):
-    contract = Contract(code=code, vendor_name="V", delivery_status=DeliveryStatus.PENDING)
-    db.add(contract)
-    db.flush()
-    line = ContractLine(contract_id=contract.id, item_type="PC", qty_ordered=qty)
-    db.add(line)
-    db.flush()
-    return contract, line
-
-
-
-
-
-
-
-
-
-
 # ---------------------------------------------------------------------------
 # 5. Thu hồi thiết bị: không âm thầm đổi trạng thái người dùng chọn
 # ---------------------------------------------------------------------------
@@ -330,73 +298,12 @@ def test_person_search_is_not_capped_at_20_for_the_assign_dropdown(admin_client,
 
 
 # ---------------------------------------------------------------------------
-# 6. License
-# ---------------------------------------------------------------------------
-
-
-
-
-
-
-def _full_license(db, seed):
-    lic = License(product_id=seed["product"].id, seats=1)
-    db.add(lic)
-    db.flush()
-    closed = LicenseAssignment(
-        license_id=lic.id, person_id=seed["person"].id, assigned_at=PAST, removed_at=PAST + dt.timedelta(days=1)
-    )
-    active = LicenseAssignment(license_id=lic.id, person_id=seed["person_b"].id, assigned_at=PAST)
-    db.add_all([closed, active])
-    db.flush()
-    return lic, closed, active
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# ---------------------------------------------------------------------------
-# 7. Thẻ ra vào
-# ---------------------------------------------------------------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# ---------------------------------------------------------------------------
 # 8. Thùng rác
 # ---------------------------------------------------------------------------
 
 
-
-
-
-
-def test_restore_asset_with_reused_vendor_code_is_a_clean_400(admin_client, db, seed):
-    dead = Asset(asset_code="W4-DEAD", vendor_code="TKY-PC0001", category_id=seed["cat"].id)
+def test_restore_asset_with_reused_pc_name_is_a_clean_400(admin_client, db, seed):
+    dead = Asset(asset_code="W4-DEAD", pc_name="TKY-PC0001", category_id=seed["cat"].id)
     _soft_delete(dead)
     db.add(dead)
     db.flush()
@@ -418,20 +325,20 @@ def test_restore_person_with_reused_email_is_a_clean_400(admin_client, db, seed)
 def test_restore_requires_trash_change_permission(client, db, seed):
     viewer = _user_with_role(db, "TRASH_VIEWER", {Module.TRASH: [PermissionAction.VIEW]}, "trash_viewer")
     _login(client, viewer, "TRASH_VIEWER")
-    _soft_delete(seed["card"])
+    _soft_delete(seed["person_b"])
     db.flush()
-    res = client.post("/admin/trash/restore", data={"entity_type": "card", "item_id": seed["card"].id})
+    res = client.post("/admin/trash/restore", data={"entity_type": "person", "item_id": seed["person_b"].id})
     assert res.status_code == 403
-    assert seed["card"].is_deleted is True
+    assert seed["person_b"].is_deleted is True
 
 
 def test_trash_restore_button_does_not_inline_names_into_javascript(admin_client, db, seed):
-    seed["card"].card_no = "X');alert(1)//"
-    _soft_delete(seed["card"])
+    seed["person_b"].full_name = "X');alert(1)//"
+    _soft_delete(seed["person_b"])
     db.flush()
-    html = admin_client.get("/admin/trash?entity=card").text
+    html = admin_client.get("/admin/trash?entity=person").text
     assert "X&#39;);alert(1)//&#39;" not in html
-    assert "openRestoreModal('card'" not in html
+    assert "openRestoreModal('person'" not in html
 
 
 def test_secret_vault_page_does_not_inline_names_into_javascript(admin_client, db, seed):
@@ -475,7 +382,7 @@ def test_duplicate_asset_code_is_not_reported_as_duplicate_serial():
     raw = (
         '(psycopg.errors.UniqueViolation) duplicate key value violates unique constraint "uq_alive_assets_asset_code"\n'
         "DETAIL:  Key (asset_code)=(A1) already exists.\n"
-        "[SQL: INSERT INTO assets (asset_code, vendor_code, serial, model) VALUES (%(asset_code)s, %(serial)s)]"
+        "[SQL: INSERT INTO assets (asset_code, pc_name, serial, model) VALUES (%(asset_code)s, %(serial)s)]"
     )
     msg = humanize_error_str(raw, lang="vi")
     assert "Mã tài sản" in msg
@@ -512,8 +419,6 @@ def test_admin_cannot_deactivate_or_demote_own_account(db, seed):
 def test_system_role_code_cannot_be_renamed(db, seed):
     with pytest.raises(ValueError):
         _run(RoleAdmin().on_model_change({"code": "IT_ADMIN", "name_en": "x"}, seed["role"], False, _req(db)))
-
-
 
 
 def test_login_page_does_not_redirect_loop_for_deactivated_user(client, db, seed):
@@ -570,30 +475,6 @@ def test_idle_session_still_expires_after_30_minutes(client, db, seed, monkeypat
 
 
 # ---------------------------------------------------------------------------
-# 11. Dashboard
-# ---------------------------------------------------------------------------
-
-
-
-
-def test_dashboard_hides_license_panel_when_permission_is_revoked(client, db, seed):
-    from app.admin import invalidate_user_cache
-    from app.models import LicenseProduct
-
-    perms = {m: [PermissionAction.VIEW] for m in (Module.ASSETS, Module.PERSONS)}
-    exec_user = _user_with_role(db, RoleCode.EXECUTIVE.value, perms, "exec_w4")
-    p = LicenseProduct(name="HIDDEN-PRODUCT")
-    db.add(p)
-    db.flush()
-    db.add(License(product_id=p.id, seats=1, expiry_date=TODAY + dt.timedelta(days=5)))
-    db.flush()
-    invalidate_user_cache()
-    _login(client, exec_user, RoleCode.EXECUTIVE.value)
-    html = client.get("/admin/", follow_redirects=True).text
-    assert "HIDDEN-PRODUCT" not in html
-
-
-# ---------------------------------------------------------------------------
 # 12. Đi qua form HTTP thật của SQLAdmin (dữ liệu form là chuỗi pk / tên ENUM)
 # ---------------------------------------------------------------------------
 
@@ -635,7 +516,7 @@ def test_http_asset_form_cannot_mark_a_loaned_asset_in_stock(admin_client, db, s
     db.flush()
     res = admin_client.post(f"/admin/asset/edit/{asset.id}", data={
         "asset_code": asset.asset_code,
-        "vendor_code": asset.vendor_code,
+        "pc_name": asset.pc_name,
         "serial": asset.serial,
         "category": str(seed["cat"].id),
         "status": "IN_STOCK",
@@ -645,13 +526,9 @@ def test_http_asset_form_cannot_mark_a_loaned_asset_in_stock(admin_client, db, s
     assert asset.status == AssetStatus.IN_USE
 
 
-
-
 # ---------------------------------------------------------------------------
 # 13. Ô chọn quan hệ trên form không được liệt kê bản ghi đã xóa mềm
 # ---------------------------------------------------------------------------
-
-
 
 
 def test_asset_form_does_not_offer_deleted_category(admin_client, db, seed):

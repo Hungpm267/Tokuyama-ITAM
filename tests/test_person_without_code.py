@@ -90,7 +90,7 @@ def test_restoring_a_person_without_code_works(admin_client, db, seed):  # noqa:
 
 
 def test_asset_without_holder_code_still_listed(db, seed):
-    other = Asset(vendor_code="TKY-PC0777", category_id=seed["cat"].id)
+    other = Asset(pc_name="TKY-PC0777", category_id=seed["cat"].id)
     db.add(other)
     db.flush()
     assign_asset(db, other.id, _no_code(db, "Katou").id, PAST)
