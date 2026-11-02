@@ -1,0 +1,405 @@
+{% extends "sqladmin/layout.html" %}
+{% block head %}
+<link rel="stylesheet" href="/static/vendor/tabulator/tabulator.min.css">
+{% endblock %}
+{% block content_header %}{% endblock %}
+{% block content %}
+{% set current_lang = current_lang or get_current_lang(request) %}
+{% macro L(vi, en, ja) %}{{ ja if current_lang == 'ja' else (en if current_lang == 'en' else vi) }}{% endmacro %}
+
+<style>
+  .page-header { display: none; }
+  .st-wrap { background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 16px; }
+  .st-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .st-title { font-size: 16px; font-weight: 700; color: #0f172a; margin: 0 12px 0 0; }
+  .st-search { flex: 1 1 220px; max-width: 340px; font-size: 13px; border-radius: 8px; }
+  .st-chip { border: 1px solid #e2e8f0; background: #fff; color: #334155; border-radius: 999px; padding: 4px 12px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+  .st-chip.active { background: #4D5CB0; border-color: #4D5CB0; color: #fff; }
+  .st-count { font-size: 12.5px; color: #64748b; margin-left: auto; }
+  #soTongGrid { font-size: 13px; border: 1px solid #e2e8f0; border-radius: 8px; }
+  #soTongGrid .tabulator-row.st-resigned, #soTongGrid .tabulator-row.st-resigned .tabulator-cell { background: #e2e8f0; color: #475569; }
+  #soTongGrid .tabulator-row.st-mes, #soTongGrid .tabulator-row.st-mes .tabulator-cell { background: #fef9c3; }
+  .st-open { color: #4D5CB0; cursor: pointer; text-align: center; }
+  .st-panel { position: fixed; top: 0; right: 0; bottom: 0; width: 400px; max-width: 100vw; background: #fff; border-left: 1px solid #e2e8f0; box-shadow: -8px 0 24px rgba(15, 23, 42, .12); z-index: 1040; padding: 20px; overflow-y: auto; display: none; font-size: 13px; }
+  .st-panel.open { display: block; }
+  .st-panel h4 { font-size: 15px; font-weight: 700; margin: 0; color: #0f172a; }
+  .st-panel h5 { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #64748b; margin: 18px 0 6px; }
+  .st-panel-info div { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; border-bottom: 1px solid #f1f5f9; }
+  .st-panel-info span:first-child { color: #64748b; }
+  .st-panel-info span:last-child { text-align: right; word-break: break-word; }
+  .st-history-item { padding: 6px 0; border-bottom: 1px solid #f1f5f9; }
+  .st-history-item small { color: #64748b; display: block; }
+  .st-toast { position: fixed; right: 20px; bottom: 20px; max-width: 420px; background: #991b1b; color: #fff; padding: 10px 14px; border-radius: 10px; font-size: 13px; z-index: 1060; display: none; }
+  .st-col-menu { max-height: 320px; overflow-y: auto; padding: 8px 12px; font-size: 13px; min-width: 200px; }
+  .st-col-menu label { display: flex; gap: 8px; align-items: center; padding: 3px 0; cursor: pointer; }
+</style>
+
+<div class="col-12 st-wrap">
+  <div class="st-bar">
+    <h3 class="st-title">{{ L('Sổ tổng', 'Master Ledger', '総合台帳') }}</h3>
+    <input id="stSearch" type="search" class="form-control form-control-sm st-search"
+           placeholder="{{ L('Tìm trên toàn bảng...', 'Search the whole table...', '表全体を検索...') }}">
+    <button type="button" class="st-chip active" data-filter="all">{{ L('Tất cả', 'All', 'すべて') }}</button>
+    <button type="button" class="st-chip" data-filter="in_use">{{ L('Đang dùng', 'In use', '使用中') }}</button>
+    <button type="button" class="st-chip" data-filter="in_stock">{{ L('Trong kho', 'In stock', '在庫') }}</button>
+    <button type="button" class="st-chip" data-filter="resigned">{{ L('Đã nghỉ', 'Resigned', '退職') }}</button>
+    <div class="dropdown">
+      <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" data-bs-auto-close="outside">
+        {{ L('Cột', 'Columns', '列') }}
+      </button>
+      <div id="stColumnMenu" class="dropdown-menu st-col-menu"></div>
+    </div>
+    <button type="button" id="stExport" class="btn btn-outline-secondary btn-sm">
+      <i class="fa-solid fa-file-excel me-1"></i>{{ L('Xuất Excel', 'Export to Excel', 'Excel出力') }}
+    </button>
+    <span id="stCount" class="st-count"></span>
+  </div>
+  <div id="soTongGrid"></div>
+</div>
+
+<aside id="stPanel" class="st-panel" aria-label="{{ L('Chi tiết dòng', 'Row details', '行の詳細') }}">
+  <div class="d-flex justify-content-between align-items-start gap-2">
+    <h4 id="stPanelTitle"></h4>
+    <button type="button" id="stPanelClose" class="btn-close" aria-label="{{ L('Đóng', 'Close', '閉じる') }}"></button>
+  </div>
+  <div id="stPanelInfo" class="st-panel-info mt-2"></div>
+  <div id="stPanelActions" class="d-flex flex-wrap gap-2 mt-3"></div>
+  <div id="stPanelSoftwareBox" class="d-none">
+    <h5>{{ L('Phần mềm trên máy', 'Software on this PC', 'インストール済みソフト') }}</h5>
+    <div id="stPanelSoftware"></div>
+    <button type="button" id="stSoftwareSave" class="btn btn-primary btn-sm mt-2">{{ L('Lưu phần mềm', 'Save software', 'ソフトを保存') }}</button>
+  </div>
+  <div id="stPanelHistoryBox" class="d-none">
+    <h5>{{ L('Lịch sử bàn giao', 'Hand-over history', '貸出履歴') }}</h5>
+    <div id="stPanelHistory"></div>
+  </div>
+</aside>
+<div id="stToast" class="st-toast" role="alert"></div>
+
+{% if can_loan(request) %}
+{% include 'sqladmin/asset_actions_modal.html' %}
+{% endif %}
+
+<script src="/static/vendor/tabulator/tabulator.min.js"></script>
+<script>
+(function () {
+  const PERMS = {{ perms | tojson }};
+  const CAN_LOAN = {{ can_loan(request) | tojson }};
+  const DEPARTMENTS = {{ departments | tojson }};
+  const SOFTWARE = {{ software_tags | tojson }};
+  const TEXT = {
+    saveError: {{ L('Không lưu được.', 'Could not save.', '保存できませんでした。') | trim | tojson }},
+    assign: {{ L('Bàn giao', 'Assign', '貸出') | trim | tojson }},
+    returnAsset: {{ L('Thu hồi', 'Return', '返却') | trim | tojson }},
+    vault: {{ L('Mở kho mật khẩu', 'Open password vault', 'パスワード保管庫を開く') | trim | tojson }},
+    noHistory: {{ L('Chưa có lượt bàn giao nào.', 'No hand-overs yet.', '貸出履歴はありません。') | trim | tojson }},
+    historyError: {{ L('Không tải được lịch sử.', 'Could not load history.', '履歴を読み込めませんでした。') | trim | tojson }},
+    current: {{ L('đang giữ', 'current', '使用中') | trim | tojson }},
+    noSoftware: {{ L('Chưa có phần mềm nào trong danh mục.', 'No software in the catalogue yet.', 'ソフトウェアが登録されていません。') | trim | tojson }},
+    rows: {{ L('dòng', 'rows', '行') | trim | tojson }},
+    loadError: {{ L('Không tải được dữ liệu. Hãy tải lại trang.', 'Could not load data. Please reload the page.', 'データを読み込めませんでした。ページを再読み込みしてください。') | trim | tojson }},
+    empty: {{ L('Không có dòng nào khớp.', 'No matching rows.', '該当する行がありません。') | trim | tojson }},
+    assetStatus: {
+      IN_STOCK: {{ L('Trong kho', 'In stock', '在庫') | trim | tojson }},
+      IN_USE: {{ L('Đang sử dụng', 'In use', '使用中') | trim | tojson }},
+      REPAIR: {{ L('Đang sửa chữa', 'Repair', '修理中') | trim | tojson }},
+      DISPOSED: {{ L('Đã thanh lý', 'Disposed', '廃棄済み') | trim | tojson }},
+      LOST: {{ L('Mất', 'Lost', '紛失') | trim | tojson }}
+    },
+    personStatus: {
+      ACTIVE: {{ L('Đang làm việc', 'Active', '在職') | trim | tojson }},
+      SCHEDULED: {{ L('Sắp vào làm', 'Scheduled', '入社予定') | trim | tojson }},
+      RESIGNED: {{ L('Đã nghỉ việc', 'Resigned', '退職') | trim | tojson }}
+    }
+  };
+
+  function statusLabel(map) {
+    return function (cell) {
+      const value = cell.getValue();
+      const div = document.createElement('div');
+      div.textContent = value ? (map[value] || value) : '';
+      return div.innerHTML;
+    };
+  }
+
+  // Ô bắt đầu bằng = + - @ sẽ bị Excel chạy như công thức khi mở file xuất ra.
+  function csvSafe(value) {
+    if (value === null || value === undefined) return '';
+    const text = String(value);
+    return /^[=+\-@\t\r]/.test(text) ? "'" + text : text;
+  }
+  function labelFor(map) {
+    return function (value) { return value ? (map[value] || value) : ''; };
+  }
+
+  const text = { headerFilter: 'input', accessorDownload: csvSafe };
+  // Ô sửa được phụ thuộc vào dòng: dòng chưa có máy thì không sửa serial, máy chưa có người
+  // thì không sửa email. Máy chủ vẫn kiểm tra lại, đây chỉ để không mở ô sửa vô nghĩa.
+  function canEdit(cell) {
+    const field = cell.getField();
+    const row = cell.getRow().getData();
+    if (field === 'serial' || field === 'asset_code') return PERMS.assets && !!row.asset_id;
+    if (field === 'note') return row.asset_id ? PERMS.assets : PERMS.persons;
+    return PERMS.persons && !!row.person_id;
+  }
+  const editable = { editor: 'input', editable: canEdit };
+
+  const columns = [
+    { title: '', field: 'open_panel', frozen: true, width: 36, hozAlign: 'center', headerSort: false, download: false, clipboard: false, resizable: false,
+      cssClass: 'st-open', formatter: function () { return '<i class="fa-solid fa-circle-info"></i>'; },
+      cellClick: function (event, cell) { openPanel(cell.getRow().getData().id); } },
+    { title: {{ L('Tên máy', 'PC name', 'PC名') | trim | tojson }}, field: 'pc_name', frozen: true, width: 130, ...text },
+    { title: {{ L('Người giữ', 'Holder', '使用者') | trim | tojson }}, field: 'holder', frozen: true, width: 210, ...text },
+    { title: {{ L('Mã GA', 'GA code', 'GAコード') | trim | tojson }}, field: 'asset_code', width: 120, ...text, ...editable },
+    { title: {{ L('Số serial', 'Serial', 'シリアル') | trim | tojson }}, field: 'serial', width: 130, ...text, ...editable },
+    { title: {{ L('Trạng thái máy', 'Asset status', '機器状態') | trim | tojson }}, field: 'asset_status', width: 140, headerFilter: 'list',
+      headerFilterParams: { values: Object.assign({ '': '' }, TEXT.assetStatus), clearable: true },
+      formatter: statusLabel(TEXT.assetStatus), accessorDownload: labelFor(TEXT.assetStatus) },
+    { title: {{ L('Mã nhân viên', 'Staff code', '社員番号') | trim | tojson }}, field: 'staff_code', width: 125, ...text },
+    { title: 'userId', field: 'user_id', width: 100, ...text, ...editable },
+    { title: 'Email', field: 'email', width: 250, ...text, ...editable },
+    { title: {{ L('Phòng ban', 'Department', '部署') | trim | tojson }}, field: 'department', width: 160, ...text, editor: 'list', editable: canEdit,
+      editorParams: { values: [''].concat(DEPARTMENTS), autocomplete: true, listOnEmpty: true } },
+    { title: {{ L('Tình trạng NV', 'Staff status', '社員状態') | trim | tojson }}, field: 'person_status', width: 140, headerFilter: 'list',
+      headerFilterParams: { values: Object.assign({ '': '' }, TEXT.personStatus), clearable: true },
+      formatter: statusLabel(TEXT.personStatus), accessorDownload: labelFor(TEXT.personStatus) },
+    { title: {{ L('Phần mềm', 'Software', 'ソフトウェア') | trim | tojson }}, field: 'software', width: 200, ...text },
+    { title: {{ L('Mật khẩu', 'Password', 'パスワード') | trim | tojson }}, field: 'secret_set', width: 100, headerSort: false, download: false, clipboard: false,
+      visible: PERMS.secrets, formatter: function (cell) { return cell.getValue() ? '••••••' : ''; } },
+    { title: {{ L('Ngày bàn giao', 'Hand-over date', '貸出日') | trim | tojson }}, field: 'borrowed_at', width: 125, ...text },
+    { title: {{ L('Ghi chú', 'Note', '備考') | trim | tojson }}, field: 'note', width: 420, ...text, ...editable }
+  ];
+
+  let quickFilter = 'all';
+  let searchTerm = '';
+
+  function matchesQuick(row) {
+    if (quickFilter === 'in_use') return row.asset_status === 'IN_USE';
+    if (quickFilter === 'in_stock') return row.asset_status === 'IN_STOCK';
+    if (quickFilter === 'resigned') return row.person_status === 'RESIGNED';
+    return true;
+  }
+  function matchesSearch(row) {
+    if (!searchTerm) return true;
+    return columns.some(function (c) {
+      const value = row[c.field];
+      return value && String(value).toLowerCase().includes(searchTerm);
+    });
+  }
+  function rowFilter(row) { return matchesQuick(row) && matchesSearch(row); }
+
+  const table = new Tabulator('#soTongGrid', {
+    ajaxURL: '/admin/api/so-tong',
+    ajaxConfig: { credentials: 'same-origin' },
+    layout: 'fitData',
+    height: 'calc(100vh - 170px)',
+    index: 'id',
+    columns: columns,
+    placeholder: TEXT.empty,
+    // Nhớ độ rộng, thứ tự, cột ẩn hiện và sắp xếp theo từng trình duyệt.
+    persistence: { sort: true, columns: ['width', 'visible'] },
+    persistenceID: 'so-tong-v2',
+    editTriggerEvent: 'dblclick',
+    movableColumns: true,
+    // Chọn vùng ô rồi Ctrl+C dán sang Excel như một bảng.
+    selectableRange: true,
+    selectableRangeColumns: false,
+    selectableRangeRows: false,
+    clipboard: true,
+    clipboardCopyRowRange: 'range',
+    clipboardCopyConfig: { columnHeaders: false, rowHeaders: false, columnGroups: false },
+    rowFormatter: function (row) {
+      const kind = row.getData().row_kind;
+      row.getElement().classList.toggle('st-resigned', kind === 'resigned');
+      row.getElement().classList.toggle('st-mes', kind === 'mes');
+    }
+  });
+
+  function updateCount() {
+    document.getElementById('stCount').textContent = table.getDataCount('active') + ' / ' + table.getDataCount() + ' ' + TEXT.rows;
+  }
+  function applyFilters() { table.setFilter(rowFilter); }
+
+  table.on('dataLoaded', function () { setTimeout(updateCount, 0); });
+  table.on('dataFiltered', function () { setTimeout(updateCount, 0); });
+  table.on('dataLoadError', function () { document.getElementById('stCount').textContent = TEXT.loadError; });
+  table.on('tableBuilt', function () {
+    applyFilters();
+    const menu = document.getElementById('stColumnMenu');
+    table.getColumns().forEach(function (column) {
+      if (!column.getDefinition().title) return;
+      const label = document.createElement('label');
+      const box = document.createElement('input');
+      box.type = 'checkbox';
+      box.checked = column.isVisible();
+      box.addEventListener('change', function () { box.checked ? column.show() : column.hide(); });
+      label.appendChild(box);
+      label.appendChild(document.createTextNode(column.getDefinition().title));
+      menu.appendChild(label);
+    });
+  });
+
+  function toast(message) {
+    const box = document.getElementById('stToast');
+    box.textContent = message;
+    box.style.display = 'block';
+    clearTimeout(toast.timer);
+    toast.timer = setTimeout(function () { box.style.display = 'none'; }, 5000);
+  }
+
+  async function send(url, method, payload) {
+    const response = await fetch(url, {
+      method: method,
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const result = await response.json().catch(function () { return {}; });
+    if (!response.ok) throw new Error(typeof result.detail === 'string' ? result.detail : TEXT.saveError);
+    return result;
+  }
+
+  table.on('cellEdited', async function (cell) {
+    const row = cell.getRow().getData();
+    try {
+      const result = await send('/admin/api/so-tong/cell', 'PATCH', { id: row.id, field: cell.getField(), value: cell.getValue() });
+      await table.updateData(result.rows);
+    } catch (error) {
+      cell.restoreOldValue();
+      toast(error.message);
+    }
+  });
+
+  let panelRowId = null;
+
+  function infoLine(parent, label, value) {
+    if (!value) return;
+    const line = document.createElement('div');
+    const name = document.createElement('span');
+    const content = document.createElement('span');
+    name.textContent = label;
+    content.textContent = value;
+    line.appendChild(name);
+    line.appendChild(content);
+    parent.appendChild(line);
+  }
+
+  function actionButton(parent, label, css, onClick) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'btn btn-sm ' + css;
+    button.textContent = label;
+    button.addEventListener('click', onClick);
+    parent.appendChild(button);
+  }
+
+  async function loadHistory(assetId) {
+    const box = document.getElementById('stPanelHistory');
+    box.textContent = '';
+    try {
+      const response = await fetch('/admin/assets/' + assetId + '/history', { credentials: 'same-origin' });
+      if (!response.ok) throw new Error();
+      const items = await response.json();
+      if (panelRowId !== 'asset-' + assetId) return;
+      if (!items.length) { box.textContent = TEXT.noHistory; return; }
+      items.forEach(function (item) {
+        const line = document.createElement('div');
+        line.className = 'st-history-item';
+        line.textContent = item.person_name + ' (' + item.staff_code + ')';
+        const when = document.createElement('small');
+        when.textContent = item.borrowed_at + ' → ' + (item.returned_at || TEXT.current);
+        line.appendChild(when);
+        box.appendChild(line);
+      });
+    } catch (error) {
+      box.textContent = TEXT.historyError;
+    }
+  }
+
+  function openPanel(rowId) {
+    const row = table.getRow(rowId).getData();
+    panelRowId = rowId;
+    document.getElementById('stPanelTitle').textContent = row.pc_name || row.holder || '';
+    const info = document.getElementById('stPanelInfo');
+    info.textContent = '';
+    columns.forEach(function (column) {
+      if (['open_panel', 'pc_name', 'secret_set', 'software'].includes(column.field)) return;
+      const value = row[column.field];
+      const map = column.field === 'asset_status' ? TEXT.assetStatus : (column.field === 'person_status' ? TEXT.personStatus : null);
+      infoLine(info, column.title, map ? map[value] : value);
+    });
+
+    const actions = document.getElementById('stPanelActions');
+    actions.textContent = '';
+    const code = row.pc_name || row.serial || '';
+    if (CAN_LOAN && row.asset_status === 'IN_STOCK') {
+      actionButton(actions, TEXT.assign, 'btn-primary', function () { openAssignModal(row.asset_id, code, ''); });
+    }
+    if (CAN_LOAN && row.asset_status === 'IN_USE') {
+      actionButton(actions, TEXT.returnAsset, 'btn-warning', function () { openReturnModal(row.asset_id, code, row.holder || ''); });
+    }
+    if (PERMS.secrets && row.person_id) {
+      actionButton(actions, TEXT.vault, 'btn-outline-success', function () { window.location.href = '/admin/person-secret/list'; });
+    }
+
+    const softwareBox = document.getElementById('stPanelSoftwareBox');
+    const softwareList = document.getElementById('stPanelSoftware');
+    softwareList.textContent = '';
+    softwareBox.classList.toggle('d-none', !row.asset_id);
+    document.getElementById('stSoftwareSave').classList.toggle('d-none', !PERMS.assets || !SOFTWARE.length);
+    if (!SOFTWARE.length) softwareList.textContent = TEXT.noSoftware;
+    SOFTWARE.forEach(function (item) {
+      const label = document.createElement('label');
+      label.className = 'd-flex align-items-center gap-2';
+      const box = document.createElement('input');
+      box.type = 'checkbox';
+      box.value = item.code;
+      box.checked = row.software_codes.includes(item.code);
+      box.disabled = !PERMS.assets;
+      label.appendChild(box);
+      label.appendChild(document.createTextNode(item.name));
+      softwareList.appendChild(label);
+    });
+
+    document.getElementById('stPanelHistoryBox').classList.toggle('d-none', !row.asset_id);
+    if (row.asset_id) loadHistory(row.asset_id);
+    document.getElementById('stPanel').classList.add('open');
+  }
+
+  document.getElementById('stPanelClose').addEventListener('click', function () {
+    document.getElementById('stPanel').classList.remove('open');
+    panelRowId = null;
+  });
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape') document.getElementById('stPanel').classList.remove('open');
+  });
+  document.getElementById('stSoftwareSave').addEventListener('click', async function () {
+    const row = table.getRow(panelRowId).getData();
+    const codes = Array.from(document.querySelectorAll('#stPanelSoftware input:checked')).map(function (box) { return box.value; });
+    try {
+      const result = await send('/admin/api/so-tong/software', 'PUT', { asset_id: row.asset_id, codes: codes });
+      await table.updateData(result.rows);
+      openPanel(row.id);
+    } catch (error) {
+      toast(error.message);
+    }
+  });
+
+  document.getElementById('stSearch').addEventListener('input', function (event) {
+    searchTerm = event.target.value.trim().toLowerCase();
+    applyFilters();
+  });
+  document.querySelectorAll('.st-chip').forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      document.querySelectorAll('.st-chip').forEach(function (c) { c.classList.remove('active'); });
+      chip.classList.add('active');
+      quickFilter = chip.dataset.filter;
+      applyFilters();
+    });
+  });
+  document.getElementById('stExport').addEventListener('click', function () {
+    table.download('csv', 'so-tong.csv', { bom: true }, 'active');
+  });
+})();
+</script>
+{% endblock %}

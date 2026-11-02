@@ -13,18 +13,11 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from starlette.exceptions import HTTPException
 
 from app.admin import (
-    AccessCardAdmin,
     AssetAdmin,
     AssignmentAdmin,
     AuditLogAdmin,
-    CardLoanAdmin,
-    ContractAdmin,
-    ContractLineAdmin,
-    LicenseAdmin,
-    LicenseAssignmentAdmin,
     RoleAdmin,
     UserAdmin,
     humanize_error_str,
@@ -36,35 +29,28 @@ from app.db import get_db
 from app.enums import (
     AssetStatus,
     AuditAction,
-    CardStatus,
     DEFAULT_ROLE_PERMISSIONS,
     DeliveryStatus,
     Module,
     PermissionAction,
     PersonStatus,
-    PhoneDeviceType,
     RoleCode,
 )
 from app.main import app
 from app.models import (
-    AccessCard,
     Asset,
     Assignment,
     AuditLog,
-    CardLoan,
     Contract,
     ContractLine,
     License,
     LicenseAssignment,
     Person,
-    Phone,
     Role,
     RolePermission,
     User,
 )
 from app.services.assignment_service import assign_asset, return_asset
-from app.services.card_service import loan_card, return_card
-from app.services.license_service import assign_license, revoke_license
 
 TODAY = dt.date.today()
 PAST = TODAY - dt.timedelta(days=30)
@@ -202,18 +188,8 @@ def test_assign_accepts_vietnam_today_when_server_clock_is_utc(db, seed, monkeyp
 # ---------------------------------------------------------------------------
 
 
-def test_admin_role_matrix_reset_does_not_crash(db, seed):
-    from app.core.permissions import reset_role_permissions_matrix
-
-    res = reset_role_permissions_matrix(db, seed["role"].id, user_id=seed["user"].id)
-    assert res["success"] is True
 
 
-def test_matrix_ui_lists_every_module():
-    """Module không hiện trên ma trận sẽ bị xoá quyền âm thầm mỗi lần bấm Lưu."""
-    from app.core.permissions import MODULE_METADATA
-
-    assert {m["code"] for m in MODULE_METADATA} == {m.value for m in Module}
 
 
 # ---------------------------------------------------------------------------
@@ -307,49 +283,12 @@ def _contract_with_line(db, qty=1, code="HD-W4"):
     return contract, line
 
 
-def test_asset_form_cannot_receive_more_than_ordered(db, seed):
-    _, line = _contract_with_line(db, qty=1)
-    db.add(Asset(asset_code="W4-A1", category_id=seed["cat"].id, contract_line_id=line.id))
-    db.flush()
-    data = {"asset_code": "W4-A2", "status": "IN_STOCK", "contract_line": str(line.id)}
-    with pytest.raises(ValueError):
-        _run(AssetAdmin().on_model_change(data, Asset(), True, _req(db)))
 
 
-def test_asset_form_syncs_contract_delivery_status(db, seed):
-    contract, line = _contract_with_line(db, qty=1, code="HD-W4-SYNC")
-    view = AssetAdmin()
-    req = _req(db, user_id=seed["user"].id)
-    data = {"asset_code": "W4-S1", "status": "IN_STOCK", "contract_line": str(line.id)}
-    new_asset = Asset()
-    _run(view.on_model_change(data, new_asset, True, req))
-    new_asset.asset_code = "W4-S1"
-    new_asset.category_id = seed["cat"].id
-    new_asset.contract_line_id = line.id
-    db.add(new_asset)
-    db.flush()
-    _run(view.after_model_change(data, new_asset, True, req))
-    assert contract.delivery_status == DeliveryStatus.DELIVERED
 
 
-def test_contract_line_qty_cannot_drop_below_received(db, seed):
-    _, line = _contract_with_line(db, qty=2, code="HD-W4-QTY")
-    db.add_all([
-        Asset(asset_code="W4-Q1", category_id=seed["cat"].id, contract_line_id=line.id),
-        Asset(asset_code="W4-Q2", category_id=seed["cat"].id, contract_line_id=line.id),
-    ])
-    db.flush()
-    with pytest.raises(ValueError):
-        _run(ContractLineAdmin().on_model_change({"qty_ordered": 1}, line, False, _req(db)))
 
 
-def test_contract_with_live_lines_cannot_be_deleted(db, seed):
-    contract, _ = _contract_with_line(db, qty=1, code="HD-W4-DEL")
-    req = DummyRequest(session={"user_id": seed["user"].id}, db=db, query_params={"delete_reason": "x"})
-    with pytest.raises(HTTPException) as exc:
-        _run(ContractAdmin().delete_model(req, contract.id))
-    assert exc.value.status_code == 400
-    assert contract.is_deleted is False
 
 
 # ---------------------------------------------------------------------------
@@ -395,25 +334,8 @@ def test_person_search_is_not_capped_at_20_for_the_assign_dropdown(admin_client,
 # ---------------------------------------------------------------------------
 
 
-def test_license_with_open_assignments_cannot_be_deleted(db, seed):
-    lic = seed["license"]
-    db.add(LicenseAssignment(license_id=lic.id, person_id=seed["person"].id, assigned_at=PAST))
-    db.flush()
-    req = DummyRequest(session={"user_id": seed["user"].id}, db=db, query_params={"delete_reason": "x"})
-    with pytest.raises(HTTPException) as exc:
-        _run(LicenseAdmin().delete_model(req, lic.id))
-    assert exc.value.status_code == 400
-    assert lic.is_deleted is False
 
 
-def test_asset_holding_a_license_seat_cannot_be_deleted(db, seed):
-    db.add(LicenseAssignment(license_id=seed["license"].id, asset_id=seed["asset"].id, assigned_at=PAST))
-    db.flush()
-    req = DummyRequest(session={"user_id": seed["user"].id}, db=db, query_params={"delete_reason": "x"})
-    with pytest.raises(HTTPException) as exc:
-        _run(AssetAdmin().delete_model(req, seed["asset"].id))
-    assert exc.value.status_code == 400
-    assert seed["asset"].is_deleted is False
 
 
 def _full_license(db, seed):
@@ -429,59 +351,16 @@ def _full_license(db, seed):
     return lic, closed, active
 
 
-def test_license_form_reopening_a_revoked_row_respects_seats(db, seed):
-    lic, closed, _ = _full_license(db, seed)
-    data = {"license": str(lic.id), "person": str(seed["person"].id), "assigned_at": PAST, "removed_at": None}
-    with pytest.raises(ValueError):
-        _run(LicenseAssignmentAdmin().on_model_change(data, closed, False, _req(db)))
 
 
-def test_license_form_editing_an_open_row_does_not_count_itself(db, seed):
-    lic, _, active = _full_license(db, seed)
-    data = {"license": str(lic.id), "person": str(seed["person_b"].id), "assigned_at": PAST, "removed_at": None, "note": "x"}
-    _run(LicenseAssignmentAdmin().on_model_change(data, active, False, _req(db)))
 
 
-def test_license_form_rejects_soft_deleted_license(db, seed):
-    lic = License(product_id=seed["product"].id, seats=5)
-    db.add(lic)
-    db.flush()
-    _soft_delete(lic)
-    db.flush()
-    data = {"license": str(lic.id), "person": str(seed["person"].id), "assigned_at": PAST, "removed_at": None}
-    with pytest.raises(ValueError):
-        _run(LicenseAssignmentAdmin().on_model_change(data, LicenseAssignment(), True, _req(db)))
 
 
-def test_license_form_rejects_resigned_person(db, seed):
-    seed["person"].status = PersonStatus.RESIGNED
-    db.flush()
-    data = {"license": str(seed["license"].id), "person": str(seed["person"].id), "assigned_at": PAST, "removed_at": None}
-    with pytest.raises(ValueError):
-        _run(LicenseAssignmentAdmin().on_model_change(data, LicenseAssignment(), True, _req(db)))
 
 
-def test_license_seats_cannot_be_reduced_below_used(db, seed):
-    lic = seed["license"]
-    db.add_all([
-        LicenseAssignment(license_id=lic.id, person_id=seed["person"].id, assigned_at=PAST),
-        LicenseAssignment(license_id=lic.id, person_id=seed["person_b"].id, assigned_at=PAST),
-    ])
-    db.flush()
-    with pytest.raises(ValueError):
-        _run(LicenseAdmin().on_model_change({"seats": 1}, lic, False, _req(db)))
-    _run(LicenseAdmin().on_model_change({"seats": 2}, lic, False, _req(db)))
 
 
-def test_license_dates_cannot_be_in_the_future(db, seed):
-    with pytest.raises(ValueError):
-        assign_license(db, seed["license"].id, person_id=seed["person"].id, assigned_at=FUTURE)
-    asgn = assign_license(db, seed["license"].id, person_id=seed["person"].id, assigned_at=PAST)
-    with pytest.raises(ValueError):
-        revoke_license(db, asgn.id, removed_at=FUTURE)
-    data = {"license": str(seed["license"].id), "person": str(seed["person_b"].id), "assigned_at": PAST, "removed_at": FUTURE}
-    with pytest.raises(ValueError):
-        _run(LicenseAssignmentAdmin().on_model_change(data, LicenseAssignment(), True, _req(db)))
 
 
 # ---------------------------------------------------------------------------
@@ -489,91 +368,22 @@ def test_license_dates_cannot_be_in_the_future(db, seed):
 # ---------------------------------------------------------------------------
 
 
-def test_returning_a_lost_card_keeps_it_lost(db, seed):
-    card = seed["card"]
-    loan_card(db, card.id, person_id=seed["person"].id, borrowed_at=PAST)
-    card.status = CardStatus.LOST
-    db.flush()
-    return_card(db, card.id, returned_at=TODAY)
-    assert card.status == CardStatus.LOST
 
 
-def test_card_dates_cannot_be_in_the_future(db, seed):
-    with pytest.raises(ValueError):
-        loan_card(db, seed["card"].id, person_id=seed["person"].id, borrowed_at=FUTURE)
-    loan_card(db, seed["card"].id, person_id=seed["person"].id, borrowed_at=PAST)
-    with pytest.raises(ValueError):
-        return_card(db, seed["card"].id, returned_at=FUTURE)
 
 
-def test_card_loan_form_rejects_future_return_date(db, seed):
-    data = {"card": str(seed["card"].id), "person": str(seed["person"].id), "borrowed_at": PAST, "returned_at": FUTURE}
-    with pytest.raises(ValueError):
-        _run(CardLoanAdmin().on_model_change(data, CardLoan(), True, _req(db)))
 
 
-def test_card_loan_form_rejects_resigned_person(db, seed):
-    seed["person"].status = PersonStatus.RESIGNED
-    db.flush()
-    data = {"card": str(seed["card"].id), "person": str(seed["person"].id), "borrowed_at": PAST, "returned_at": None}
-    with pytest.raises(ValueError):
-        _run(CardLoanAdmin().on_model_change(data, CardLoan(), True, _req(db)))
 
 
-def test_card_loan_form_rejects_soft_deleted_card(db, seed):
-    _soft_delete(seed["card"])
-    db.flush()
-    data = {"card": str(seed["card"].id), "person": str(seed["person"].id), "borrowed_at": PAST, "returned_at": None}
-    with pytest.raises(ValueError):
-        _run(CardLoanAdmin().on_model_change(data, CardLoan(), True, _req(db)))
 
 
-def test_card_loan_form_reopening_a_loan_on_a_lost_card_is_rejected(db, seed):
-    card = seed["card"]
-    loan = CardLoan(card_id=card.id, person_id=seed["person"].id, borrowed_at=PAST, returned_at=PAST)
-    db.add(loan)
-    card.status = CardStatus.LOST
-    db.flush()
-    data = {"card": str(card.id), "person": str(seed["person"].id), "borrowed_at": PAST, "returned_at": None}
-    with pytest.raises(ValueError):
-        _run(CardLoanAdmin().on_model_change(data, loan, False, _req(db)))
 
 
-def test_editing_an_open_loan_does_not_overwrite_lost_status(db, seed):
-    card = seed["card"]
-    loan = loan_card(db, card.id, person_id=seed["person"].id, borrowed_at=PAST)
-    card.status = CardStatus.LOST
-    db.flush()
-    _run(CardLoanAdmin().after_model_change({"purpose": "x"}, loan, False, _req(db, user_id=seed["user"].id)))
-    assert card.status == CardStatus.LOST
 
 
-def test_card_loan_form_changing_card_releases_the_old_card(db, seed):
-    card_a = seed["card"]
-    card_b = AccessCard(card_no="CARD-002")
-    db.add(card_b)
-    db.flush()
-    loan = loan_card(db, card_a.id, person_id=seed["person"].id, borrowed_at=PAST)
-    db.flush()
-
-    view = CardLoanAdmin()
-    req = _req(db, user_id=seed["user"].id)
-    data = {"card": str(card_b.id), "person": str(seed["person"].id), "borrowed_at": PAST, "returned_at": None}
-    _run(view.on_model_change(data, loan, False, req))
-    loan.card_id = card_b.id
-    db.flush()
-    _run(view.after_model_change(data, loan, False, req))
-
-    assert card_b.status == CardStatus.BORROWED
-    assert card_a.status == CardStatus.IN_STOCK
 
 
-def test_access_card_details_loads_current_borrower(db, seed):
-    """Trang chi tiết thẻ phải nạp sẵn lượt mượn, nếu không luôn hiện 'Trong kho'."""
-    import inspect
-
-    assert "get_object_for_details" in AccessCardAdmin.__dict__
-    assert "loans" in inspect.getsource(AccessCardAdmin.get_object_for_details)
 
 
 # ---------------------------------------------------------------------------
@@ -581,23 +391,8 @@ def test_access_card_details_loads_current_borrower(db, seed):
 # ---------------------------------------------------------------------------
 
 
-def test_trash_page_lists_a_deleted_license(admin_client, db, seed):
-    _soft_delete(seed["license"])
-    db.flush()
-    res = admin_client.get("/admin/trash?entity=license")
-    assert res.status_code == 200
-    assert seed["product"].name in res.text
 
 
-def test_restore_phone_without_extension_is_not_a_false_conflict(admin_client, db, seed):
-    db.add(Phone(device_name="PBX-LIVE", device_type=PhoneDeviceType.PBX))
-    dead = Phone(device_name="PBX-OLD", device_type=PhoneDeviceType.PBX)
-    _soft_delete(dead)
-    db.add(dead)
-    db.flush()
-    res = admin_client.post("/admin/trash/restore", data={"entity_type": "phone", "item_id": dead.id})
-    assert res.status_code == 200, res.text
-    assert dead.is_deleted is False
 
 
 def test_restore_asset_with_reused_vendor_code_is_a_clean_400(admin_client, db, seed):
@@ -719,11 +514,6 @@ def test_system_role_code_cannot_be_renamed(db, seed):
         _run(RoleAdmin().on_model_change({"code": "IT_ADMIN", "name_en": "x"}, seed["role"], False, _req(db)))
 
 
-def test_whitespace_delete_reason_does_not_crash(db, seed):
-    req = DummyRequest(session={"user_id": seed["user"].id}, db=db, query_params={"delete_reason": "   "})
-    _run(AccessCardAdmin().delete_model(req, seed["card"].id))
-    assert seed["card"].is_deleted is True
-    assert seed["card"].delete_reason.strip()
 
 
 def test_login_page_does_not_redirect_loop_for_deactivated_user(client, db, seed):
@@ -784,21 +574,6 @@ def test_idle_session_still_expires_after_30_minutes(client, db, seed, monkeypat
 # ---------------------------------------------------------------------------
 
 
-def test_dashboard_shows_upcoming_expiry_even_with_many_old_expired_licenses(admin_client, db, seed):
-    from app.models import LicenseProduct
-
-    for i in range(8):
-        p = LicenseProduct(name=f"OLD-PRODUCT-{i}")
-        db.add(p)
-        db.flush()
-        db.add(License(product_id=p.id, seats=1, expiry_date=TODAY - dt.timedelta(days=700 + i)))
-    soon = LicenseProduct(name="SOON-PRODUCT")
-    db.add(soon)
-    db.flush()
-    db.add(License(product_id=soon.id, seats=1, expiry_date=TODAY + dt.timedelta(days=5)))
-    db.flush()
-    html = admin_client.get("/admin/", follow_redirects=True).text
-    assert "SOON-PRODUCT" in html
 
 
 def test_dashboard_hides_license_panel_when_permission_is_revoked(client, db, seed):
@@ -870,20 +645,6 @@ def test_http_asset_form_cannot_mark_a_loaned_asset_in_stock(admin_client, db, s
     assert asset.status == AssetStatus.IN_USE
 
 
-def test_http_license_form_cannot_reduce_seats_below_used(admin_client, db, seed):
-    lic = seed["license"]
-    db.add_all([
-        LicenseAssignment(license_id=lic.id, person_id=seed["person"].id, assigned_at=PAST),
-        LicenseAssignment(license_id=lic.id, person_id=seed["person_b"].id, assigned_at=PAST),
-    ])
-    db.flush()
-    res = admin_client.post(f"/admin/license/edit/{lic.id}", data={
-        "product": str(seed["product"].id),
-        "seats": "1",
-    })
-    assert res.status_code == 400
-    db.refresh(lic)
-    assert lic.seats == 13
 
 
 # ---------------------------------------------------------------------------
@@ -891,21 +652,6 @@ def test_http_license_form_cannot_reduce_seats_below_used(admin_client, db, seed
 # ---------------------------------------------------------------------------
 
 
-def test_form_dropdowns_hide_soft_deleted_rows(admin_client, db, seed):
-    dead_asset = Asset(serial="DEAD-ASSET-SN", category_id=seed["cat"].id)
-    live_asset = Asset(serial="LIVE-ASSET-SN", category_id=seed["cat"].id)
-    dead_person = Person(staff_code="TVC08888", full_name="Nguoi Da Xoa", status=PersonStatus.ACTIVE)
-    _soft_delete(dead_asset)
-    _soft_delete(dead_person)
-    db.add_all([dead_asset, live_asset, dead_person])
-    db.flush()
-
-    for path in ("/admin/license-assignment/create", "/admin/assignment/create"):
-        res = admin_client.get(path)
-        assert res.status_code == 200
-        assert "LIVE-ASSET-SN" in res.text
-        assert "DEAD-ASSET-SN" not in res.text
-        assert "Nguoi Da Xoa" not in res.text
 
 
 def test_asset_form_does_not_offer_deleted_category(admin_client, db, seed):
@@ -987,3 +733,26 @@ def test_create_form_still_hides_deleted_rows_referenced_by_other_records(admin_
     _soft_delete(leaver)
     db.flush()
     assert "Khong Duoc Hien" not in admin_client.get("/admin/assignment/create").text
+
+
+def test_whitespace_delete_reason_does_not_crash(db, seed):
+    req = DummyRequest(session={"user_id": seed["user"].id}, db=db, query_params={"delete_reason": "   "})
+    _run(AssetAdmin().delete_model(req, seed["asset"].id))
+    assert seed["asset"].is_deleted is True
+    assert seed["asset"].delete_reason.strip()
+
+
+def test_form_dropdowns_hide_soft_deleted_rows(admin_client, db, seed):
+    dead_asset = Asset(serial="DEAD-ASSET-SN", category_id=seed["cat"].id)
+    live_asset = Asset(serial="LIVE-ASSET-SN", category_id=seed["cat"].id)
+    dead_person = Person(staff_code="TVC08888", full_name="Nguoi Da Xoa", status=PersonStatus.ACTIVE)
+    _soft_delete(dead_asset)
+    _soft_delete(dead_person)
+    db.add_all([dead_asset, live_asset, dead_person])
+    db.flush()
+
+    res = admin_client.get("/admin/assignment/create")
+    assert res.status_code == 200
+    assert "LIVE-ASSET-SN" in res.text
+    assert "DEAD-ASSET-SN" not in res.text
+    assert "Nguoi Da Xoa" not in res.text

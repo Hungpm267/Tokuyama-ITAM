@@ -16,13 +16,9 @@ from app.core.security import SESSION_IDLE_SECONDS, SESSION_SECRET, renew_sessio
 from app.db import engine
 from app.routers.assets import router as assets_router
 from app.routers.auth import router as auth_router
-from app.routers.batch_receive import router as batch_receive_router
-from app.routers.export import router as export_router
 from app.routers.global_search import router as global_search_router
-from app.routers.portal import router as portal_router
-from app.routers.role_matrix import router as role_matrix_router
 from app.routers.secrets import router as secrets_router
-from app.routers.software_receive import router as software_receive_router
+from app.routers.so_tong import router as so_tong_router
 from app.routers.trash import router as trash_router
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -95,15 +91,16 @@ if static_dir.exists():
 
 # 3. Mount Routers
 app.include_router(auth_router)
-app.include_router(portal_router)
-app.include_router(role_matrix_router)
 app.include_router(secrets_router)
-app.include_router(batch_receive_router)
-app.include_router(software_receive_router)
+app.include_router(so_tong_router)
 app.include_router(global_search_router)
 app.include_router(trash_router)
 app.include_router(assets_router)
-app.include_router(export_router)
+
+
+@app.get("/", include_in_schema=False)
+async def home() -> RedirectResponse:
+    return RedirectResponse(url="/admin/so-tong", status_code=303)
 
 
 @app.get("/favicon.ico", include_in_schema=False)

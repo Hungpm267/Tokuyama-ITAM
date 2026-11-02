@@ -24,41 +24,24 @@ from app.core.security import verify_session_token
 from app.db import get_db
 from app.enums import AuditAction, Module, PermissionAction
 from app.models import (
-    AccessCard,
     Asset,
     AssetCategory,
     AssetTag,
-    Contract,
-    ContractLine,
     Department,
-    License,
-    LicenseProduct,
-    Location,
     Person,
-    Phone,
     Role,
     User,
 )
-from app.enums import ContractItemKind
-from app.services.contract_service import line_received_qty, sync_contract_delivery_status
 
 router = APIRouter(prefix="/admin/trash", tags=["Recycle Bin"])
 
 ENTITY_MAP: dict[str, Any] = {
     "asset": Asset,
     "person": Person,
-    "contract": Contract,
-    "card": AccessCard,
-    "phone": Phone,
-    "license": License,
     "user": User,
     "department": Department,
     "category": AssetCategory,
     "tag": AssetTag,
-    "location": Location,
-    "license_product": LicenseProduct,
-    # Hạng mục hợp đồng và vai trò xóa mềm được từ form quản trị nên cũng phải khôi phục được.
-    "contract_line": ContractLine,
     "role": Role,
 }
 
@@ -149,22 +132,6 @@ async def trash_list_view(
             elif ent_key == "person":
                 identifier = rec.staff_code
                 details = f"{rec.full_name} ({rec.email or 'No email'})"
-            elif ent_key == "contract":
-                identifier = rec.code
-                details = f"Vendor: {rec.vendor_name}"
-            elif ent_key == "card":
-                identifier = rec.card_no
-                details = f"Card #{rec.card_no}"
-            elif ent_key == "phone":
-                identifier = rec.extension_number or rec.device_name
-                details = f"Ext {rec.extension_number or '—'} ({rec.device_name})"
-            elif ent_key == "license":
-                identifier = f"Lic #{rec.id}"
-                prod_name = rec.product.name if rec.product else "N/A"
-                details = f"{prod_name} ({rec.seats} seats)"
-            elif ent_key == "contract_line":
-                identifier = f"Line #{rec.id}"
-                details = f"{rec.item_type} (x{rec.qty_ordered})"
             elif ent_key == "role":
                 identifier = rec.code
                 details = rec.name_en
@@ -290,16 +257,6 @@ async def restore_item(
             ip_address=client_ip,
         )
 
-        # Thiết bị và gói license đều được tính vào số đã nhận của hạng mục hợp đồng
-        if entity_type in ("asset", "license") and getattr(rec, "contract_line_id", None):
-            line = db.get(ContractLine, rec.contract_line_id)
-            if line:
-                db.flush()
-                sync_contract_delivery_status(db, line.contract_id)
-        elif entity_type == "contract_line":
-            db.flush()
-            sync_contract_delivery_status(db, rec.contract_id)
-
         db.commit()
     except IntegrityError:
         db.rollback()
@@ -313,31 +270,6 @@ async def restore_item(
         "success": True,
         "message": f"Khôi phục thành công bản ghi #{rec.id} ({model_cls.__name__}).",
     })
-
-
-def _check_contract_line_fit(db: Session, rec: Any, expected_kind: ContractItemKind, amount: int) -> str | None:
-    """Thiết bị / gói license được khôi phục sẽ lại được tính vào số đã nhận của hạng mục hợp đồng.
-
-    Trong lúc nó nằm trong thùng rác, hạng mục có thể đã bị xóa, đổi loại, hoặc đã
-    nhận đủ bằng hàng thay thế - khôi phục khi đó tạo ra dữ liệu sai.
-    """
-    if not getattr(rec, "contract_line_id", None):
-        return None
-    line = db.get(ContractLine, rec.contract_line_id)
-    if not line or line.is_deleted:
-        return "Không thể khôi phục: hạng mục hợp đồng của bản ghi này đã bị xóa. Hãy khôi phục hạng mục trước."
-    if line.item_kind != expected_kind:
-        return (
-            f"Không thể khôi phục: hạng mục hợp đồng '{line.item_type}' hiện là loại "
-            f"{'Phần mềm' if line.item_kind == ContractItemKind.SOFTWARE else 'Phần cứng'}, không khớp với bản ghi này."
-        )
-    received = line_received_qty(db, line, exclude_asset_id=rec.id, exclude_license_id=rec.id)
-    if received + amount > line.qty_ordered:
-        return (
-            f"Không thể khôi phục: hạng mục hợp đồng '{line.item_type}' đặt mua {line.qty_ordered}, "
-            f"đã nhận {received}. Khôi phục thêm {amount} sẽ vượt số lượng."
-        )
-    return None
 
 
 def check_restore_conflicts(db: Session, entity_type: str, rec: Any) -> str | None:
@@ -367,10 +299,6 @@ def check_restore_conflicts(db: Session, entity_type: str, rec: Any) -> str | No
             if dup_code:
                 return f"Không thể khôi phục: Mã GA '{rec.asset_code}' hiện đã được sử dụng bởi thiết bị #{dup_code.id}."
 
-        line_err = _check_contract_line_fit(db, rec, ContractItemKind.HARDWARE, 1)
-        if line_err:
-            return line_err
-
         if rec.vendor_code:
             dup_vendor = db.scalar(
                 select(Asset).where(
@@ -381,18 +309,6 @@ def check_restore_conflicts(db: Session, entity_type: str, rec: Any) -> str | No
             )
             if dup_vendor:
                 return f"Không thể khôi phục: Mã Vendor '{rec.vendor_code}' hiện đã được sử dụng bởi thiết bị #{dup_vendor.id}."
-
-    elif entity_type == "license":
-        # Khôi phục gói license làm tổng seat của hạng mục hợp đồng tăng lại:
-        # không được vượt số lượng đặt mua.
-        line_err = _check_contract_line_fit(db, rec, ContractItemKind.SOFTWARE, rec.seats)
-        if line_err:
-            return line_err
-
-    elif entity_type == "contract_line":
-        contract = db.get(Contract, rec.contract_id)
-        if not contract or contract.is_deleted:
-            return "Không thể khôi phục: hợp đồng của hạng mục này đã bị xóa. Hãy khôi phục hợp đồng trước."
 
     elif entity_type == "person":
         # Check Staff code
@@ -428,52 +344,6 @@ def check_restore_conflicts(db: Session, entity_type: str, rec: Any) -> str | No
             )
             if dup_email:
                 return f"Không thể khôi phục: Email '{rec.email}' đã thuộc về nhân sự #{dup_email.id} ({dup_email.full_name})."
-
-    elif entity_type == "card":
-        dup_card = db.scalar(
-            select(AccessCard).where(
-                AccessCard.id != rec.id,
-                func.lower(AccessCard.card_no) == rec.card_no.lower(),
-                AccessCard.is_deleted.is_(False),
-            )
-        )
-        if dup_card:
-            return f"Không thể khôi phục: Số thẻ '{rec.card_no}' hiện đã được cấp cho thẻ #{dup_card.id}."
-
-    elif entity_type == "phone":
-        # Máy không có số nhánh (PBX, DECT) thì không có gì để trùng: so sánh với
-        # None sẽ thành `IS NULL` và khớp nhầm mọi máy không số nhánh đang sống.
-        if rec.extension_number:
-            dup_ext = db.scalar(
-                select(Phone).where(
-                    Phone.id != rec.id,
-                    func.lower(Phone.extension_number) == rec.extension_number.lower(),
-                    Phone.is_deleted.is_(False),
-                )
-            )
-            if dup_ext:
-                return f"Không thể khôi phục: Số máy nhánh '{rec.extension_number}' hiện đang thuộc về thiết bị thoại #{dup_ext.id}."
-
-        dup_name = db.scalar(
-            select(Phone).where(
-                Phone.id != rec.id,
-                func.lower(Phone.device_name) == rec.device_name.lower(),
-                Phone.is_deleted.is_(False),
-            )
-        )
-        if dup_name:
-            return f"Không thể khôi phục: Tên thiết bị thoại '{rec.device_name}' hiện đang thuộc về thiết bị #{dup_name.id}."
-
-    elif entity_type == "contract":
-        dup_contract = db.scalar(
-            select(Contract).where(
-                Contract.id != rec.id,
-                func.lower(Contract.code) == rec.code.lower(),
-                Contract.is_deleted.is_(False),
-            )
-        )
-        if dup_contract:
-            return f"Không thể khôi phục: Mã hợp đồng '{rec.code}' đã tồn tại trong hệ thống."
 
     elif entity_type == "user":
         dup_user = db.scalar(

@@ -116,35 +116,16 @@ DEFAULT_ROLE_PERMISSIONS: dict[RoleCode, dict[Module, list[PermissionAction]]] =
         ]
         for m in Module
     },
+    # Giai đoạn thu hẹp: chỉ còn hai mức - Admin và chỉ xem.
     RoleCode.GA_MANAGER: {
-        Module.PERSONS: [
-            PermissionAction.VIEW,
-            PermissionAction.ADD,
-            PermissionAction.CHANGE,
-        ],
+        Module.PERSONS: [PermissionAction.VIEW],
         Module.ASSETS: [PermissionAction.VIEW],
         Module.ASSIGNMENTS: [PermissionAction.VIEW],
-        Module.CARDS: [
-            PermissionAction.VIEW,
-            PermissionAction.ADD,
-            PermissionAction.CHANGE,
-            PermissionAction.DELETE,
-        ],
-        Module.CONTRACTS: [PermissionAction.VIEW],
-        Module.PHONES: [
-            PermissionAction.VIEW,
-            PermissionAction.ADD,
-            PermissionAction.CHANGE,
-        ],
     },
     RoleCode.EXECUTIVE: {
         Module.PERSONS: [PermissionAction.VIEW],
         Module.ASSETS: [PermissionAction.VIEW],
         Module.ASSIGNMENTS: [PermissionAction.VIEW],
-        Module.LICENSES: [PermissionAction.VIEW],
-        Module.CARDS: [PermissionAction.VIEW],
-        Module.CONTRACTS: [PermissionAction.VIEW],
-        Module.PHONES: [PermissionAction.VIEW],
         Module.AUDIT: [PermissionAction.VIEW],
     },
 }

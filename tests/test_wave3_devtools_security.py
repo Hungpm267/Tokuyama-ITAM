@@ -16,27 +16,16 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.admin import (
-    AccessCardAdmin,
     AssetAdmin,
     AssetCategoryAdmin,
     AssetTagAdmin,
     AssignmentAdmin,
     AuditLogAdmin,
-    CardLoanAdmin,
-    ContractAdmin,
-    ContractLineAdmin,
     DepartmentAdmin,
-    LicenseAdmin,
-    LicenseAssignmentAdmin,
-    LicenseProductAdmin,
-    LocationAdmin,
     PersonAdmin,
     PersonSecretAdmin,
-    PhoneAdmin,
     RoleAdmin,
-    RolePermissionAdmin,
     UserAdmin,
-    UserPermissionOverrideAdmin,
 )
 from app.core.reveal import RevealGate
 from app.core.security import create_session_token, hash_password
@@ -48,24 +37,13 @@ from app.models import REDACTED_FIELDS, Role, User
 ALL_ADMIN_VIEWS = [
     UserAdmin,
     RoleAdmin,
-    RolePermissionAdmin,
-    UserPermissionOverrideAdmin,
     DepartmentAdmin,
     AssetCategoryAdmin,
     AssetTagAdmin,
-    LocationAdmin,
     PersonAdmin,
     PersonSecretAdmin,
     AssetAdmin,
     AssignmentAdmin,
-    LicenseProductAdmin,
-    LicenseAdmin,
-    LicenseAssignmentAdmin,
-    AccessCardAdmin,
-    CardLoanAdmin,
-    ContractAdmin,
-    ContractLineAdmin,
-    PhoneAdmin,
     AuditLogAdmin,
 ]
 

@@ -23,8 +23,6 @@ from sqlalchemy.orm import Session
 from app.admin import (
     AssetAdmin,
     AssetCategoryAdmin,
-    ContractAdmin,
-    LicenseAssignmentAdmin,
     PersonAdmin,
     invalidate_model_count_cache,
     invalidate_user_cache,
@@ -33,9 +31,7 @@ from app.core.security import create_session_token, hash_password
 from app.db import get_db
 from app.enums import (
     AssetStatus,
-    ContractItemKind,
     DEFAULT_ROLE_PERMISSIONS,
-    DeliveryStatus,
     Module,
     PermissionAction,
     PersonStatus,
@@ -43,16 +39,9 @@ from app.enums import (
 )
 from app.main import app
 from app.models import (
-    AccessCard,
     Asset,
     AssetCategory,
     Assignment,
-    CardLoan,
-    Contract,
-    ContractLine,
-    License,
-    LicenseAssignment,
-    LicenseProduct,
     Person,
     Role,
     RolePermission,
@@ -165,14 +154,6 @@ def test_person_cannot_resign_while_holding_an_asset(db, seed):
     assert "thu hồi" in str(exc.value).lower()
 
 
-def test_person_cannot_resign_while_holding_a_card_or_license(db, seed):
-    db.add(CardLoan(card_id=seed["card"].id, person_id=seed["person"].id, borrowed_at=PAST))
-    db.add(LicenseAssignment(license_id=seed["license"].id, person_id=seed["person_b"].id, assigned_at=PAST))
-    db.flush()
-    with pytest.raises(ValueError):
-        _run(PersonAdmin().on_model_change({"status": "RESIGNED"}, seed["person"], False, _req(db)))
-    with pytest.raises(ValueError):
-        _run(PersonAdmin().on_model_change({"status": "RESIGNED"}, seed["person_b"], False, _req(db)))
 
 
 def test_person_can_resign_once_everything_is_returned(db, seed):
@@ -194,36 +175,12 @@ def test_editing_an_already_resigned_person_is_not_blocked(db, seed):
 # ---------------------------------------------------------------------------
 
 
-def test_license_assignment_may_have_both_asset_and_person(db, seed):
-    data = {
-        "license": str(seed["license"].id), "asset": str(seed["asset"].id), "person": str(seed["person"].id),
-        "assigned_at": PAST, "removed_at": None,
-    }
-    _run(LicenseAssignmentAdmin().on_model_change(data, LicenseAssignment(), True, _req(db)))
 
 
-def test_expired_license_is_still_assignable(db, seed):
-    seed["license"].expiry_date = TODAY - dt.timedelta(days=10)
-    db.flush()
-    data = {"license": str(seed["license"].id), "person": str(seed["person"].id), "assigned_at": PAST, "removed_at": None}
-    _run(LicenseAssignmentAdmin().on_model_change(data, LicenseAssignment(), True, _req(db)))
 
 
-def test_expired_license_is_flagged_in_the_assignment_form_and_list(admin_client, db, seed):
-    seed["license"].expiry_date = TODAY - dt.timedelta(days=10)
-    db.add(LicenseAssignment(license_id=seed["license"].id, person_id=seed["person"].id, assigned_at=PAST))
-    db.flush()
-    form = admin_client.get("/admin/license-assignment/create").text
-    assert "đã hết hạn" in form
-    listing = admin_client.get("/admin/license-assignment/list").text
-    assert "Gói đã hết hạn" in listing
 
 
-def test_valid_license_is_not_flagged(admin_client, db, seed):
-    seed["license"].expiry_date = TODAY + dt.timedelta(days=200)
-    db.add(LicenseAssignment(license_id=seed["license"].id, person_id=seed["person"].id, assigned_at=PAST))
-    db.flush()
-    assert "Gói đã hết hạn" not in admin_client.get("/admin/license-assignment/list").text
 
 
 # ---------------------------------------------------------------------------
@@ -231,22 +188,8 @@ def test_valid_license_is_not_flagged(admin_client, db, seed):
 # ---------------------------------------------------------------------------
 
 
-def test_contract_form_has_no_delivery_status_field(admin_client, db, seed):
-    html = admin_client.get("/admin/contract/create").text
-    assert 'name="code"' in html
-    assert 'name="delivery_status"' not in html
 
 
-def test_contract_delivery_status_is_recomputed_on_save(db, seed):
-    contract = Contract(code="W6-C1", vendor_name="V", delivery_status=DeliveryStatus.DELIVERED)
-    db.add(contract)
-    db.flush()
-    db.add(ContractLine(contract_id=contract.id, item_type="PC", qty_ordered=2))
-    db.flush()
-    view = ContractAdmin()
-    req = _req(db, user_id=seed["user"].id)
-    _run(view.after_model_change({"note": "x"}, contract, False, req))
-    assert contract.delivery_status == DeliveryStatus.PENDING
 
 
 # ---------------------------------------------------------------------------
@@ -281,18 +224,6 @@ def test_staff_code_and_category_name_duplicates_are_case_insensitive(db, seed):
         _run(AssetCategoryAdmin().on_model_change({"name_en": "LAPTOP"}, AssetCategory(), True, _req(db)))
 
 
-def test_batch_receive_duplicate_check_is_case_insensitive(admin_client, db, seed):
-    contract = Contract(code="W6-BR", vendor_name="V")
-    db.add(contract)
-    db.flush()
-    line = ContractLine(contract_id=contract.id, item_type="PC", qty_ordered=5)
-    db.add(line)
-    db.flush()
-    res = admin_client.post(
-        f"/admin/contract-line/{line.id}/receive",
-        json={"category_id": seed["cat"].id, "items": [{"serial": "sn-0001"}]},
-    )
-    assert res.status_code == 400
 
 
 def test_restore_conflict_check_is_case_insensitive(admin_client, db, seed):
@@ -350,11 +281,6 @@ def test_only_csv_export_is_offered_and_link_keeps_filters(admin_client, db, see
     assert "/admin/asset/export/json" not in html
 
 
-def test_export_never_contains_secret_columns(admin_client, db, seed):
-    body = admin_client.get("/admin/user/export/csv").content.decode("utf-8")
-    assert "password_hash" not in body
-    body = admin_client.get("/admin/license/export/csv").content.decode("utf-8")
-    assert "license_key_enc" not in body
 
 
 # ---------------------------------------------------------------------------
@@ -362,44 +288,10 @@ def test_export_never_contains_secret_columns(admin_client, db, seed):
 # ---------------------------------------------------------------------------
 
 
-def test_view_only_user_sees_no_assign_or_receive_buttons(client, db, seed):
-    contract = Contract(code="W6-PERM", vendor_name="V")
-    db.add(contract)
-    db.flush()
-    line = ContractLine(contract_id=contract.id, item_type="PC", qty_ordered=5)
-    db.add(line)
-    db.flush()
-    c = _viewer_client(client, db, {Module.ASSETS: VIEW, Module.ASSIGNMENTS: VIEW, Module.CONTRACTS: VIEW, Module.PERSONS: VIEW})
-    assets = c.get("/admin/asset/list")
-    assert assets.status_code == 200
-    assert "openAssignModal(this" not in assets.text
-    lines = c.get("/admin/contract-line/list")
-    assert lines.status_code == 200
-    assert f"/admin/contract-line/{line.id}/receive" not in lines.text
 
 
-def test_admin_still_sees_assign_and_receive_buttons(admin_client, db, seed):
-    contract = Contract(code="W6-PERM2", vendor_name="V")
-    db.add(contract)
-    db.flush()
-    line = ContractLine(contract_id=contract.id, item_type="PC", qty_ordered=5)
-    db.add(line)
-    db.flush()
-    assert "openAssignModal(this" in admin_client.get("/admin/asset/list").text
-    assert f"/admin/contract-line/{line.id}/receive" in admin_client.get("/admin/contract-line/list").text
 
 
-def test_fully_received_line_shows_no_receive_button_on_details(admin_client, db, seed):
-    contract = Contract(code="W6-FULL", vendor_name="V")
-    db.add(contract)
-    db.flush()
-    line = ContractLine(contract_id=contract.id, item_type="PC", qty_ordered=1)
-    db.add(line)
-    db.flush()
-    db.add(Asset(asset_code="W6-FULL-A", category_id=seed["cat"].id, contract_line_id=line.id))
-    db.flush()
-    html = admin_client.get(f"/admin/contract-line/details/{line.id}").text
-    assert f"/admin/contract-line/{line.id}/receive" not in html
 
 
 def test_trash_menu_follows_permission_not_username(client, db, seed):
@@ -422,41 +314,10 @@ def test_password_vault_link_follows_secrets_permission(client, db, seed):
 # ---------------------------------------------------------------------------
 
 
-def test_dashboard_alerts_on_per_assignment_expiry(admin_client, db, seed):
-    product = LicenseProduct(name="W6 Trend Micro")
-    db.add(product)
-    db.flush()
-    lic = License(product_id=product.id, seats=10)  # gói không có hạn chung
-    db.add(lic)
-    db.flush()
-    db.add(LicenseAssignment(
-        license_id=lic.id, asset_id=seed["asset"].id, assigned_at=PAST, expiry_date=TODAY + dt.timedelta(days=5)
-    ))
-    db.flush()
-    html = admin_client.get("/admin/", follow_redirects=True).text
-    assert "W6 Trend Micro" in html
 
 
-def test_dashboard_expiring_count_is_not_capped_at_eight(admin_client, db, seed):
-    for i in range(12):
-        product = LicenseProduct(name=f"W6-EXP-{i:02d}")
-        db.add(product)
-        db.flush()
-        db.add(License(product_id=product.id, seats=1, expiry_date=TODAY + dt.timedelta(days=10 + i)))
-    db.flush()
-    html = admin_client.get("/admin/", follow_redirects=True).text
-    assert "12 sắp hết hạn" in html
 
 
-def test_dashboard_does_not_count_long_expired_licenses_as_expiring(admin_client, db, seed):
-    product = LicenseProduct(name="W6-OLD")
-    db.add(product)
-    db.flush()
-    db.add(License(product_id=product.id, seats=1, expiry_date=TODAY - dt.timedelta(days=400)))
-    db.flush()
-    html = admin_client.get("/admin/", follow_redirects=True).text
-    assert "1 sắp hết hạn" not in html
-    assert "1 đã hết hạn" in html
 
 
 # ---------------------------------------------------------------------------
@@ -475,11 +336,6 @@ def test_ordinary_asset_category_is_accepted(db, seed):
     _run(AssetCategoryAdmin().on_model_change({"name_en": "Monitor"}, AssetCategory(), True, _req(db)))
 
 
-def test_card_number_duplicate_is_case_insensitive(db, seed):
-    from app.admin import AccessCardAdmin
-
-    with pytest.raises(ValueError):
-        _run(AccessCardAdmin().on_model_change({"card_no": "card-001", "status": "IN_STOCK"}, AccessCard(), True, _req(db)))
 
 
 def test_asset_status_enum_still_exported_as_plain_text(admin_client, db, seed):
@@ -489,16 +345,13 @@ def test_asset_status_enum_still_exported_as_plain_text(admin_client, db, seed):
     assert "REPAIR" in body or "Đang sửa chữa" in body
 
 
-def test_software_line_receive_button_follows_license_permission(client, db, seed):
-    contract = Contract(code="W6-SW", vendor_name="V")
-    db.add(contract)
-    db.flush()
-    line = ContractLine(contract_id=contract.id, item_type="Office", qty_ordered=5, item_kind=ContractItemKind.SOFTWARE)
-    db.add(line)
-    db.flush()
-    c = _viewer_client(
-        client, db,
-        {Module.CONTRACTS: VIEW, Module.LICENSES: [PermissionAction.VIEW, PermissionAction.ADD]},
-        code=RoleCode.GA_MANAGER.value, username="w6_sw",
-    )
-    assert f"/admin/contract-line/{line.id}/receive-software" in c.get("/admin/contract-line/list").text
+def test_view_only_user_sees_no_assign_button(client, db, seed):
+    c = _viewer_client(client, db, {Module.ASSETS: VIEW, Module.ASSIGNMENTS: VIEW, Module.PERSONS: VIEW})
+    assets = c.get("/admin/asset/list")
+    assert assets.status_code == 200
+    assert "openAssignModal(this" not in assets.text
+
+
+def test_export_never_contains_secret_columns(admin_client, db, seed):
+    body = admin_client.get("/admin/user/export/csv").content.decode("utf-8")
+    assert "password_hash" not in body

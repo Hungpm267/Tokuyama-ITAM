@@ -26,13 +26,8 @@ from app.core.security import verify_session_token
 from app.db import get_db
 from app.enums import Module, PermissionAction
 from app.models import (
-    AccessCard,
     Asset,
-    Contract,
-    License,
-    LicenseProduct,
     Person,
-    Phone,
     User,
 )
 
@@ -138,74 +133,6 @@ async def global_search_view(
             ).all()
             results["persons"] = persons
             total_count += len(persons)
-
-        # 3. Contracts (Mã hợp đồng, Tên nhà cung cấp)
-        if has_permission(db, user, Module.CONTRACTS, PermissionAction.VIEW):
-            contracts = db.scalars(
-                select(Contract)
-                .where(
-                    Contract.is_deleted.is_(False),
-                    or_(
-                        Contract.code.ilike(pattern),
-                        Contract.vendor_name.ilike(pattern),
-                    ),
-                )
-                .order_by(Contract.code.asc())
-                .limit(25)
-            ).all()
-            results["contracts"] = contracts
-            total_count += len(contracts)
-
-        # 4. Access Cards (Số thẻ)
-        if has_permission(db, user, Module.CARDS, PermissionAction.VIEW):
-            cards = db.scalars(
-                select(AccessCard)
-                .where(
-                    AccessCard.is_deleted.is_(False),
-                    AccessCard.card_no.ilike(pattern),
-                )
-                .order_by(AccessCard.card_no.asc())
-                .limit(25)
-            ).all()
-            results["cards"] = cards
-            total_count += len(cards)
-
-        # 5. Phones (Số máy nhánh extension, Tên thiết bị)
-        if has_permission(db, user, Module.PHONES, PermissionAction.VIEW):
-            phones = db.scalars(
-                select(Phone)
-                .options(selectinload(Phone.location))
-                .where(
-                    Phone.is_deleted.is_(False),
-                    or_(
-                        Phone.extension_number.ilike(pattern),
-                        Phone.device_name.ilike(pattern),
-                    ),
-                )
-                .order_by(Phone.extension_number.asc())
-                .limit(25)
-            ).all()
-            results["phones"] = phones
-            total_count += len(phones)
-
-        # 6. Licenses (Tên phần mềm, Ghi chú)
-        if has_permission(db, user, Module.LICENSES, PermissionAction.VIEW):
-            licenses = db.scalars(
-                select(License)
-                .join(License.product)
-                .options(selectinload(License.product))
-                .where(
-                    License.is_deleted.is_(False),
-                    or_(
-                        LicenseProduct.name.ilike(pattern),
-                        License.note.ilike(pattern),
-                    ),
-                )
-                .order_by(License.id.asc())
-                .limit(25)
-            ).all()
-            results["licenses"] = licenses
-            total_count += len(licenses)
 
     context = {
         "request": request,

@@ -52,44 +52,29 @@ from app.core.security import (
     verify_session_token,
 )
 from wtforms import Form, PasswordField, SelectField
-from wtforms.validators import InputRequired
 from wtforms.widgets import PasswordInput
 from app.db import SessionLocal
 from app.enums import (
     AssetStatus,
     AuditAction,
-    CardStatus,
-    ContractItemKind,
     Module,
     PermissionAction,
     PersonStatus,
     RoleCode,
 )
 from app.models import (
-    AccessCard,
     Asset,
     AssetCategory,
     AssetTag,
     Assignment,
     AuditLog,
-    CardLoan,
-    Contract,
-    ContractLine,
     Department,
-    License,
-    LicenseAssignment,
-    LicenseProduct,
-    Location,
     Person,
     PersonSecret,
-    Phone,
     REDACTED_FIELDS,
     Role,
-    RolePermission,
     User,
-    UserPermissionOverride,
 )
-from app.services.contract_service import line_received_qty, sync_contract_delivery_status
 
 logger = logging.getLogger(__name__)
 
@@ -157,8 +142,6 @@ def _in_use_references() -> dict[Any, list[tuple[Any, str, str]]]:
         _IN_USE_REFERENCES.update({
             Department: [(Person, "department_id", "nhân sự")],
             AssetCategory: [(Asset, "category_id", "thiết bị")],
-            LicenseProduct: [(License, "product_id", "gói bản quyền")],
-            Location: [(Phone, "location_id", "thiết bị thoại")],
             Role: [(User, "role_id", "tài khoản người dùng")],
         })
     return _IN_USE_REFERENCES
@@ -213,10 +196,6 @@ def user_can_loan(request: Request | None) -> bool:
     )
 
 
-def _can_receive_line(line: Any) -> bool:
-    """Nhận phần cứng cần (assets, add); nhận phần mềm cần (licenses, add)."""
-    module = "licenses" if line.item_kind == ContractItemKind.SOFTWARE else "assets"
-    return user_can(current_request_ctx.get(), module, "add")
 
 
 def _csv_safe(value: Any) -> str:
@@ -343,69 +322,14 @@ def _sync_asset_status(db: Session, asset_id: int, user_id: Any, ip_address: str
     )
 
 
-def _sync_card_status(db: Session, card_id: int, user_id: Any, ip_address: str | None) -> None:
-    """Chỉ chuyển qua lại IN_STOCK <-> BORROWED. LOST/DAMAGED do người dùng đặt và phải được giữ nguyên."""
-    card = db.get(AccessCard, card_id)
-    if not card:
-        return
-    has_open = db.scalar(
-        select(CardLoan.id).where(
-            CardLoan.card_id == card.id,
-            CardLoan.returned_at.is_(None),
-            CardLoan.is_deleted.is_(False),
-        ).limit(1)
-    )
-    old_status = card.status
-    if has_open and old_status == CardStatus.IN_STOCK:
-        new_status = CardStatus.BORROWED
-    elif not has_open and old_status == CardStatus.BORROWED:
-        new_status = CardStatus.IN_STOCK
-    else:
-        return
-    card.status = new_status
-    record_audit(
-        db=db,
-        action=AuditAction.UPDATE,
-        table_name="access_cards",
-        record_id=card.id,
-        user_id=user_id,
-        before={"status": old_status.value},
-        after={"status": new_status.value},
-        ip_address=ip_address,
-    )
 
 
-def _receive_url(line: Any) -> str:
-    """Màn hình nhận hàng đúng với loại hạng mục: nhập serial (phần cứng) hay ghi nhận gói phần mềm."""
-    if line.item_kind == ContractItemKind.SOFTWARE:
-        return f"/admin/contract-line/{line.id}/receive-software"
-    return f"/admin/contract-line/{line.id}/receive"
 
 
-def _receive_label(line: Any, hardware_label: str) -> str:
-    key = "Nhận phần mềm" if line.item_kind == ContractItemKind.SOFTWARE else hardware_label
-    return translate(key, get_admin_lang())
 
 
-def _sync_contracts_of_lines(db: Session, line_ids: set) -> None:
-    contract_ids = {
-        line.contract_id
-        for line in (db.get(ContractLine, lid) for lid in line_ids if lid)
-        if line
-    }
-    for contract_id in sorted(contract_ids):
-        sync_contract_delivery_status(db, contract_id)
 
 
-def _open_license_assignments(db: Session, license_id: int, exclude_id: int | None = None) -> int:
-    stmt = select(func.count(LicenseAssignment.id)).where(
-        LicenseAssignment.license_id == license_id,
-        LicenseAssignment.removed_at.is_(None),
-        LicenseAssignment.is_deleted.is_(False),
-    )
-    if exclude_id:
-        stmt = stmt.where(LicenseAssignment.id != exclude_id)
-    return db.scalar(stmt) or 0
 
 
 class RequestContextMiddleware:
@@ -584,8 +508,8 @@ class AdminAuth(AuthenticationBackend):
                     "lang": lang,
                 })
 
-                # Điều hướng vào trang quản trị /admin cho cả 3 vai trò
-                request.state.redirect_url = "/admin"
+                # Sổ tổng là trang làm việc chính của cả 3 vai trò
+                request.state.redirect_url = "/admin/so-tong"
                 return True
             else:
                 request.state.login_error = "Tên đăng nhập hoặc mật khẩu không chính xác."
@@ -806,11 +730,6 @@ class AliveOnlyModelConverter(ModelConverter):
     @staticmethod
     def _option_label(obj: Any, deleted_suffix: str) -> str:
         label = str(obj)
-        # License hết hạn vẫn chọn được (chủ hệ thống quyết định chỉ cảnh báo), nhưng
-        # người chọn phải thấy ngay là gói đã hết hạn.
-        expiry = getattr(obj, "expiry_date", None) if isinstance(obj, License) else None
-        if expiry and expiry < today_local():
-            label = f"{label} ⚠ {translate('đã hết hạn', get_admin_lang())} {expiry.strftime('%d/%m/%Y')}"
         if obj.is_deleted:
             label = f"{label} ({deleted_suffix})"
         return label
@@ -1183,32 +1102,6 @@ class BaseAdminView(ModelView):
                         detail="Không thể xóa nhân viên đang giữ thiết bị IT. Hãy thu hồi thiết bị trước khi xóa.",
                     )
 
-                active_card = db.scalar(
-                    select(CardLoan).where(
-                        CardLoan.person_id == obj.id,
-                        CardLoan.returned_at.is_(None),
-                        CardLoan.is_deleted.is_(False),
-                    )
-                )
-                if active_card:
-                    raise HTTPException(
-                        status_code=400,
-                        detail="Không thể xóa nhân viên đang mượn thẻ ra vào. Hãy thu hồi thẻ trước khi xóa.",
-                    )
-
-                active_lic = db.scalar(
-                    select(LicenseAssignment).where(
-                        LicenseAssignment.person_id == obj.id,
-                        LicenseAssignment.removed_at.is_(None),
-                        LicenseAssignment.is_deleted.is_(False),
-                    )
-                )
-                if active_lic:
-                    raise HTTPException(
-                        status_code=400,
-                        detail="Không thể xóa nhân viên đang được cấp bản quyền phần mềm. Hãy thu hồi license trước khi xóa.",
-                    )
-
             # Chặn xóa Thiết bị khi đang được sử dụng hoặc có lượt bàn giao mở
             if self.model is Asset:
                 active_asgn = db.scalar(
@@ -1222,83 +1115,6 @@ class BaseAdminView(ModelView):
                     raise HTTPException(
                         status_code=400,
                         detail="Không thể xóa thiết bị đang có người sử dụng. Hãy thu hồi thiết bị trước khi xóa.",
-                    )
-
-                # Bản quyền gán theo máy vẫn chiếm seat sau khi máy bị xóa -> phải thu hồi trước
-                active_lic = db.scalar(
-                    select(LicenseAssignment).where(
-                        LicenseAssignment.asset_id == obj.id,
-                        LicenseAssignment.removed_at.is_(None),
-                        LicenseAssignment.is_deleted.is_(False),
-                    )
-                )
-                if active_lic:
-                    raise HTTPException(
-                        status_code=400,
-                        detail="Không thể xóa thiết bị đang được gán bản quyền phần mềm. Hãy thu hồi license trước khi xóa.",
-                    )
-
-            # Chặn xóa License khi còn lượt gán đang mở (BRD: phải thu hồi trước)
-            if self.model is License:
-                open_count = _open_license_assignments(db, obj.id)
-                if open_count > 0:
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"Không thể xóa bản quyền đang được gán cho {open_count} máy/nhân viên. Hãy thu hồi license trước khi xóa.",
-                    )
-
-            # Chặn xóa Hợp đồng khi còn hạng mục: hạng mục mồ côi vẫn nhận hàng được
-            if self.model is Contract:
-                live_lines = db.scalar(
-                    select(func.count(ContractLine.id)).where(
-                        ContractLine.contract_id == obj.id,
-                        ContractLine.is_deleted.is_(False),
-                    )
-                ) or 0
-                if live_lines > 0:
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"Không thể xóa hợp đồng còn {live_lines} hạng mục. Hãy xóa các hạng mục trước.",
-                    )
-
-            # Chặn xóa Thẻ ra vào khi đang có người mượn
-            if self.model is AccessCard:
-                active_loan = db.scalar(
-                    select(CardLoan).where(
-                        CardLoan.card_id == obj.id,
-                        CardLoan.returned_at.is_(None),
-                        CardLoan.is_deleted.is_(False),
-                    )
-                )
-                if active_loan or obj.status == CardStatus.BORROWED:
-                    raise HTTPException(
-                        status_code=400,
-                        detail="Không thể xóa thẻ ra vào đang có người mượn. Hãy thu hồi thẻ trước khi xóa.",
-                    )
-
-            # Chặn xóa dòng hợp đồng nếu đã có thiết bị nhập kho
-            if self.model is ContractLine:
-                active_asset_count = db.scalar(
-                    select(func.count(Asset.id)).where(
-                        Asset.contract_line_id == obj.id,
-                        Asset.is_deleted.is_(False),
-                    )
-                ) or 0
-                if active_asset_count > 0:
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"Không thể xóa dòng hợp đồng đã có {active_asset_count} thiết bị nhập kho.",
-                    )
-                linked_licenses = db.scalar(
-                    select(func.count(License.id)).where(
-                        License.contract_line_id == obj.id,
-                        License.is_deleted.is_(False),
-                    )
-                ) or 0
-                if linked_licenses > 0:
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"Không thể xóa dòng hợp đồng đã nhận {linked_licenses} gói phần mềm.",
                     )
 
             table_name = getattr(self.model, "__tablename__", "unknown")
@@ -1326,17 +1142,6 @@ class BaseAdminView(ModelView):
                 obj.deleted_at = dt.datetime.now(dt.timezone.utc)
                 obj.deleted_by = current_user_id
                 obj.delete_reason = delete_reason
-
-                # Xóa mềm thiết bị / gói license / hạng mục làm thay đổi "đã nhận đủ hay chưa"
-                # của hợp đồng liên quan -> tính lại.
-                if self.model in (Asset, License) and getattr(obj, "contract_line_id", None):
-                    line = db.get(ContractLine, obj.contract_line_id)
-                    if line:
-                        db.flush()
-                        sync_contract_delivery_status(db, line.contract_id)
-                elif self.model is ContractLine:
-                    db.flush()
-                    sync_contract_delivery_status(db, obj.contract_id)
 
                 record_audit(
                     db=db,
@@ -1521,82 +1326,8 @@ class RoleAdmin(BaseAdminView, model=Role):
         await super().on_model_change(data, model, is_created, request)
 
 
-class RolePermissionAdmin(BaseAdminView, model=RolePermission):
-    module = Module.USERS
-    name = "Quyền vai trò"
-    name_plural = "Ma trận Quyền Vai trò"
-    icon = "fa-solid fa-key"
-    category = "Hệ thống & Phân quyền"
-    list_template = "sqladmin/role_permission_matrix.html"
-    # Quyền vai trò chỉ sửa qua Ma trận: form từng dòng cho gõ tự do tên phân hệ (gõ sai là
-    # thành quyền vô nghĩa) và đi vòng qua kiểm tra chống tự khóa quyền ADMIN.
-    can_create = False
-    can_edit = False
-    can_delete = False
-    column_list = [RolePermission.id, RolePermission.role, RolePermission.module, RolePermission.action]
-    column_details_list = [RolePermission.id, RolePermission.role, RolePermission.module, RolePermission.action] + COMMON_EXCLUDED_COLUMNS
-    column_labels = {
-        "role": "Vai trò",
-        "module": "Phân hệ nghiệp vụ",
-        "action": "Thao tác",
-    }
-
-    def get_matrix_payload(self) -> dict[str, Any]:
-        """Trả về cấu trúc dữ liệu ma trận quyền vai trò trực quan."""
-        from app.core.permissions import get_role_permission_matrix
-
-        with SessionLocal() as db:
-            return get_role_permission_matrix(db)
 
 
-class UserPermissionOverrideAdmin(BaseAdminView, model=UserPermissionOverride):
-    module = Module.USERS
-    name = "Ghi đè quyền"
-    name_plural = "Quyền riêng Người dùng"
-    icon = "fa-solid fa-user-pen"
-    category = "Hệ thống & Phân quyền"
-    column_list = [UserPermissionOverride.id, UserPermissionOverride.user_id, UserPermissionOverride.module, UserPermissionOverride.action, UserPermissionOverride.granted]
-    column_details_list = [UserPermissionOverride.id, UserPermissionOverride.user_id, UserPermissionOverride.module, UserPermissionOverride.action, UserPermissionOverride.granted]
-    column_labels = {
-        "user_id": "Người dùng",
-        "module": "Phân hệ nghiệp vụ",
-        "action": "Thao tác",
-        "granted": "Được cấp quyền",
-    }
-
-    async def scaffold_form(self, rules: list[str] | None = None) -> type[Form]:
-        """SQLAdmin bỏ cột khóa ngoại `user_id` khỏi form (model không có quan hệ `user`),
-        nên trước đây mọi lần lưu đều lỗi NOT NULL. Phân hệ và thao tác là danh sách chọn
-        để không gõ sai thành quyền vô nghĩa."""
-        base_form = await super().scaffold_form(rules)
-
-        with SessionLocal() as db:
-            users = db.scalars(
-                select(User).where(User.is_deleted.is_(False)).order_by(User.username)
-            ).all()
-            user_choices = [(u.id, f"{u.username} ({u.display_name or u.username})") for u in users]
-
-        class OverrideForm(base_form):
-            user_id = SelectField(
-                "Người dùng", choices=user_choices, coerce=int,
-                validators=[InputRequired()], render_kw={"class": "form-control"},
-            )
-            module = SelectField(
-                "Phân hệ nghiệp vụ", choices=[(m.value, m.value) for m in Module],
-                render_kw={"class": "form-control"},
-            )
-            action = SelectField(
-                "Thao tác", choices=[(a.value, a.value) for a in PermissionAction],
-                render_kw={"class": "form-control"},
-            )
-
-        return OverrideForm
-
-    async def after_model_change(
-        self, data: dict, model: Any, is_created: bool, request: Request
-    ) -> None:
-        await super().after_model_change(data, model, is_created, request)
-        invalidate_user_cache()
 
 
 class DepartmentAdmin(BaseAdminView, model=Department):
@@ -1666,30 +1397,6 @@ class AssetTagAdmin(BaseAdminView, model=AssetTag):
     }
 
 
-class LocationAdmin(BaseAdminView, model=Location):
-    module = Module.CARDS
-    name = "Vị trí / Phòng"
-    name_plural = "Danh mục Vị trí"
-    icon = "fa-solid fa-location-dot"
-    category = "Danh mục Dùng chung"
-    column_list = [Location.id, Location.building, Location.floor, Location.room_en, Location.room_ja, Location.is_access_controlled]
-    column_details_list = [
-        Location.id,
-        Location.building,
-        Location.floor,
-        Location.room_en,
-        Location.room_ja,
-        Location.is_access_controlled,
-        Location.description,
-    ] + COMMON_EXCLUDED_COLUMNS
-    column_labels = {
-        "building": "Tòa nhà",
-        "floor": "Tầng",
-        "room_en": "Phòng (EN)",
-        "room_ja": "Phòng (JA)",
-        "is_access_controlled": "Kiểm soát thẻ",
-        "description": "Mô tả vị trí",
-    }
 
 
 class PersonAdmin(BaseAdminView, model=Person):
@@ -1760,22 +1467,12 @@ class PersonAdmin(BaseAdminView, model=Person):
             assets = db.scalar(select(func.count()).select_from(Assignment).where(
                 Assignment.person_id == person_id, Assignment.returned_at.is_(None), Assignment.is_deleted.is_(False),
             )) or 0
-            cards = db.scalar(select(func.count()).select_from(CardLoan).where(
-                CardLoan.person_id == person_id, CardLoan.returned_at.is_(None), CardLoan.is_deleted.is_(False),
-            )) or 0
-            licenses = db.scalar(select(func.count()).select_from(LicenseAssignment).where(
-                LicenseAssignment.person_id == person_id, LicenseAssignment.removed_at.is_(None),
-                LicenseAssignment.is_deleted.is_(False),
-            )) or 0
-        if assets or cards or licenses:
+        if assets:
             raise ValueError(_msg(
                 lang,
-                f"Nhân sự này còn đang giữ {assets} thiết bị, {cards} thẻ ra vào, {licenses} bản quyền phần mềm. "
-                "Hãy thu hồi hết trước khi chuyển sang 'Đã nghỉ việc'.",
-                f"This person still holds {assets} asset(s), {cards} access card(s) and {licenses} license seat(s). "
-                "Return / revoke them all before marking the person as resigned.",
-                f"この社員は機器 {assets} 台、入館カード {cards} 枚、ライセンス {licenses} 件を保持しています。"
-                "退職に変更する前にすべて回収してください。",
+                f"Nhân sự này còn đang giữ {assets} thiết bị. Hãy thu hồi hết trước khi chuyển sang 'Đã nghỉ việc'.",
+                f"This person still holds {assets} asset(s). Return them all before marking the person as resigned.",
+                f"この社員は機器 {assets} 台を保持しています。退職に変更する前にすべて回収してください。",
             ))
 
     async def get_object_for_details(self, value: Any) -> Any:
@@ -1789,47 +1486,7 @@ class PersonAdmin(BaseAdminView, model=Person):
         )
         for relation in self._details_relations:
             stmt = stmt.options(selectinload(relation))
-        person = await self._get_object_by_pk(stmt)
-        if person:
-            # 1. Truy vấn các gói License đã cấp phát cho nhân sự này (cấp trực tiếp hoặc qua máy đang giữ)
-            active_asset_ids = [
-                a.asset_id for a in person.assignments
-                if a.returned_at is None and a.asset and not a.asset.is_deleted
-            ]
-            lic_cond = (LicenseAssignment.person_id == person.id)
-            if active_asset_ids:
-                lic_cond = or_(
-                    LicenseAssignment.person_id == person.id,
-                    LicenseAssignment.asset_id.in_(active_asset_ids),
-                )
-
-            lic_stmt = (
-                select(LicenseAssignment)
-                .options(
-                    selectinload(LicenseAssignment.license).selectinload(License.product),
-                    selectinload(LicenseAssignment.asset),
-                )
-                .where(
-                    lic_cond,
-                    LicenseAssignment.is_deleted.is_(False),
-                )
-                .order_by(LicenseAssignment.assigned_at.desc())
-            )
-            person.license_assignments = await self._run_query(lic_stmt)
-
-            # 2. Truy vấn các lượt mượn Thẻ ra vào của nhân sự này
-            card_stmt = (
-                select(CardLoan)
-                .options(selectinload(CardLoan.card))
-                .where(
-                    CardLoan.person_id == person.id,
-                    CardLoan.is_deleted.is_(False),
-                )
-                .order_by(CardLoan.borrowed_at.desc())
-            )
-            person.card_loans = await self._run_query(card_stmt)
-
-        return person
+        return await self._get_object_by_pk(stmt)
 
 
 class PersonSecretAdmin(BaseAdminView, model=PersonSecret):
@@ -1918,7 +1575,6 @@ class AssetAdmin(BaseAdminView, model=Asset):
         Asset.hwid,
         Asset.mac_ethernet,
         Asset.mac_wifi,
-        Asset.contract_line,
         Asset.note,
     ] + COMMON_EXCLUDED_COLUMNS
     column_labels = {
@@ -1999,7 +1655,7 @@ class AssetAdmin(BaseAdminView, model=Asset):
         ),
     }
     column_searchable_list = [Asset.asset_code, Asset.serial, Asset.vendor_code, Asset.model]
-    form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["assignments"]
+    form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["assignments", "contract_line"]
 
     def list_query(self, request: Request) -> Select:
         stmt = super().list_query(request)
@@ -2023,22 +1679,6 @@ class AssetAdmin(BaseAdminView, model=Asset):
             # người dùng chỉ sửa ghi chú không nên bị chặn vì một trạng thái họ không đụng tới.
             if desired is not None and not is_created and desired == getattr(model, "status", None):
                 desired = None
-            if desired in (AssetStatus.DISPOSED, AssetStatus.LOST) and asset_id:
-                seat = db.scalar(
-                    select(LicenseAssignment.id).where(
-                        LicenseAssignment.asset_id == asset_id,
-                        LicenseAssignment.removed_at.is_(None),
-                        LicenseAssignment.is_deleted.is_(False),
-                    ).limit(1)
-                )
-                if seat:
-                    raise ValueError(_msg(
-                        lang,
-                        "Thiết bị đang được gán bản quyền phần mềm. Hãy thu hồi license trước khi thanh lý / báo mất, "
-                        "nếu không seat sẽ bị một máy không còn dùng chiếm giữ.",
-                        "This asset still holds software license seats. Revoke them before disposing of it or marking it lost.",
-                        "この機器にはライセンスが割り当てられています。廃棄・紛失にする前にライセンスを回収してください。",
-                    ))
             if desired is not None:
                 has_open = False
                 if asset_id:
@@ -2065,63 +1705,10 @@ class AssetAdmin(BaseAdminView, model=Asset):
                         "この機器は現在貸出中です。ステータスを変更する前に返却処理を行ってください。",
                     ))
 
-            # 2. Số đã nhận của hạng mục hợp đồng được ĐẾM từ assets.contract_line_id (Rule 8),
-            #    nên gắn máy vào hạng mục qua form cũng phải tôn trọng số lượng đặt mua.
-            if "contract_line" in data:
-                old_line_id = None if is_created else getattr(model, "contract_line_id", None)
-                new_line_id = _pk_of(data.get("contract_line"))
-                request.state.itam_prev_contract_line_id = old_line_id
-                if new_line_id and new_line_id != old_line_id:
-                    line = db.get(ContractLine, new_line_id)
-                    if not line or line.is_deleted:
-                        raise ValueError(_msg(
-                            lang,
-                            "Hạng mục hợp đồng được chọn không tồn tại hoặc đã bị xóa.",
-                            "The selected contract line does not exist or has been deleted.",
-                            "選択された契約明細は存在しないか、削除されています。",
-                        ))
-                    if line.item_kind == ContractItemKind.SOFTWARE:
-                        raise ValueError(_msg(
-                            lang,
-                            "Hạng mục hợp đồng này là phần mềm, không thể gắn thiết bị vào. "
-                            "Hãy dùng nút 'Nhận phần mềm' ở hạng mục đó.",
-                            "This contract line is for software; a hardware asset cannot be attached to it.",
-                            "この契約明細はソフトウェア用のため、機器を紐付けることはできません。",
-                        ))
-                    received = line_received_qty(db, line, exclude_asset_id=asset_id)
-                    if received >= line.qty_ordered:
-                        raise ValueError(_msg(
-                            lang,
-                            f"Hạng mục hợp đồng này đã nhận đủ {line.qty_ordered}/{line.qty_ordered} thiết bị, không thể gắn thêm.",
-                            f"This contract line is already fully received ({line.qty_ordered}/{line.qty_ordered}).",
-                            f"この契約明細はすでに全数（{line.qty_ordered}/{line.qty_ordered}）受領済みです。",
-                        ))
-
-    async def after_model_change(
-        self, data: dict, model: Any, is_created: bool, request: Request
-    ) -> None:
-        await super().after_model_change(data, model, is_created, request)
-        if "contract_line" not in data:
-            return
-        line_ids = {
-            getattr(request.state, "itam_prev_contract_line_id", None),
-            getattr(model, "contract_line_id", None),
-        }
-        line_ids.discard(None)
-        if not line_ids:
-            return
-        try:
-            with SessionLocal() as db:
-                _sync_contracts_of_lines(db, line_ids)
-                db.commit()
-        except Exception:
-            logger.exception("Không đồng bộ được tiến độ hợp đồng sau khi lưu thiết bị #%s", getattr(model, "id", None))
-
     async def get_object_for_details(self, value: Any) -> Any:
         stmt = self._stmt_by_identifier(value)
         stmt = stmt.options(
             selectinload(Asset.category),
-            selectinload(Asset.contract_line),
             selectinload(Asset.assignments).selectinload(Assignment.person).selectinload(Person.department),
         )
         for relation in self._details_relations:
@@ -2367,1038 +1954,28 @@ class AssignmentAdmin(BaseAdminView, model=Assignment):
             logger.exception("Không đồng bộ được trạng thái thiết bị sau khi lưu lượt bàn giao #%s", getattr(model, "id", None))
 
 
-class LicenseProductAdmin(BaseAdminView, model=LicenseProduct):
-    unique_text_fields = ("name",)
-    module = Module.LICENSES
-    name = "Sản phẩm License"
-    name_plural = "Danh mục Phần mềm"
-    icon = "fa-solid fa-compact-disc"
-    category = "License"
-    column_list = [LicenseProduct.id, LicenseProduct.name, LicenseProduct.vendor]
-    column_details_list = [
-        LicenseProduct.id,
-        LicenseProduct.name,
-        LicenseProduct.vendor,
-        LicenseProduct.license_type,
-    ] + COMMON_EXCLUDED_COLUMNS
-    column_labels = {
-        "name": "Tên phần mềm",
-        "vendor": "Hãng phát triển / Nhà cung cấp",
-        "license_type": "Loại bản quyền",
-    }
 
 
-class LicenseAdmin(BaseAdminView, model=License):
-    module = Module.LICENSES
-    name = "Bản quyền License"
-    name_plural = "Kho License Phần mềm"
-    icon = "fa-solid fa-certificate"
-    category = "License"
-    column_list = [
-        License.id,
-        License.product,
-        License.seats,
-        "assigned_seats",
-        "remaining_seats",
-        License.start_date,
-        License.expiry_date,
-    ]
-    column_details_list = [
-        License.id,
-        License.product,
-        License.seats,
-        "assigned_seats",
-        "remaining_seats",
-        License.start_date,
-        License.expiry_date,
-        License.contract_line,
-        License.note,
-    ] + COMMON_EXCLUDED_COLUMNS
-    column_labels = {
-        "contract_line": "Hạng mục hợp đồng",
-        "product": "Sản phẩm phần mềm",
-        "seats": "Tổng số bản quyền (Seats)",
-        "assigned_seats": "Đã cấp phát",
-        "remaining_seats": "Còn trống",
-        "start_date": "Ngày kích hoạt",
-        "expiry_date": "Ngày hết hạn",
-        "contract_id": "Hợp đồng mua sắm",
-        "note": "Ghi chú",
-    }
-    column_formatters = {
-        "assigned_seats": lambda m, a: Markup(
-            f'<span class="badge bg-primary text-white fs-6 px-2 py-1"><i class="fa-solid fa-user-check me-1"></i>{m.assigned_seats}</span>'
-        ),
-        "remaining_seats": lambda m, a: (
-            Markup(
-                f'<span class="badge bg-danger text-white fs-6 px-2 py-1"><i class="fa-solid fa-triangle-exclamation me-1"></i>{m.remaining_seats} ({translate("Vượt định mức", get_admin_lang())})</span>'
-            )
-            if m.remaining_seats < 0
-            else Markup(
-                f'<span class="badge bg-secondary text-white fs-6 px-2 py-1">0 ({translate("Hết chỗ", get_admin_lang())})</span>'
-            )
-            if m.remaining_seats == 0
-            else Markup(
-                f'<span class="badge bg-success text-white fs-6 px-2 py-1"><i class="fa-solid fa-check me-1"></i>{m.remaining_seats}</span>'
-            )
-        ),
-    }
-    column_formatters_detail = {
-        "assigned_seats": lambda m, a: Markup(
-            f'<span class="badge bg-primary text-white fs-6 px-2 py-1"><i class="fa-solid fa-user-check me-1"></i>{m.assigned_seats}</span>'
-        ),
-        "remaining_seats": lambda m, a: (
-            Markup(
-                f'<span class="badge bg-danger text-white fs-6 px-2 py-1"><i class="fa-solid fa-triangle-exclamation me-1"></i>{m.remaining_seats} ({translate("Vượt định mức", get_admin_lang())})</span>'
-            )
-            if m.remaining_seats < 0
-            else Markup(
-                f'<span class="badge bg-secondary text-white fs-6 px-2 py-1">0 ({translate("Hết chỗ", get_admin_lang())})</span>'
-            )
-            if m.remaining_seats == 0
-            else Markup(
-                f'<span class="badge bg-success text-white fs-6 px-2 py-1"><i class="fa-solid fa-check me-1"></i>{m.remaining_seats}</span>'
-            )
-        ),
-    }
-    form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["license_key_enc", "key_version", "assignments"]
 
-    def list_query(self, request: Request) -> Select:
-        stmt = super().list_query(request)
-        return stmt.options(selectinload(License.assignments))
 
-    async def on_model_change(
-        self, data: dict, model: Any, is_created: bool, request: Request
-    ) -> None:
-        await super().on_model_change(data, model, is_created, request)
-        lang = _request_lang(request)
-        new_seats = data.get("seats")
-        license_id = None if is_created else getattr(model, "id", None)
-        seats_after = int(new_seats) if new_seats is not None else (getattr(model, "seats", None) or 0)
 
-        # `model` còn mang giá trị TRƯỚC khi sửa.
-        old_line_id = None if is_created else getattr(model, "contract_line_id", None)
-        new_line_id = _pk_of(data.get("contract_line")) if "contract_line" in data else old_line_id
-        request.state.itam_prev_license_line_id = old_line_id
 
-        with _get_admin_db(request) as db:
-            if license_id and "product" in data:
-                new_product_id = _pk_of(data.get("product"))
-                if new_product_id is not None and new_product_id != getattr(model, "product_id", None):
-                    ever_assigned = db.scalar(
-                        select(LicenseAssignment.id).where(
-                            LicenseAssignment.license_id == license_id,
-                            LicenseAssignment.is_deleted.is_(False),
-                        ).limit(1)
-                    )
-                    if ever_assigned:
-                        raise ValueError(_msg(
-                            lang,
-                            "Gói bản quyền này đã có lịch sử cấp phát. Đổi sản phẩm sẽ làm mọi dòng lịch sử "
-                            "hiện sai tên phần mềm - hãy tạo gói mới cho sản phẩm khác.",
-                            "This package already has assignment history. Changing its product would relabel every "
-                            "history row - create a new package instead.",
-                            "このパッケージには割当履歴があります。製品を変更すると履歴の表示が変わるため、新しいパッケージを作成してください。",
-                        ))
 
-            # Gỡ gói khỏi hạng mục thì cũng gỡ khỏi hợp đồng (contract_id chỉ là bản sao của hạng mục).
-            if "contract_line" in data and new_line_id is None and old_line_id:
-                data["contract_id"] = None
 
-            if license_id and new_seats is not None:
-                used = _open_license_assignments(db, license_id)
-                if int(new_seats) < used:
-                    raise ValueError(_msg(
-                        lang,
-                        f"Không thể giảm số bản quyền xuống {new_seats} vì đang có {used} lượt gán chưa thu hồi. Hãy thu hồi bớt trước.",
-                        f"Cannot reduce seats to {new_seats}: {used} assignments are still active. Revoke some first.",
-                        f"現在 {used} 件が割当中のため、ライセンス数を {new_seats} に減らすことはできません。",
-                    ))
 
-            # Gói gắn vào hạng mục hợp đồng: seat của nó được tính là "đã nhận" của hạng mục,
-            # nên phải là hạng mục phần mềm và tổng seat không vượt số lượng đặt mua.
-            if new_line_id:
-                line = db.get(ContractLine, new_line_id)
-                if not line or line.is_deleted:
-                    raise ValueError(_msg(
-                        lang,
-                        "Hạng mục hợp đồng được chọn không tồn tại hoặc đã bị xóa.",
-                        "The selected contract line does not exist or has been deleted.",
-                        "選択された契約明細は存在しないか、削除されています。",
-                    ))
-                if line.item_kind != ContractItemKind.SOFTWARE:
-                    raise ValueError(_msg(
-                        lang,
-                        "Hạng mục hợp đồng này là phần cứng, không thể gắn gói phần mềm vào.",
-                        "This contract line is for hardware; a software package cannot be attached to it.",
-                        "この契約明細はハードウェア用のため、ソフトウェアを紐付けることはできません。",
-                    ))
-                received = line_received_qty(db, line, exclude_license_id=license_id)
-                if received + seats_after > line.qty_ordered:
-                    raise ValueError(_msg(
-                        lang,
-                        f"Hạng mục '{line.item_type}' đặt mua {line.qty_ordered}, đã nhận {received}. "
-                        f"Gói {seats_after} seats sẽ vượt số lượng đặt mua.",
-                        f"Line '{line.item_type}' ordered {line.qty_ordered}, received {received}. "
-                        f"A package of {seats_after} seats would exceed the ordered quantity.",
-                        f"明細「{line.item_type}」は発注 {line.qty_ordered}、受入済み {received} です。"
-                        f"{seats_after} seats を追加すると発注数量を超えます。",
-                    ))
-                data["contract_id"] = line.contract_id
 
-    async def after_model_change(
-        self, data: dict, model: Any, is_created: bool, request: Request
-    ) -> None:
-        await super().after_model_change(data, model, is_created, request)
-        line_ids = {
-            getattr(request.state, "itam_prev_license_line_id", None),
-            getattr(model, "contract_line_id", None),
-        }
-        line_ids.discard(None)
-        if not line_ids:
-            return
-        try:
-            with SessionLocal() as db:
-                _sync_contracts_of_lines(db, line_ids)
-                db.commit()
-        except Exception:
-            logger.exception("Không đồng bộ được tiến độ hợp đồng sau khi lưu gói license #%s", getattr(model, "id", None))
 
-    async def get_object_for_details(self, value: Any) -> Any:
-        stmt = self._stmt_by_identifier(value)
-        stmt = stmt.options(
-            selectinload(License.assignments),
-            selectinload(License.contract_line).selectinload(ContractLine.contract),
-        )
-        for relation in self._details_relations:
-            stmt = stmt.options(selectinload(relation))
-        return await self._get_object_by_pk(stmt)
 
 
-def _license_assignment_badge(row: Any) -> Markup:
-    lang = get_admin_lang()
-    if row.removed_at:
-        return Markup(
-            f'<span class="badge bg-secondary text-white"><i class="fa-solid fa-ban me-1"></i>{translate("Đã thu hồi", lang)}</span>'
-        )
-    badge = f'<span class="badge bg-success text-white"><i class="fa-solid fa-circle-check me-1"></i>{translate("Đang sử dụng", lang)}</span>'
-    # Hạn riêng của lượt gán ghi đè hạn của gói (trường hợp Trend Micro theo từng máy).
-    expiry = row.expiry_date or (row.license.expiry_date if row.license else None)
-    if expiry and expiry < today_local():
-        badge += (
-            f' <span class="badge bg-warning text-dark" title="{expiry.strftime("%d/%m/%Y")}">'
-            f'<i class="fa-solid fa-triangle-exclamation me-1"></i>{translate("Gói đã hết hạn", lang)}</span>'
-        )
-    return Markup(badge)
 
 
-class LicenseAssignmentAdmin(BaseAdminView, model=LicenseAssignment):
-    module = Module.LICENSES
-    name = "Gán License"
-    name_plural = "Phân bổ Bản quyền"
-    icon = "fa-solid fa-user-check"
-    category = "License"
-    can_delete = False
-    column_list = [
-        LicenseAssignment.id,
-        LicenseAssignment.license,
-        LicenseAssignment.asset,
-        LicenseAssignment.person,
-        "status_badge",
-        LicenseAssignment.assigned_at,
-        LicenseAssignment.expiry_date,
-        LicenseAssignment.removed_at,
-    ]
-    column_details_list = [
-        LicenseAssignment.id,
-        LicenseAssignment.license,
-        LicenseAssignment.asset,
-        LicenseAssignment.person,
-        "status_badge",
-        LicenseAssignment.assigned_at,
-        LicenseAssignment.expiry_date,
-        LicenseAssignment.removed_at,
-        LicenseAssignment.note,
-    ] + ["created_at", "created_by", "updated_at", "updated_by"]
-    column_labels = {
-        "license": "Bản quyền phần mềm",
-        "asset": "Thiết bị được gán",
-        "person": "Nhân viên được gán",
-        "status_badge": "Trạng thái",
-        "assigned_at": "Thời điểm gán",
-        "expiry_date": "Ngày hết hạn",
-        "removed_at": "Thời điểm thu hồi",
-        "note": "Ghi chú",
-    }
-    column_formatters = {
-        "license": lambda m, a: (
-            Markup(
-                f'<a href="/admin/license/details/{m.license_id}" class="text-decoration-none fw-bold text-primary">'
-                f'<i class="fa-solid fa-compact-disc me-1"></i>{escape(m.license.product.name) if m.license and m.license.product else (escape(str(m.license)) if m.license else "-")}</a> '
-                f'<span class="badge bg-light text-secondary border ms-1">{m.license.seats if m.license else ""} seats</span>'
-            )
-            if m.license
-            else "-"
-        ),
-        "status_badge": lambda m, a: _license_assignment_badge(m),
-    }
-    column_formatters_detail = {
-        "license": lambda m, a: (
-            f"{m.license.product.name} ({m.license.seats} seats)"
-            if (m.license and m.license.product)
-            else (str(m.license) if m.license else "-")
-        ),
-        "status_badge": lambda m, a: _license_assignment_badge(m),
-    }
-    form_columns = [
-        "license",
-        "asset",
-        "person",
-        "assigned_at",
-        "expiry_date",
-        "removed_at",
-        "note",
-    ]
 
-    def list_query(self, request: Request) -> Select:
-        stmt = super().list_query(request)
-        return stmt.options(
-            selectinload(LicenseAssignment.license).selectinload(License.product),
-            selectinload(LicenseAssignment.asset),
-            selectinload(LicenseAssignment.person),
-        )
 
-    async def get_object_for_details(self, value: Any) -> Any:
-        stmt = self._stmt_by_identifier(value)
-        stmt = stmt.options(
-            selectinload(LicenseAssignment.license).selectinload(License.product),
-            selectinload(LicenseAssignment.asset),
-            selectinload(LicenseAssignment.person),
-        )
-        for relation in self._details_relations:
-            stmt = stmt.options(selectinload(relation))
-        return await self._get_object_by_pk(stmt)
 
-    async def on_model_change(
-        self, data: dict, model: Any, is_created: bool, request: Request
-    ) -> None:
-        await super().on_model_change(data, model, is_created, request)
-        lang = _request_lang(request)
-        is_en = (lang == "en")
-        is_ja = (lang == "ja")
 
-        asset_val = data.get("asset")
-        person_val = data.get("person")
-        if not asset_val and not person_val:
-            if is_ja:
-                raise ValueError("ライセンスは機器または社員に割り当てる必要があります。")
-            elif is_en:
-                raise ValueError("License must be assigned to an asset or person.")
-            else:
-                raise ValueError("Bản quyền phải được gán cho thiết bị hoặc nhân viên.")
 
-        lic_val = data.get("license")
-        lid = getattr(lic_val, "id", None)
-        if lid is None and str(lic_val).isdigit():
-            lid = int(lic_val)
-        if lid is None and hasattr(model, "license_id"):
-            lid = model.license_id
 
-        r_at = data.get("removed_at") if "removed_at" in data else getattr(model, "removed_at", None)
-        a_at = data.get("assigned_at") or getattr(model, "assigned_at", None)
 
-        _reject_future_date(a_at, lang, "Ngày gán bản quyền", "Assignment date", "割当日")
-        # Ngày thu hồi ở tương lai giải phóng seat ngay hôm nay -> gán vượt số lượng.
-        _reject_future_date(r_at, lang, "Ngày thu hồi bản quyền", "Removal date", "回収日")
-
-        # `model` còn mang giá trị TRƯỚC khi sửa.
-        own_id = None if is_created else getattr(model, "id", None)
-        was_open = (not is_created) and getattr(model, "removed_at", None) is None
-        old_lid = None if is_created else getattr(model, "license_id", None)
-        old_pid = None if is_created else getattr(model, "person_id", None)
-        old_aid = None if is_created else getattr(model, "asset_id", None)
-        new_pid = _pk_of(person_val) if "person" in data else old_pid
-        new_aid = _pk_of(asset_val) if "asset" in data else old_aid
-
-        # Bất biến số 7: dòng lịch sử đã thu hồi không được trỏ sang license / máy / người khác.
-        if not is_created and not was_open and (lid != old_lid or new_pid != old_pid or new_aid != old_aid):
-            raise ValueError(_msg(
-                lang,
-                "Lượt gán này đã thu hồi. Không thể đổi bản quyền, thiết bị hoặc nhân viên của một dòng lịch sử.",
-                "This assignment was revoked. The license, asset or person of a history row cannot be changed.",
-                "この割当は回収済みです。履歴のライセンス・機器・担当者は変更できません。",
-            ))
-
-        own_expiry = data.get("expiry_date") if "expiry_date" in data else getattr(model, "expiry_date", None)
-        if a_at and own_expiry and own_expiry < a_at:
-            raise ValueError(_msg(
-                lang,
-                "Ngày hết hạn của lượt gán không được trước ngày gán.",
-                "The assignment's expiry date cannot be before its assignment date.",
-                "割当の有効期限を割当日より前にすることはできません。",
-            ))
-
-        # Lượt gán sẽ ở trạng thái MỞ sau khi lưu (tạo mới, mở lại lượt đã thu hồi,
-        # hoặc đổi sang license khác) -> đều phải còn seat, không chỉ lúc tạo mới.
-        if lid and r_at is None:
-            with _get_admin_db(request) as db:
-                lic = db.get(License, lid)
-                if not lic or lic.is_deleted:
-                    raise ValueError(_msg(
-                        lang,
-                        "Bản quyền được chọn không tồn tại hoặc đã bị xóa.",
-                        "The selected license does not exist or has been deleted.",
-                        "選択されたライセンスは存在しないか、削除されています。",
-                    ))
-                if is_created or not was_open or lid != old_lid:
-                    active_count = _open_license_assignments(db, lid, exclude_id=own_id)
-                    if active_count >= lic.seats:
-                        if is_ja:
-                            raise ValueError(f"ライセンス '{lic}' の上限（{lic.seats} seats）に達しました。")
-                        elif is_en:
-                            raise ValueError(f"License '{lic}' has reached maximum seats ({lic.seats}).")
-                        else:
-                            raise ValueError(f"Bản quyền '{lic}' đã hết lượt gán (tổng {lic.seats} seats).")
-
-                if new_pid and (is_created or not was_open or new_pid != old_pid):
-                    _require_active_person(db, new_pid, lang)
-
-                if new_aid and (is_created or not was_open or new_aid != old_aid):
-                    asset = db.get(Asset, new_aid)
-                    if not asset or asset.is_deleted:
-                        raise ValueError(_msg(
-                            lang,
-                            "Thiết bị được chọn không tồn tại hoặc đã bị xóa.",
-                            "The selected asset does not exist or has been deleted.",
-                            "選択された機器は存在しないか、削除されています。",
-                        ))
-                    if asset.status in (AssetStatus.DISPOSED, AssetStatus.LOST):
-                        raise ValueError(_msg(
-                            lang,
-                            f"Không thể gán bản quyền cho thiết bị ở trạng thái '{asset.status.value}' (đã thanh lý / mất).",
-                            f"A license cannot be assigned to an asset in status '{asset.status.value}'.",
-                            f"ステータスが「{asset.status.value}」の機器にはライセンスを割り当てできません。",
-                        ))
-
-
-class AccessCardAdmin(BaseAdminView, model=AccessCard):
-    unique_text_fields = ("card_no",)
-    module = Module.CARDS
-    name = "Thẻ ra vào"
-    name_plural = "Danh sách Thẻ từ"
-    icon = "fa-solid fa-address-card"
-    category = "Thẻ ra vào"
-    column_list = [
-        AccessCard.id,
-        AccessCard.card_no,
-        AccessCard.card_type,
-        "status_badge",
-        "current_borrower",
-        AccessCard.note,
-    ]
-    column_details_list = [
-        AccessCard.id,
-        AccessCard.card_no,
-        AccessCard.card_type,
-        AccessCard.status,
-        "current_borrower",
-        AccessCard.note,
-    ] + COMMON_EXCLUDED_COLUMNS
-    column_labels = {
-        "current_borrower": "Người đang giữ thẻ",
-        "card_no": "Số thẻ",
-        "card_type": "Loại thẻ",
-        "status_badge": "Trạng thái",
-        "note": "Ghi chú",
-    }
-    column_formatters = {
-        "status_badge": lambda m, a: (
-            Markup(f'<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fa-solid fa-box-archive me-1"></i>{translate("Trong kho", get_admin_lang())}</span>')
-            if m.status == CardStatus.IN_STOCK
-            else (
-                Markup(f'<span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1"><i class="fa-solid fa-user-check me-1"></i>{translate("Đang cho mượn", get_admin_lang())}</span>')
-                if m.status == CardStatus.BORROWED
-                else (
-                    Markup(f'<span class="badge bg-danger text-white px-2 py-1"><i class="fa-solid fa-triangle-exclamation me-1"></i>{translate("Bị mất", get_admin_lang())}</span>')
-                    if m.status == CardStatus.LOST
-                    else Markup(f'<span class="badge bg-secondary text-white px-2 py-1">{translate("Đã hủy", get_admin_lang())}</span>')
-                )
-            )
-        ),
-        "current_borrower": lambda m, a: m.current_borrower or "-",
-    }
-    column_formatters_detail = {
-        "status": lambda m, a: (
-            Markup(f'<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fa-solid fa-box-archive me-1"></i>{translate("Trong kho", get_admin_lang())} (IN_STOCK)</span>')
-            if m.status == CardStatus.IN_STOCK
-            else (
-                Markup(f'<span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1"><i class="fa-solid fa-user-check me-1"></i>{translate("Đang cho mượn", get_admin_lang())} (BORROWED)</span>')
-                if m.status == CardStatus.BORROWED
-                else (
-                    Markup(f'<span class="badge bg-danger text-white px-2 py-1"><i class="fa-solid fa-triangle-exclamation me-1"></i>{translate("Bị mất", get_admin_lang())} (LOST)</span>')
-                    if m.status == CardStatus.LOST
-                    else Markup(f'<span class="badge bg-secondary text-white px-2 py-1">{translate("Đã hủy", get_admin_lang())} (DECOMMISSIONED)</span>')
-                )
-            )
-        ),
-        "current_borrower": lambda m, a: (
-            Markup(f'<span class="fw-semibold text-dark"><i class="fa-solid fa-user me-1 text-primary"></i>{escape(m.current_borrower)}</span>')
-            if m.current_borrower
-            else Markup(f'<span class="text-muted fst-italic">- ({translate("Trong kho", get_admin_lang())})</span>')
-        ),
-    }
-    form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["loans"]
-
-    def list_query(self, request: Request) -> Select:
-        stmt = super().list_query(request)
-        return stmt.options(
-            selectinload(AccessCard.loans).selectinload(CardLoan.person)
-        )
-
-    async def get_object_for_details(self, value: Any) -> Any:
-        # Phải nạp sẵn `loans`: thuộc tính current_borrower đọc quan hệ này sau khi
-        # session đã đóng, thiếu nó thì trang chi tiết luôn hiện "Trong kho".
-        stmt = self._stmt_by_identifier(value)
-        stmt = stmt.options(selectinload(AccessCard.loans).selectinload(CardLoan.person))
-        for relation in self._details_relations:
-            stmt = stmt.options(selectinload(relation))
-        return await self._get_object_by_pk(stmt)
-
-    async def on_model_change(
-        self, data: dict, model: Any, is_created: bool, request: Request
-    ) -> None:
-        await super().on_model_change(data, model, is_created, request)
-        status_val = data.get("status")
-        if status_val in (CardStatus.BORROWED, CardStatus.BORROWED.value, "BORROWED"):
-            if is_created:
-                raise ValueError(
-                    "Không thể đặt trạng thái 'BORROWED' khi tạo mới thẻ vật lý. "
-                    "Thẻ mới nhập kho phải là 'IN_STOCK'. "
-                    "Để cho mượn thẻ, vui lòng ghi nhận tại mục 'Sổ Mượn-Trả Thẻ'."
-                )
-            else:
-                card_id = getattr(model, "id", None)
-                if card_id:
-                    with SessionLocal() as db:
-                        has_open = db.scalar(
-                            select(CardLoan).where(
-                                CardLoan.card_id == card_id,
-                                CardLoan.returned_at.is_(None),
-                                CardLoan.is_deleted.is_(False),
-                            )
-                        )
-                        if not has_open:
-                            raise ValueError(
-                                "Không thể chuyển trạng thái thẻ sang 'BORROWED' khi chưa có phiếu mượn. "
-                                "Vui lòng ghi nhận người mượn tại mục 'Sổ Mượn-Trả Thẻ'."
-                            )
-        elif not is_created and status_val in (CardStatus.IN_STOCK, CardStatus.IN_STOCK.value, "IN_STOCK"):
-            card_id = getattr(model, "id", None)
-            if card_id:
-                with SessionLocal() as db:
-                    has_open = db.scalar(
-                        select(CardLoan).where(
-                            CardLoan.card_id == card_id,
-                            CardLoan.returned_at.is_(None),
-                            CardLoan.is_deleted.is_(False),
-                        )
-                    )
-                    if has_open:
-                        raise ValueError(
-                            "Thẻ này đang có người mượn chưa trả trong 'Sổ Mượn-Trả Thẻ'. "
-                            "Vui lòng vào 'Sổ Mượn-Trả Thẻ' cập nhật Ngày trả (returned_at) để hoàn tất thủ tục trả thẻ."
-                        )
-
-
-class CardLoanAdmin(BaseAdminView, model=CardLoan):
-    module = Module.CARDS
-    name = "Mượn thẻ từ"
-    name_plural = "Sổ Mượn-Trả Thẻ"
-    icon = "fa-solid fa-clock-rotate-left"
-    category = "Thẻ ra vào"
-    can_delete = False
-    column_list = [
-        CardLoan.id,
-        CardLoan.card,
-        CardLoan.person,
-        CardLoan.external_name,
-        "status_badge",
-        CardLoan.borrowed_at,
-        CardLoan.returned_at,
-    ]
-    column_details_list = [
-        CardLoan.id,
-        CardLoan.card,
-        CardLoan.person,
-        CardLoan.external_name,
-        CardLoan.external_company,
-        "status_badge",
-        CardLoan.borrowed_at,
-        CardLoan.expected_return_at,
-        CardLoan.returned_at,
-        CardLoan.purpose,
-    ] + ["created_at", "created_by", "updated_at", "updated_by"]
-    column_labels = {
-        "card": "Thẻ mượn",
-        "person": "Nhân viên mượn",
-        "external_name": "Người mượn ngoài",
-        "external_company": "Đơn vị mượn ngoài",
-        "status_badge": "Trạng thái",
-        "purpose": "Mục đích mượn",
-        "borrowed_at": "Thời điểm mượn",
-        "expected_return_at": "Dự kiến ngày trả",
-        "returned_at": "Thời điểm trả",
-    }
-    column_formatters = {
-        "status_badge": lambda m, a: (
-            Markup(f'<span class="badge bg-secondary text-white"><i class="fa-solid fa-arrow-rotate-left me-1"></i>{translate("Đã trả", get_admin_lang())}</span>')
-            if m.returned_at
-            else Markup(f'<span class="badge bg-success text-white"><i class="fa-solid fa-id-badge me-1"></i>{translate("Đang mượn", get_admin_lang())}</span>')
-        ),
-    }
-    column_formatters_detail = {
-        "status_badge": lambda m, a: (
-            Markup(f'<span class="badge bg-secondary text-white"><i class="fa-solid fa-arrow-rotate-left me-1"></i>{translate("Đã trả", get_admin_lang())}</span>')
-            if m.returned_at
-            else Markup(f'<span class="badge bg-success text-white"><i class="fa-solid fa-id-badge me-1"></i>{translate("Đang mượn", get_admin_lang())}</span>')
-        ),
-    }
-
-    def list_query(self, request: Request) -> Select:
-        stmt = super().list_query(request)
-        return stmt.options(
-            selectinload(CardLoan.card),
-            selectinload(CardLoan.person),
-        )
-
-    async def get_object_for_details(self, value: Any) -> Any:
-        stmt = self._stmt_by_identifier(value)
-        stmt = stmt.options(
-            selectinload(CardLoan.card),
-            selectinload(CardLoan.person),
-        )
-        for relation in self._details_relations:
-            stmt = stmt.options(selectinload(relation))
-        return await self._get_object_by_pk(stmt)
-
-    async def on_model_change(
-        self, data: dict, model: Any, is_created: bool, request: Request
-    ) -> None:
-        await super().on_model_change(data, model, is_created, request)
-        lang = _request_lang(request)
-        is_en = (lang == "en")
-        is_ja = (lang == "ja")
-
-        card_val = data.get("card")
-        cid = getattr(card_val, "id", None)
-        if cid is None and str(card_val).isdigit():
-            cid = int(card_val)
-        if cid is None and hasattr(model, "card_id"):
-            cid = model.card_id
-
-        b_at = data.get("borrowed_at") or getattr(model, "borrowed_at", None)
-        r_at = data.get("returned_at") if "returned_at" in data else getattr(model, "returned_at", None)
-
-        _reject_future_date(b_at, lang, "Ngày mượn thẻ", "Borrow date", "貸出日")
-        # Ngày trả ở tương lai làm thẻ "đã trả" ngay hôm nay nhưng vẫn chặn lượt mượn mới đến ngày đó.
-        _reject_future_date(r_at, lang, "Ngày trả thẻ", "Return date", "返却日")
-
-        # `model` còn mang giá trị TRƯỚC khi sửa.
-        old_cid = None if is_created else getattr(model, "card_id", None)
-        old_pid = None if is_created else getattr(model, "person_id", None)
-        was_open = (not is_created) and getattr(model, "returned_at", None) is None
-        request.state.itam_prev_card_id = old_cid
-        loan_pid = _pk_of(data.get("person")) if "person" in data else old_pid
-
-        # Bất biến số 7: lượt mượn đã trả không được trỏ sang thẻ khác hay người khác.
-        if not is_created and not was_open and (cid != old_cid or loan_pid != old_pid):
-            raise ValueError(_msg(
-                lang,
-                "Lượt mượn này đã trả. Không thể đổi thẻ hoặc người mượn của một dòng lịch sử.",
-                "This loan is closed. The card or borrower of a history row cannot be changed.",
-                "この貸出は返却済みです。履歴のカード・借用者は変更できません。",
-            ))
-
-        # Người mượn là nhân viên HOẶC người bên ngoài. Điền cả hai thì màn hình chỉ hiện
-        # nhân viên, tên khách bị che mất.
-        ext_name = data.get("external_name") if "external_name" in data else getattr(model, "external_name", None)
-        if loan_pid and ext_name and str(ext_name).strip():
-            raise ValueError(_msg(
-                lang,
-                "Chỉ chọn nhân viên mượn HOẶC nhập tên người mượn ngoài, không điền cả hai.",
-                "Choose an employee OR enter an external borrower, not both.",
-                "社員を選択するか外部借用者名を入力するか、どちらか一方のみにしてください。",
-            ))
-
-        # Lượt mượn sẽ ở trạng thái MỞ sau khi lưu -> áp cùng luật với loan_card(),
-        # kể cả khi mở lại lượt đã trả hoặc đổi sang thẻ khác (không chỉ lúc tạo mới).
-        if cid and r_at is None:
-            pid = _form_fk(data, "person", model, "person_id") if data.get("person") or "person" not in data else None
-            with _get_admin_db(request) as db:
-                card = db.get(AccessCard, cid)
-                if not card or card.is_deleted:
-                    raise ValueError(_msg(
-                        lang,
-                        "Thẻ được chọn không tồn tại hoặc đã bị xóa.",
-                        "The selected card does not exist or has been deleted.",
-                        "選択されたカードは存在しないか、削除されています。",
-                    ))
-                if (is_created or not was_open or cid != old_cid) and card.status in (CardStatus.LOST, CardStatus.DAMAGED):
-                    raise ValueError(
-                        f"Thẻ '{card.card_no}' đang ở trạng thái {card.status.value}, không thể cho mượn."
-                        if not is_en else f"Card '{card.card_no}' is in status {card.status.value}, cannot loan out."
-                    )
-                if pid and (is_created or not was_open or pid != old_pid):
-                    _require_active_person(db, pid, lang)
-
-        if b_at and r_at and r_at < b_at:
-            if is_ja:
-                raise ValueError("返却日を貸出日より前にすることはできません。")
-            elif is_en:
-                raise ValueError("Return date cannot be before borrow date.")
-            else:
-                raise ValueError("Ngày trả thẻ không được trước ngày mượn.")
-
-        if cid and b_at:
-            current_id = getattr(model, "id", None) if not is_created else None
-            with _get_admin_db(request) as db:
-                query = (
-                    select(CardLoan)
-                    .options(selectinload(CardLoan.person))
-                    .where(
-                        CardLoan.card_id == cid,
-                        CardLoan.is_deleted.is_(False),
-                    )
-                )
-                if current_id:
-                    query = query.where(CardLoan.id != current_id)
-                existing = db.scalars(query).all()
-
-                for other in existing:
-                    o_start = other.borrowed_at
-                    o_end = other.returned_at
-                    borrower = other.person.full_name if other.person else (other.external_name or "người khác")
-
-                    if o_end is None:
-                        if r_at is None:
-                            if is_ja:
-                                raise ValueError(f"このカードは現在 '{borrower}' が借用中です（未返却）。新しい貸出を登録する前に前回の返却日を入力してください。")
-                            elif is_en:
-                                raise ValueError(f"This card is currently borrowed by '{borrower}' and has not been returned. Please record return date first.")
-                            else:
-                                raise ValueError(f"Thẻ này hiện đang được mượn bởi '{borrower}' (chưa trả). Vui lòng ghi nhận Ngày trả trước khi tạo lượt mượn mới.")
-                        if b_at >= o_start or r_at > o_start:
-                            if is_ja:
-                                raise ValueError(f"貸出期間の重複: このカードは {o_start} から '{borrower}' が借用中です。")
-                            elif is_en:
-                                raise ValueError(f"Overlapping card loan period: This card is currently borrowed by '{borrower}' since {o_start}.")
-                            else:
-                                raise ValueError(f"Trùng lặp thời gian mượn thẻ: Thẻ này đang được mượn bởi '{borrower}' từ ngày {o_start.strftime('%d/%m/%Y')} (chưa trả). Thời gian mượn thẻ mới không thể trùng lấn với người đang giữ thẻ.")
-                    else:
-                        if b_at < o_end and (r_at is None or r_at > o_start):
-                            if is_ja:
-                                raise ValueError(
-                                    f"貸出期間の重複: このカードはすでに {o_start} から {o_end} まで '{borrower}' に貸出されています。"
-                                    f"入力された期間（{b_at} - {r_at or '未返却'}）は前回の貸出と重複しています。"
-                                )
-                            elif is_en:
-                                raise ValueError(
-                                    f"Overlapping card loan period: This card was borrowed by '{borrower}' from {o_start} to {o_end}. "
-                                    f"The new period ({b_at} - {r_at or 'open'}) overlaps with the previous loan."
-                                )
-                            else:
-                                raise ValueError(
-                                    f"Trùng lặp thời gian mượn thẻ: Thẻ này đã được mượn bởi '{borrower}' "
-                                    f"từ ngày {o_start.strftime('%d/%m/%Y')} đến ngày {o_end.strftime('%d/%m/%Y')}. "
-                                    f"Thời gian mượn mới ({b_at.strftime('%d/%m/%Y')} - {r_at.strftime('%d/%m/%Y') if r_at else 'chưa trả'}) "
-                                    f"bị trùng lấn với lượt mượn trước."
-                                )
-
-    async def after_model_change(
-        self, data: dict, model: Any, is_created: bool, request: Request
-    ) -> None:
-        await super().after_model_change(data, model, is_created, request)
-        # Đồng bộ cả thẻ CŨ nếu form đổi sang thẻ khác, nếu không thẻ cũ kẹt ở BORROWED.
-        card_ids = {getattr(request.state, "itam_prev_card_id", None), getattr(model, "card_id", None)}
-        card_ids.discard(None)
-        if not card_ids:
-            return
-        user_id = request.session.get("user_id")
-        client_ip = request.client.host if request.client else None
-        try:
-            with SessionLocal() as db:
-                for card_id in sorted(card_ids):
-                    _sync_card_status(db, card_id, user_id, client_ip)
-                db.commit()
-        except Exception:
-            logger.exception("Không đồng bộ được trạng thái thẻ sau khi lưu lượt mượn #%s", getattr(model, "id", None))
-
-
-
-class ContractAdmin(BaseAdminView, model=Contract):
-    unique_text_fields = ("code",)
-    module = Module.CONTRACTS
-    name = "Hợp đồng"
-    name_plural = "Hợp đồng Mua sắm IT"
-    icon = "fa-solid fa-file-contract"
-    category = "Hợp đồng"
-    column_list = [Contract.id, Contract.code, Contract.vendor_name, Contract.signed_date, Contract.delivery_status]
-    column_details_list = [
-        Contract.id,
-        Contract.code,
-        Contract.vendor_name,
-        Contract.signed_date,
-        Contract.delivery_status,
-        Contract.note,
-    ] + COMMON_EXCLUDED_COLUMNS
-    column_labels = {
-        "code": "Số hợp đồng",
-        "vendor_name": "Nhà cung cấp",
-        "signed_date": "Ngày ký hợp đồng",
-        "delivery_status": "Tiến độ giao hàng",
-        "note": "Ghi chú",
-    }
-    # Tiến độ giao hàng được TÍNH từ số đã nhận của các hạng mục (Rule 8), không gõ tay.
-    form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["lines", "delivery_status"]
-
-    async def after_model_change(
-        self, data: dict, model: Any, is_created: bool, request: Request
-    ) -> None:
-        await super().after_model_change(data, model, is_created, request)
-        contract_id = getattr(model, "id", None)
-        if not contract_id:
-            return
-        try:
-            with SessionLocal() as db:
-                sync_contract_delivery_status(db, contract_id)
-                db.commit()
-        except Exception:
-            logger.exception("Không tính lại được tiến độ giao hàng của hợp đồng #%s", contract_id)
-
-    # Thiếu danh sách cột tìm kiếm thì ?search=... không lọc gì cả (liệt kê toàn bộ hợp đồng).
-    column_searchable_list = [Contract.code, Contract.vendor_name]
-
-    def list_query(self, request: Request) -> Select:
-        stmt = super().list_query(request)
-        return stmt.options(
-            selectinload(Contract.lines).selectinload(ContractLine.assets),
-        )
-
-
-def _receive_button(line: Any, hardware_label: str, css: str, font_size: str) -> str:
-    """Nút nhận hàng của một hạng mục - chỉ hiện với người có quyền nhận loại hàng đó."""
-    if not _can_receive_line(line):
-        return ""
-    return (
-        f'<a href="{_receive_url(line)}" class="btn btn-sm {css} py-0 px-2 fw-semibold" style="font-size: {font_size};">'
-        f'<i class="fa-solid fa-boxes-packing me-1"></i>{_receive_label(line, hardware_label)}</a>'
-    )
-
-
-def _item_kind_badge(line: Any) -> Markup:
-    if line.item_kind == ContractItemKind.SOFTWARE:
-        return Markup(
-            f'<span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1">'
-            f'<i class="fa-solid fa-compact-disc me-1"></i>{translate("Phần mềm", get_admin_lang())}</span>'
-        )
-    return Markup(
-        f'<span class="badge bg-light text-secondary border px-2 py-1">'
-        f'<i class="fa-solid fa-laptop me-1"></i>{translate("Phần cứng", get_admin_lang())}</span>'
-    )
-
-
-class ContractLineAdmin(BaseAdminView, model=ContractLine):
-    module = Module.CONTRACTS
-    name = "Hạng mục Hợp đồng"
-    name_plural = "Chi tiết Hạng mục"
-    icon = "fa-solid fa-list-check"
-    category = "Hợp đồng"
-    column_list = [
-        ContractLine.id,
-        ContractLine.contract,
-        ContractLine.item_type,
-        ContractLine.item_kind,
-        ContractLine.qty_ordered,
-        "qty_delivered",
-        "qty_remaining",
-        "delivery_progress",
-    ]
-    column_details_list = [
-        ContractLine.id,
-        ContractLine.contract,
-        ContractLine.item_type,
-        ContractLine.item_kind,
-        ContractLine.spec,
-        ContractLine.qty_ordered,
-        "qty_delivered",
-        "qty_remaining",
-        "delivery_progress",
-    ] + COMMON_EXCLUDED_COLUMNS
-    column_labels = {
-        "contract": "Hợp đồng",
-        "item_type": "Hạng mục hàng hóa",
-        "item_kind": "Loại hạng mục",
-        "spec": "Thông số kỹ thuật",
-        "qty_ordered": "Số lượng đặt mua",
-        "qty_delivered": "Đã nhận",
-        "qty_remaining": "Còn lại",
-        "delivery_progress": "Tiến độ",
-    }
-    column_formatters = {
-        "item_kind": lambda m, a: _item_kind_badge(m),
-        "qty_delivered": lambda m, a: Markup(
-            f'<span class="badge bg-primary text-white fs-6 px-2 py-1"><i class="fa-solid fa-box-open me-1"></i>{m.qty_delivered}</span>'
-        ),
-        "qty_remaining": lambda m, a: Markup(
-            f'<span class="badge bg-secondary text-white fs-6 px-2 py-1">{m.qty_remaining}</span>'
-        ),
-        "delivery_progress": lambda m, a: (
-            Markup(
-                f'<span class="badge bg-success text-white"><i class="fa-solid fa-circle-check me-1"></i>{translate("Đã đủ hàng", get_admin_lang())}</span>'
-            )
-            if m.qty_delivered >= m.qty_ordered
-            else (
-                Markup(
-                    f'<span class="badge bg-warning text-dark me-2"><i class="fa-solid fa-clock me-1"></i>{translate("Giao một phần", get_admin_lang())} ({m.qty_delivered}/{m.qty_ordered})</span>'
-                    f'{_receive_button(m, "Nhận hàng", "btn-outline-primary", "11px")}'
-                )
-                if m.qty_delivered > 0
-                else Markup(
-                    f'<span class="badge bg-light text-secondary border me-2"><i class="fa-regular fa-clock me-1"></i>{translate("Chưa nhận", get_admin_lang())}</span>'
-                    f'{_receive_button(m, "Nhận hàng", "btn-outline-primary", "11px")}'
-                )
-            )
-        ),
-    }
-    column_formatters_detail = {
-        "item_kind": lambda m, a: _item_kind_badge(m),
-        "qty_delivered": lambda m, a: Markup(
-            f'<span class="badge bg-primary text-white fs-6 px-2 py-1"><i class="fa-solid fa-box-open me-1"></i>{m.qty_delivered}</span>'
-        ),
-        "qty_remaining": lambda m, a: Markup(
-            f'<span class="badge bg-secondary text-white fs-6 px-2 py-1">{m.qty_remaining}</span>'
-        ),
-        "delivery_progress": lambda m, a: (
-            Markup(
-                f'<span class="badge bg-success text-white"><i class="fa-solid fa-circle-check me-1"></i>{translate("Đã đủ hàng", get_admin_lang())}</span>'
-            )
-            if m.qty_delivered >= m.qty_ordered
-            else (
-                Markup(
-                    f'<span class="badge bg-warning text-dark me-2"><i class="fa-solid fa-clock me-1"></i>{translate("Giao một phần", get_admin_lang())} ({m.qty_delivered}/{m.qty_ordered})</span>'
-                    f'{_receive_button(m, "Nhập kho theo lô", "btn-primary text-white", "12px")}'
-                )
-                if m.qty_delivered > 0
-                else Markup(
-                    f'<span class="badge bg-light text-secondary border me-2"><i class="fa-regular fa-clock me-1"></i>{translate("Chưa nhận", get_admin_lang())}</span>'
-                    f'{_receive_button(m, "Nhập kho theo lô", "btn-primary text-white", "12px")}'
-                )
-            )
-        ),
-    }
-    form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["assets", "licenses"]
-
-    def list_query(self, request: Request) -> Select:
-        stmt = super().list_query(request)
-        return stmt.options(
-            selectinload(ContractLine.contract),
-            selectinload(ContractLine.assets),
-            selectinload(ContractLine.licenses),
-        )
-
-    async def on_model_change(
-        self, data: dict, model: Any, is_created: bool, request: Request
-    ) -> None:
-        await super().on_model_change(data, model, is_created, request)
-        new_qty = data.get("qty_ordered")
-        line_id = getattr(model, "id", None)
-        request.state.itam_prev_contract_id = None if is_created else getattr(model, "contract_id", None)
-        if is_created or not line_id:
-            return
-        lang = _request_lang(request)
-        # `model` còn mang loại hạng mục TRƯỚC khi sửa -> số đã nhận tính theo loại hiện tại.
-        with _get_admin_db(request) as db:
-            received = line_received_qty(db, model)
-
-        new_contract_id = _pk_of(data.get("contract")) if "contract" in data else None
-        if new_contract_id is not None and new_contract_id != getattr(model, "contract_id", None) and received > 0:
-            raise ValueError(_msg(
-                lang,
-                "Hạng mục đã có hàng nhận nên không thể chuyển sang hợp đồng khác.",
-                "This line already has received items and cannot be moved to another contract.",
-                "受入済みの明細は別の契約に移動できません。",
-            ))
-
-        new_kind = _enum_of(ContractItemKind, data.get("item_kind")) if "item_kind" in data else None
-        if new_kind is not None and new_kind != model.item_kind and received > 0:
-            raise ValueError(_msg(
-                lang,
-                "Không thể đổi loại hạng mục khi hạng mục đã có hàng nhận. Hãy gỡ các thiết bị / gói phần mềm đã nhận trước.",
-                "The item kind cannot be changed once something has been received for this line.",
-                "受入済みの明細は品目区分を変更できません。",
-            ))
-
-        if new_qty is not None and int(new_qty) < received:
-            raise ValueError(_msg(
-                lang,
-                f"Không thể giảm số lượng đặt mua xuống {new_qty} vì hạng mục đã nhận {received}.",
-                f"Cannot reduce ordered quantity to {new_qty}: {received} were already received.",
-                f"すでに {received} 受領済みのため、発注数量を {new_qty} に減らすことはできません。",
-            ))
-
-    async def after_model_change(
-        self, data: dict, model: Any, is_created: bool, request: Request
-    ) -> None:
-        await super().after_model_change(data, model, is_created, request)
-        # Thêm hạng mục hoặc đổi số lượng đặt mua làm thay đổi "đã nhận đủ hay chưa".
-        contract_ids = {getattr(request.state, "itam_prev_contract_id", None), getattr(model, "contract_id", None)}
-        contract_ids.discard(None)
-        try:
-            with SessionLocal() as db:
-                for contract_id in sorted(contract_ids):
-                    sync_contract_delivery_status(db, contract_id)
-                db.commit()
-        except Exception:
-            logger.exception("Không đồng bộ được tiến độ hợp đồng sau khi lưu hạng mục #%s", getattr(model, "id", None))
-
-    async def get_object_for_details(self, value: Any) -> Any:
-        stmt = self._stmt_by_identifier(value)
-        stmt = stmt.options(
-            selectinload(ContractLine.contract),
-            selectinload(ContractLine.assets),
-            selectinload(ContractLine.licenses),
-        )
-        for relation in self._details_relations:
-            stmt = stmt.options(selectinload(relation))
-        return await self._get_object_by_pk(stmt)
-
-
-
-class PhoneAdmin(BaseAdminView, model=Phone):
-    unique_text_fields = ("device_name", "extension_number")
-    module = Module.PHONES
-    name = "Thiết bị Thoại"
-    name_plural = "Danh bạ & Thiết bị Điện thoại"
-    icon = "fa-solid fa-phone"
-    category = "Danh bạ thoại"
-    column_list = [Phone.id, Phone.extension_number, Phone.device_name, Phone.device_type, Phone.location, Phone.is_active]
-    column_details_list = [
-        Phone.id,
-        Phone.extension_number,
-        Phone.device_name,
-        Phone.device_type,
-        Phone.location,
-        Phone.is_active,
-        Phone.remarks,
-    ] + COMMON_EXCLUDED_COLUMNS
-    column_labels = {
-        "device_name": "Tên máy điện thoại",
-        "device_type": "Loại điện thoại",
-        "extension_number": "Số máy nhánh (Ext)",
-        "location": "Vị trí đặt",
-        "is_active": "Trạng thái hoạt động",
-        "remarks": "Ghi chú",
-    }
 
 
 def _valid_audit_action(raw: str | None) -> str | None:
@@ -3594,217 +2171,8 @@ class TokuyamaAdmin(Admin):
 
     @login_required
     async def index(self, request: Request) -> Response:
-        """Dashboard tổng quan hệ thống ITAM Tokuyama theo triết lý Swiss."""
-        from app.core.i18n import get_current_lang, translate
-
-        current_lang = get_current_lang(request)
-        today = today_local()
-        sixty_days_later = today + dt.timedelta(days=60)
-
-        with SessionLocal() as db:
-            # Bảng cảnh báo phải theo đúng ma trận quyền (kể cả quyền ghi đè), không theo tên
-            # vai trò: gỡ quyền xem License/Audit của một vai trò thì dashboard cũng phải ẩn.
-            user = getattr(request.state, "current_user", None) or get_user_from_request(request, db)
-
-            def _can_view(module: Module) -> bool:
-                return bool(user) and has_permission(db, user, module, PermissionAction.VIEW)
-
-            can_view_audit = _can_view(Module.AUDIT)
-            can_view_licenses = _can_view(Module.LICENSES)
-            can_view_cards = _can_view(Module.CARDS)
-
-            counts_stmt = select(
-                select(func.count()).select_from(Asset).where(Asset.is_deleted.is_(False)).scalar_subquery(),
-                select(func.count()).select_from(Assignment).where(
-                    Assignment.returned_at.is_(None), Assignment.is_deleted.is_(False)
-                ).scalar_subquery(),
-                select(func.count()).select_from(License).where(License.is_deleted.is_(False)).scalar_subquery(),
-                select(func.count()).select_from(AccessCard).where(AccessCard.is_deleted.is_(False)).scalar_subquery(),
-                # Nhãn trên dashboard là "Nhân sự đang làm việc": không đếm người đã nghỉ / chưa vào làm.
-                select(func.count()).select_from(Person).where(
-                    Person.is_deleted.is_(False), Person.status == PersonStatus.ACTIVE
-                ).scalar_subquery(),
-                select(func.count()).select_from(Contract).where(Contract.is_deleted.is_(False)).scalar_subquery(),
-                select(func.count()).select_from(CardLoan).where(
-                    CardLoan.returned_at.is_(None), CardLoan.is_deleted.is_(False)
-                ).scalar_subquery(),
-                # "Trong kho" là máy có trạng thái IN_STOCK, không phải "tổng trừ đang mượn":
-                # cách trừ đó tính cả máy đang sửa, đã thanh lý, bị mất là hàng tồn.
-                select(func.count()).select_from(Asset).where(
-                    Asset.is_deleted.is_(False), Asset.status == AssetStatus.IN_STOCK
-                ).scalar_subquery(),
-            )
-            counts_row = db.execute(counts_stmt).first()
-            if counts_row:
-                (
-                    asset_count,
-                    assignment_count,
-                    license_count,
-                    card_count,
-                    person_count,
-                    contract_count,
-                    active_card_loans,
-                    in_stock_count,
-                ) = counts_row
-            else:
-                asset_count = assignment_count = license_count = card_count = person_count = contract_count = active_card_loans = in_stock_count = 0
-
-            # Audit logs (chỉ query khi có quyền xem)
-            recent_logs = []
-            if can_view_audit:
-                recent_logs = db.scalars(
-                    select(AuditLog).options(joinedload(AuditLog.user)).order_by(AuditLog.id.desc()).limit(8)
-                ).all()
-
-            # Overdue card loans (FR-17) - chỉ query khi có quyền xem thẻ
-            overdue_loans_raw = []
-            overdue_loan_count = 0
-            if can_view_cards:
-                # Số trên huy hiệu là tổng thật; danh sách bên dưới chỉ hiện 8 dòng đầu.
-                overdue_loan_count = db.scalar(
-                    select(func.count()).select_from(CardLoan).where(
-                        CardLoan.returned_at.is_(None),
-                        CardLoan.is_deleted.is_(False),
-                        CardLoan.expected_return_at.is_not(None),
-                        CardLoan.expected_return_at < today,
-                    )
-                ) or 0
-                overdue_loans_raw = db.scalars(
-                    select(CardLoan)
-                    .options(
-                        joinedload(CardLoan.card),
-                        joinedload(CardLoan.person),
-                    )
-                    .where(
-                        CardLoan.returned_at.is_(None),
-                        CardLoan.is_deleted.is_(False),
-                        CardLoan.expected_return_at.is_not(None),
-                        CardLoan.expected_return_at < today,
-                    )
-                    .order_by(CardLoan.expected_return_at.asc())
-                    .limit(8)
-                ).all()
-
-            overdue_card_loans = []
-            for loan in overdue_loans_raw:
-                days_overdue = (today - loan.expected_return_at).days if loan.expected_return_at else 0
-                borrower = loan.person.full_name if loan.person else (loan.external_name or "N/A")
-                company = f" [{loan.external_company}]" if loan.external_company else ""
-                overdue_card_loans.append({
-                    "id": loan.id,
-                    "card_id": loan.card_id,
-                    "card_number": loan.card.card_no if loan.card else f"#{loan.card_id}",
-                    "borrower": f"{borrower}{company}",
-                    "borrowed_at": loan.borrowed_at,
-                    "expected_return_at": loan.expected_return_at,
-                    "days_overdue": days_overdue,
-                })
-
-            # Expiring licenses within 60 days (FR-17) - chỉ query khi có quyền xem
-            expiring_licenses = []
-            expiring_license_count = 0
-            expired_license_count = 0
-            if can_view_licenses:
-                # Hạn hiệu lực của một gói = hạn sớm nhất giữa hạn của gói và hạn riêng của các
-                # lượt gán đang mở (Trend Micro ghi hạn theo từng máy, gói không có hạn chung).
-                own_expiry_rows = db.execute(
-                    select(LicenseAssignment.license_id, func.min(LicenseAssignment.expiry_date))
-                    .join(License, License.id == LicenseAssignment.license_id)
-                    .where(
-                        LicenseAssignment.removed_at.is_(None),
-                        LicenseAssignment.is_deleted.is_(False),
-                        LicenseAssignment.expiry_date.is_not(None),
-                        License.is_deleted.is_(False),
-                    )
-                    .group_by(LicenseAssignment.license_id)
-                ).all()
-                own_expiry = {lid: exp for lid, exp in own_expiry_rows}
-
-                package_rows = db.execute(
-                    select(License.id, License.expiry_date).where(License.is_deleted.is_(False))
-                ).all()
-                effective: dict[int, dt.date] = {}
-                for lid, package_expiry in package_rows:
-                    candidates = [d for d in (package_expiry, own_expiry.get(lid)) if d is not None]
-                    if candidates:
-                        effective[lid] = min(candidates)
-                expired_license_count = sum(1 for d in effective.values() if d < today)
-                expiring_license_count = sum(1 for d in effective.values() if today <= d <= sixty_days_later)
-                assignment_alert_ids = [
-                    lid for lid, d in effective.items()
-                    if d <= sixty_days_later and lid in own_expiry and own_expiry[lid] == d
-                ]
-
-                expiring_lics_raw = db.scalars(
-                    select(License)
-                    .options(
-                        joinedload(License.product),
-                        selectinload(License.assignments),
-                    )
-                    .where(
-                        License.is_deleted.is_(False),
-                        or_(
-                            License.expiry_date <= sixty_days_later,
-                            License.id.in_(assignment_alert_ids),
-                        ),
-                    )
-                    # Sắp hết hạn xếp trước (gần nhất trước), rồi mới đến đã hết hạn (mới nhất
-                    # trước). Xếp thuần theo ngày tăng dần thì 8 license hết hạn từ lâu sẽ
-                    # chiếm hết bảng và license hết hạn tuần sau không bao giờ hiện ra.
-                ).all()
-
-                # Sắp hết hạn xếp trước (gần nhất trước), rồi mới đến đã hết hạn (mới nhất trước),
-                # theo hạn hiệu lực; chỉ hiện 8 dòng, số đếm ở trên là tổng thật.
-                expiring_lics_raw = sorted(
-                    expiring_lics_raw,
-                    key=lambda lic: (effective[lic.id] < today, abs((effective[lic.id] - today).days)),
-                )[:8]
-
-                for lic in expiring_lics_raw:
-                    lic_expiry = effective[lic.id]
-                    days_left = (lic_expiry - today).days
-                    active_assignments = len([a for a in lic.assignments if a.removed_at is None and not a.is_deleted])
-                    product_name = lic.product.name if lic.product else "N/A"
-                    expiring_licenses.append({
-                        "id": lic.id,
-                        "product_name": product_name,
-                        "license_type": lic.product.license_type.value if (lic.product and lic.product.license_type) else "",
-                        "expiry_date": lic_expiry,
-                        "days_left": days_left,
-                        "is_expired": days_left < 0,
-                        "seats_used": f"{active_assignments}/{lic.seats}",
-                        "note": lic.note or "",
-                    })
-
-        # Tỷ lệ cấp phát tính trên số máy dùng được (đang mượn + trong kho), không tính máy hỏng / thanh lý / mất.
-        usable_assets = assignment_count + in_stock_count
-        allocation_rate = int(round((assignment_count / usable_assets) * 100)) if usable_assets > 0 else 0
-
-        context = {
-            "request": request,
-            "admin": self,
-            "current_lang": current_lang,
-            "title": translate("Tổng quan Quản trị", current_lang),
-            "subtitle": translate("IT Asset Management System", current_lang),
-            "asset_count": asset_count,
-            "assignment_count": assignment_count,
-            "license_count": license_count,
-            "card_count": card_count,
-            "person_count": person_count,
-            "contract_count": contract_count,
-            "active_card_loans": active_card_loans,
-            "in_stock_count": in_stock_count,
-            "allocation_rate": allocation_rate,
-            "recent_logs": recent_logs,
-            "overdue_card_loans": overdue_card_loans,
-            "overdue_loan_count": overdue_loan_count,
-            "expiring_licenses": expiring_licenses,
-            "expiring_license_count": expiring_license_count,
-            "expired_license_count": expired_license_count,
-            "can_view_audit": can_view_audit,
-            "can_view_licenses": can_view_licenses,
-        }
-        return await self.templates.TemplateResponse(request, "sqladmin/index.html", context)
+        """Sổ tổng là trang làm việc chính; trang tổng quan cũ đã được gỡ."""
+        return RedirectResponse("/admin/so-tong", status_code=302)
 
 
 def setup_admin(app, engine):
@@ -3841,14 +2209,11 @@ def setup_admin(app, engine):
     # 1. Hệ thống & phân quyền
     admin.add_view(UserAdmin)
     admin.add_view(RoleAdmin)
-    admin.add_view(RolePermissionAdmin)
-    admin.add_view(UserPermissionOverrideAdmin)
 
     # 2. Danh mục dùng chung
     admin.add_view(DepartmentAdmin)
     admin.add_view(AssetCategoryAdmin)
     admin.add_view(AssetTagAdmin)
-    admin.add_view(LocationAdmin)
 
     # 3. Nhân sự
     admin.add_view(PersonAdmin)
@@ -3857,22 +2222,6 @@ def setup_admin(app, engine):
     # 4. Tài sản
     admin.add_view(AssetAdmin)
     admin.add_view(AssignmentAdmin)
-
-    # 5. License
-    admin.add_view(LicenseProductAdmin)
-    admin.add_view(LicenseAdmin)
-    admin.add_view(LicenseAssignmentAdmin)
-
-    # 6. Thẻ ra vào
-    admin.add_view(AccessCardAdmin)
-    admin.add_view(CardLoanAdmin)
-
-    # 7. Hợp đồng
-    admin.add_view(ContractAdmin)
-    admin.add_view(ContractLineAdmin)
-
-    # 8. Danh bạ thoại
-    admin.add_view(PhoneAdmin)
 
     # 9. Truy vết
     admin.add_view(AuditLogAdmin)

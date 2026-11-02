@@ -329,6 +329,10 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         "vi": "Nhận hàng",
         "en": "Receive",
     },
+    "Sổ tổng": {
+        "vi": "Sổ tổng",
+        "en": "Master Ledger",
+    },
     "Nhận phần mềm": {
         "vi": "Nhận phần mềm",
         "en": "Receive Software",
@@ -968,6 +972,7 @@ JA_TRANSLATIONS: Final[dict[str, str]] = {
     "Thu hồi thiết bị": "機器返却",
     "Nhận hàng": "受入",
     "Nhận phần mềm": "ソフトウェア受入",
+    "Sổ tổng": "総合台帳",
     "Phần cứng": "ハードウェア",
     "Đã đủ hàng": "完納",
     "Giao một phần": "分納",

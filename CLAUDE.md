@@ -2,9 +2,9 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Web app nội bộ quản lý tài sản IT của Tokuyama Vietnam (ITAM), thay cho các file Excel. 5 người dùng, 3 vai trò: `ADMIN`, `GA_MANAGER`, `EXECUTIVE`. Giao diện ba ngôn ngữ (vi / en / ja). Người dùng trao đổi bằng tiếng Việt; comment và thông báo trong code cũng bằng tiếng Việt.
+Web app nội bộ quản lý laptop và nhân sự của Tokuyama Vietnam (ITAM), thay cho sheet Excel "List of TVC Employees". Đã thu hẹp phạm vi: hợp đồng, license, thẻ, danh bạ, dashboard, ma trận quyền được gỡ khỏi code (bản đầy đủ ở git tag `v1-full`), **các bảng tương ứng vẫn còn trong database**. 3 mã vai trò `ADMIN`, `GA_MANAGER`, `EXECUTIVE`, nhưng chỉ còn hai mức: Admin và chỉ xem. Giao diện ba ngôn ngữ (vi / en / ja). Người dùng trao đổi bằng tiếng Việt; comment và thông báo trong code cũng bằng tiếng Việt.
 
-**Đọc trước khi sửa code:** `GEMINI.md` (bất biến của dự án — vẫn có hiệu lực với mọi agent) và `HANDOVER.md` (trạng thái hiện tại, các việc còn tồn chờ người dùng quyết định). Yêu cầu nghiệp vụ gốc ở `docs/BRD.md`; thiết kế từng tính năng ở `docs/superpowers/specs/`.
+**Đọc trước khi sửa code:** `HANDOVER.md` (trạng thái hiện tại, các việc còn tồn chờ người dùng quyết định). Yêu cầu nghiệp vụ gốc ở `docs/BRD.md`; thiết kế từng tính năng ở `docs/superpowers/specs/`.
 
 ## Lệnh
 
@@ -35,7 +35,8 @@ FastAPI + SQLAlchemy 2.0 (`Mapped[...]`) + PostgreSQL + Alembic. Gần như toà
 
 `app/admin.py` (~3.500 dòng) chứa mọi `ModelView`, backend đăng nhập (`AdminAuth`), dashboard (`TokuyamaAdmin.index`) và phần lớn luật nghiệp vụ. Điều quan trọng nhất cần biết:
 
-- **Form SQLAdmin không gọi tầng service.** Chỉ các thao tác có router riêng mới đi qua service: bàn giao / thu hồi máy (`routers/assets.py` → `assignment_service`), nhập kho theo lô (`routers/batch_receive.py`), nhận phần mềm (`routers/software_receive.py` → `license_service.receive_license_for_line`). Mọi tạo / sửa khác (License, Gán license, Mượn thẻ, Tài sản, Hợp đồng…) đi qua form, nên luật phải nằm trong `on_model_change` / `after_model_change` của view. `card_service`, `phone_service`, `person_service`, `asset_service` hiện chỉ có test gọi. Khi thêm một luật nghiệp vụ, phải đặt ở **cả hai** nơi.
+- **Sổ tổng** (`/admin/so-tong`, `routers/so_tong.py`, `services/ledger_service.py`, `templates/sqladmin/so_tong.html`, Tabulator trong `static/vendor/`) là màn hình chính; sửa ô đi qua `ledger_service`. Bàn giao / thu hồi đi qua `assignment_service`.
+- **Form SQLAdmin không gọi tầng service.** Tạo / sửa qua form có luật riêng trong `on_model_change` / `after_model_change` của view. Khi thêm một luật nghiệp vụ, phải kiểm cả form và `ledger_service`.
 - **Hình dạng dữ liệu trong hook của SQLAdmin:** `data` chứa trường quan hệ dưới dạng chuỗi khóa chính (`"asset": "5"`), ENUM dưới dạng tên thành viên (`"IN_STOCK"`), ô trống của cột nullable là `None`. Trong `on_model_change`, `model` còn mang giá trị **trước** khi sửa. Dùng các helper `_pk_of`, `_form_fk`, `_enum_of`. Gán thêm khóa vào `data` (vd. `data["contract_id"]`) thì SQLAdmin sẽ `setattr` lên bản ghi.
 - **`after_model_change` chạy sau khi bản ghi chính đã commit**, trong một `SessionLocal()` khác. Các bước đồng bộ ở đó (trạng thái máy / thẻ, tiến độ hợp đồng, audit) được bọc try/except và ghi log. Giá trị "trước khi sửa" được chuyển từ `on_model_change` sang qua `request.state.itam_*`.
 - **`BaseAdminView`** lo phần chung cho mọi view: phân quyền theo ma trận, lọc `is_deleted`, xóa mềm trong `delete_model` (kèm các chặn xóa khi còn đang dùng), cắt khoảng trắng, kiểm trùng không phân biệt hoa-thường (`unique_text_fields`), tự điền `created_by` / `updated_by`, audit trước / sau, xuất CSV, cache đếm bản ghi 30 giây (`_MODEL_COUNT_CACHE`, khóa theo model + bộ lọc — nhớ `invalidate_model_count_cache` khi ghi từ router).
@@ -44,7 +45,7 @@ FastAPI + SQLAlchemy 2.0 (`Mapped[...]`) + PostgreSQL + Alembic. Gần như toà
 
 ### Phân quyền và phiên
 
-- Ma trận `(module, action)` trong `role_permissions`, cộng `user_permission_overrides`; mặc định ở `app/enums.py:DEFAULT_ROLE_PERMISSIONS`. Mặc định là từ chối. Router kiểm bằng `has_permission()` (`app/core/permissions.py`); template và formatter dùng `can(request, module, action)` / `can_loan(request)`. Không kiểm theo tên vai trò.
+- Quyền `(module, action)` lưu ở `role_permissions`, mặc định ở `app/enums.py:DEFAULT_ROLE_PERMISSIONS`; không còn màn hình sửa. Mặc định là từ chối. Router kiểm bằng `has_permission()`; template và formatter dùng `can(request, module, action)` / `can_loan(request)`. Không kiểm theo tên vai trò.
 - Có **hai `SessionMiddleware` lồng nhau**: của app (cookie `session`) và của SQLAdmin (cookie `admin_session`). Danh tính thật nằm ở cookie ký `itam_session` (`app/core/security.py`), hết hạn sau 30 phút không thao tác và được `sliding_session_middleware` trong `app/main.py` gia hạn. `AdminAuth.authenticate` thử cookie trước rồi mới tới token trong session.
 - Ngôn ngữ: luôn dùng `get_current_lang(request)` / `_request_lang(request)` (cookie `itam_lang` trước), không đọc `session["lang"]`.
 - Đăng nhập chỉ chấp nhận 3 mã vai trò hệ thống.
@@ -53,15 +54,14 @@ FastAPI + SQLAlchemy 2.0 (`Mapped[...]`) + PostgreSQL + Alembic. Gần như toà
 
 - `app/models.py` là nguồn sự thật duy nhất của schema; đổi schema chỉ qua Alembic (`alembic/versions/`, hiện tới `0003`). Trạng thái là ENUM native của PostgreSQL, lưu theo `.value`.
 - Xóa là xóa mềm (`is_deleted`, bắt buộc `delete_reason`, có CHECK ở DB). Ràng buộc duy nhất là partial unique index `WHERE is_deleted = false` (`alive_unique`); "chỉ một bản ghi đang mở" là partial index `WHERE <cột đóng> IS NULL` (`one_open_per`) — xem `app/db.py`.
-- Bảng lịch sử (`assignments`, `license_assignments`, `card_loans`) không xóa, chỉ đóng bằng ngày kết thúc; dòng đã đóng không được đổi máy / người / thẻ / license. `audit_logs` chỉ INSERT / SELECT, có trigger DB chặn.
-- **Số lượng luôn được tính, không lưu.** Số đã nhận của hạng mục hợp đồng đi qua một hàm duy nhất `contract_service.line_received_qty`: hạng mục `HARDWARE` đếm thiết bị còn sống (`assets.contract_line_id`), hạng mục `SOFTWARE` cộng seat của các gói license còn sống (`licenses.contract_line_id`). `sync_contract_delivery_status` phải được gọi sau mọi thay đổi ảnh hưởng tới số đó (tạo / sửa / xóa / khôi phục thiết bị, gói license, hạng mục). Seat đã dùng của license cũng tính từ các lượt gán đang mở.
-- `assets.status` và `access_cards.status` phải khớp với lượt mượn đang mở: `IN_USE` / `BORROWED` chỉ sinh ra qua nghiệp vụ bàn giao / mượn, không gõ tay (`_sync_asset_status`, `_sync_card_status`).
+- Lịch sử `assignments` không xóa, chỉ đóng bằng ngày kết thúc; dòng đã đóng không được đổi máy / người. `audit_logs` chỉ INSERT / SELECT, có trigger DB chặn.
+- `assets.status` phải khớp với lượt bàn giao đang mở: `IN_USE` chỉ sinh ra qua bàn giao, không gõ tay (`_sync_asset_status`).
 - "Hôm nay" là `app/core/clock.py:today_local()` (UTC+7), không dùng `date.today()` — máy chủ cloud chạy UTC. Hiển thị thời gian qua `format_datetime_clean`.
-- Phần mềm / license **không** phải thiết bị: quản lý ở `license_products` / `licenses` / `license_assignments` và nhận hàng qua hạng mục hợp đồng loại Phần mềm. Loại tài sản mang tên phần mềm bị từ chối.
+- Phần mềm trên máy là nhãn `asset_tags` có mã bắt đầu `SW-`, không phải thiết bị. Loại tài sản mang tên phần mềm bị từ chối.
 
 ### Mật khẩu nhân viên (FR-06) — vùng không được nới lỏng
 
-Nằm ở bảng riêng `person_secrets`, mã hóa AES-256-GCM với AAD `(bảng, khóa chính, cột)` trong `app/core/crypto.py`; khóa lấy từ biến môi trường `ITAM_SECRET_KEY_V1`. Chỉ `POST /persons/{id}/secrets/reveal` (và alias trong `routers/secrets.py`) được trả giá trị đã giải mã, sau khi Admin nhập lại mật khẩu của chính mình qua `RevealGate` (`app/core/reveal.py`: token 2 phút, sai 5 lần khóa 15 phút, mỗi lần xem ghi audit `REVEAL`). Các cột trong `models.REDACTED_FIELDS` không bao giờ xuất hiện trong response, template, CSV, log hay audit (`record_audit` tự che). Chi tiết bắt buộc ở `GEMINI.md` mục 5.
+Nằm ở bảng riêng `person_secrets`, mã hóa AES-256-GCM với AAD `(bảng, khóa chính, cột)` trong `app/core/crypto.py`; khóa lấy từ biến môi trường `ITAM_SECRET_KEY_V1`. Chỉ `POST /persons/{id}/secrets/reveal` (và alias trong `routers/secrets.py`) được trả giá trị đã giải mã, sau khi Admin nhập lại mật khẩu của chính mình qua `RevealGate` (`app/core/reveal.py`: token 2 phút, sai 5 lần khóa 15 phút, mỗi lần xem ghi audit `REVEAL`). Các cột trong `models.REDACTED_FIELDS` không bao giờ xuất hiện trong response, template, CSV, log hay audit (`record_audit` tự che).
 
 ### Endpoint nhận JSON
 

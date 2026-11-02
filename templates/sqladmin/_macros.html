@@ -74,18 +74,17 @@
 {% macro display_menu(menu, request) %}
 {% set current_lang = current_lang or get_current_lang(request) %}
 <ul class="navbar-nav list-unstyled mb-0">
-  <!-- Standalone Dashboard / Tổng quan Quản trị link -->
+  {% if can(request, 'assets', 'view') and can(request, 'persons', 'view') and can(request, 'assignments', 'view') %}
   <li class="nav-item mb-1">
-    <a class="nav-link d-flex align-items-center justify-content-start {% if request.url.path == '/admin' or request.url.path == '/admin/' %}active{% endif %}"
-       href="{{ request.url_for('admin:index') }}">
-      <span class="nav-link-icon me-2 flex-shrink-0" style="width: 20px; text-align: center; font-size: 13px; color: {% if request.url.path == '/admin' or request.url.path == '/admin/' %}#4D5CB0{% else %}#64748b{% endif %};">
-        <i class="fa-solid fa-gauge-high"></i>
+    <a class="nav-link d-flex align-items-center justify-content-start {% if request.url.path == '/admin/so-tong' %}active{% endif %}"
+       href="/admin/so-tong">
+      <span class="nav-link-icon me-2 flex-shrink-0" style="width: 20px; text-align: center; font-size: 13px; color: {% if request.url.path == '/admin/so-tong' %}#4D5CB0{% else %}#64748b{% endif %};">
+        <i class="fa-solid fa-table"></i>
       </span>
-      <span class="nav-link-title flex-grow-1 text-truncate" style="font-size: 13px; font-weight: 600;">{{ t('Tổng quan Quản trị', current_lang) }}</span>
+      <span class="nav-link-title flex-grow-1 text-truncate" style="font-size: 13px; font-weight: 600;">{{ t('Sổ tổng', current_lang) }}</span>
     </a>
   </li>
-
-  <div class="my-2 border-bottom" style="border-color: #f1f5f9 !important;"></div>
+  {% endif %}
 
   <!-- Category List -->
   {% for item in menu.items %}
