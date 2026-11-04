@@ -204,3 +204,9 @@ def test_viewer_sees_legend_without_manage_button(client, db, seed):  # noqa: F8
     html = client.get("/admin/so-tong").text
     assert 'id="stLegend"' in html
     assert 'id="stMarkManage"' not in html
+
+
+def test_list_editors_render_labels_as_text_not_html(admin_client, db, seed):  # noqa: F811
+    """Tabulator đặt nhãn của editor 'list' bằng innerHTML; tên màu / phòng ban phải đi qua itemFormatter."""
+    html = admin_client.get("/admin/so-tong").text
+    assert html.count("itemFormatter: plainItem") == 2

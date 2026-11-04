@@ -131,3 +131,15 @@ def test_cleanup_reports_foreign_tags(db, seed):
     report = plan_and_apply(db, seed["user"].id)
     assert report.foreign_tags == ["ZSCALER"]
     assert not tag.is_deleted
+
+
+def test_cleanup_keeps_a_mark_the_user_already_set(db, seed):
+    d = _build(db, seed)
+    own = mark_service.create_mark(db, "Không cài Zscaler", "#123456", user_id=None, ip_address=None)
+    mark_service.set_asset_mark(db, d["mes"].id, own.id, user_id=None, ip_address=None)
+    report = plan_and_apply(db, seed["user"].id)
+    marks = {m["name"]: m["count"] for m in mark_service.list_marks(db)}
+    assert marks["Không cài Zscaler"] == 1 and marks["Máy MES"] == 0
+    assert report.mes_marked == []
+    assert d["mes"].note == "MES system PC 08"
+    assert any("TKY-PC0060" in line for line in report.skipped)

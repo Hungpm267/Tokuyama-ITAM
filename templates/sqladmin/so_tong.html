@@ -178,6 +178,7 @@
       SCHEDULED: {{ L('Sắp vào làm', 'Scheduled', '入社予定') | trim | tojson }},
       RESIGNED: {{ L('Đã nghỉ việc', 'Resigned', '退職') | trim | tojson }}
     },
+    unknownDate: {{ L('không rõ ngày', 'unknown date', '日付不明') | trim | tojson }},
     noMark: {{ L('Không đánh dấu', 'No mark', 'なし') | trim | tojson }},
     noMarksYet: {{ L('Chưa có màu nào.', 'No colours yet.', '色分けはまだありません。') | trim | tojson }},
     save: {{ L('Lưu', 'Save', '保存') | trim | tojson }},
@@ -256,6 +257,12 @@
     wrap.appendChild(document.createTextNode(mark.name));
     return wrap;
   }
+  // Editor 'list' của Tabulator đặt nhãn bằng innerHTML: tên do người dùng gõ phải thành chữ thường.
+  function plainItem(label) {
+    const holder = document.createElement('div');
+    holder.textContent = label === undefined || label === null ? '' : String(label);
+    return holder.innerHTML;
+  }
   function markOptions() {
     return [{ label: TEXT.noMark, value: '' }].concat(MARKS.map(function (m) { return { label: m.name, value: String(m.id) }; }));
   }
@@ -275,7 +282,7 @@
     { title: 'userId', field: 'user_id', width: 100, ...text, ...editable },
     { title: 'Email', field: 'email', width: 250, ...text, ...editable },
     { title: {{ L('Phòng ban', 'Department', '部署') | trim | tojson }}, field: 'department', width: 160, ...text, editor: 'list', editable: canEdit,
-      editorParams: { values: [''].concat(DEPARTMENTS), autocomplete: true, listOnEmpty: true } },
+      editorParams: { values: [''].concat(DEPARTMENTS), autocomplete: true, listOnEmpty: true, itemFormatter: plainItem } },
     { title: {{ L('Tình trạng NV', 'Staff status', '社員状態') | trim | tojson }}, field: 'person_status', width: 140, headerFilter: 'list',
       headerFilterParams: { values: Object.assign({ '': '' }, TEXT.personStatus), clearable: true },
       formatter: statusLabel(TEXT.personStatus), accessorDownload: labelFor(TEXT.personStatus) },
@@ -284,7 +291,7 @@
       headerFilter: 'input', headerFilterFunc: function (term, value) { return !!value && value.name.toLowerCase().includes(String(term).toLowerCase()); },
       sorter: function (a, b) { return (a ? a.name : '').localeCompare(b ? b.name : ''); },
       accessorDownload: function (value) { return value ? csvSafe(value.name) : ''; },
-      editor: 'list', editorParams: function () { return { values: markOptions() }; }, editable: canEdit },
+      editor: 'list', editorParams: function () { return { values: markOptions(), itemFormatter: plainItem }; }, editable: canEdit },
     { title: {{ L('Mật khẩu', 'Password', 'パスワード') | trim | tojson }}, field: 'secret_kind', width: 120, download: false, clipboard: false,
       visible: PERMS.secrets, headerFilter: 'list',
       headerFilterParams: { values: Object.assign({ '': '' }, TEXT.secretKind), clearable: true },
@@ -623,7 +630,7 @@
         line.className = 'st-history-item';
         line.textContent = item.person_name + (item.staff_code ? ' (' + item.staff_code + ')' : '');
         const when = document.createElement('small');
-        when.textContent = item.borrowed_at + ' → ' + (item.returned_at || TEXT.current);
+        when.textContent = (item.borrowed_at || TEXT.unknownDate) + ' → ' + (item.returned_at || TEXT.current);
         line.appendChild(when);
         box.appendChild(line);
       });

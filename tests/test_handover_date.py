@@ -154,3 +154,16 @@ def test_view_only_user_cannot_edit_date(client, db, seed):  # noqa: F811
     _login(client, _viewer(db, "date_viewer"), RoleCode.EXECUTIVE.value)
     assert _patch(client, _row_id(seed), "borrowed_at", "01/10/2026").status_code == 403
     assert asgn.borrowed_at == dt.date(2026, 10, 16)
+
+
+def test_admin_form_blank_date_still_refuses_second_open_assignment(db, seed):
+    _open(db, seed, dt.date(2026, 10, 1))
+    data = {"asset": str(seed["asset"].id), "person": str(seed["person_b"].id), "borrowed_at": None, "returned_at": None}
+    request = DummyRequest(session={"user_id": seed["user"].id}, db=db)
+    with pytest.raises(ValueError, match="chưa thu hồi"):
+        asyncio.run(AssignmentAdmin().on_model_change(data, Assignment(), True, request))
+
+
+def test_panel_history_shows_unknown_start_date(admin_client, db, seed):  # noqa: F811
+    html = admin_client.get("/admin/so-tong").text
+    assert "(item.borrowed_at || TEXT.unknownDate)" in html

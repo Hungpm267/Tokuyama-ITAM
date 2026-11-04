@@ -1860,7 +1860,8 @@ class AssignmentAdmin(BaseAdminView, model=Assignment):
             else:
                 raise ValueError("Ngày thu hồi thiết bị không được trước ngày cấp phát.")
 
-        if aid and b_at:
+        # Chạy cả khi ngày giao để trống (không rõ ngày): vẫn phải chặn hai lượt cùng mở trên một máy.
+        if aid:
             current_id = getattr(model, "id", None) if not is_created else None
             with _get_admin_db(request) as db:
                 query = (
@@ -1896,7 +1897,8 @@ class AssignmentAdmin(BaseAdminView, model=Assignment):
                             else:
                                 raise ValueError(f"Trùng lặp thời gian cấp phát: Thiết bị này đang được bàn giao cho '{holder}' từ ngày {o_start.strftime('%d/%m/%Y')} (chưa thu hồi). Thời gian cấp phát mới không thể trùng lấn với người đang sử dụng.")
                     else:
-                        if b_at < o_end and (r_at is None or o_start is None or r_at > o_start):
+                        # Ngày giao không rõ thì không đối chiếu được với lượt đã đóng.
+                        if b_at and b_at < o_end and (r_at is None or o_start is None or r_at > o_start):
                             if is_ja:
                                 raise ValueError(
                                     f"割当期間の重複: この機器はすでに {o_start} から {o_end} まで '{holder}' に割り当てられています。"

@@ -129,6 +129,7 @@ def plan_and_apply(db: Session, actor_id: int) -> CleanupReport:
         report.assignment_notes_cleared += 1
 
     mes_mark_id = _ensure_marks(db, actor_id)
+    already_marked = mark_service.marks_by_asset(db)
     assets = db.scalars(
         select(Asset).where(Asset.is_deleted.is_(False)).order_by(Asset.pc_name, Asset.id)
     ).all()
@@ -148,9 +149,14 @@ def plan_and_apply(db: Session, actor_id: int) -> CleanupReport:
             _set(db, asset, "assets", {"note": SHORT_NOTES[note]}, actor_id)
             report.asset_notes_shortened.append((_label(asset), SHORT_NOTES[note]))
         elif note and (match := _MES.fullmatch(note)):
-            mark_service.set_asset_mark(db, asset.id, mes_mark_id, user_id=actor_id, ip_address=None)
+            if asset.id in already_marked:
+                report.skipped.append(
+                    f"{_label(asset)}: đã có màu '{already_marked[asset.id]['name']}', không gắn 'Máy MES'"
+                )
+            else:
+                mark_service.set_asset_mark(db, asset.id, mes_mark_id, user_id=actor_id, ip_address=None)
+                report.mes_marked.append(_label(asset))
             _set(db, asset, "assets", {"note": f"MES system PC {match.group(1)}"}, actor_id)
-            report.mes_marked.append(_label(asset))
         elif note and (match := _OLD_USER.fullmatch(note)):
             short = f"Người dùng cũ: {match.group(1)} ({match.group(2)}), đã nghỉ"
             _set(db, asset, "assets", {"note": short}, actor_id)
