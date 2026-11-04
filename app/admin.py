@@ -1360,6 +1360,25 @@ class AssetTagAdmin(BaseAdminView, model=AssetTag):
         "color": "Màu nhãn",
     }
 
+    async def on_model_change(
+        self, data: dict, model: Any, is_created: bool, request: Request
+    ) -> None:
+        await super().on_model_change(data, model, is_created, request)
+        # Nhãn phần mềm (SW-) và kiểu đánh dấu màu (MARK-) là hai loại khác nhau trên Sổ tổng:
+        # đổi mã từ loại này sang loại kia sẽ làm máy âm thầm mất màu hoặc mất phần mềm.
+        if is_created or "code" not in data:
+            return
+        old_code = str(getattr(model, "code", "") or "").upper()
+        new_code = str(data.get("code") or "").upper()
+        for prefix in ("MARK-", "SW-"):
+            if old_code.startswith(prefix) != new_code.startswith(prefix):
+                raise ValueError(_msg(
+                    _request_lang(request),
+                    f"Không được đổi nhãn giữa loại '{prefix}' và loại khác. Hãy tạo nhãn mới.",
+                    f"A tag cannot be moved into or out of the '{prefix}' kind. Create a new tag instead.",
+                    f"「{prefix}」種別とそれ以外の間でタグを変更できません。新しいタグを作成してください。",
+                ))
+
 
 
 

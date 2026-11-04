@@ -20,6 +20,7 @@ from app.core.clock import today_local
 from app.enums import AuditAction, Module, PersonStatus
 from app.models import Asset, AssetTag, AssetTagLink, Assignment, Department, Person, PersonSecret
 from app.services.assignment_service import get_active_assignment
+from app.services.mark_service import marks_by_asset
 
 SOFTWARE_TAG_PREFIX = "SW-"
 
@@ -50,12 +51,10 @@ def _person_fields(person: Person | None) -> dict[str, Any]:
     }
 
 
-def _row_kind(person: Person | None, note: str | None) -> str:
-    """Thay cho việc tô màu tay trong Excel: xám là người đã nghỉ, vàng là máy MES."""
+def _row_kind(person: Person | None) -> str:
+    """Xám là người đã nghỉ. Màu của máy do người dùng tự đánh dấu (xem mark_service)."""
     if person is not None and person.status == PersonStatus.RESIGNED:
         return "resigned"
-    if note and "MES" in note:
-        return "mes"
     return ""
 
 
@@ -120,6 +119,7 @@ def build_ledger_rows(db: Session, include_secret_flag: bool = False) -> list[di
         .order_by(Person.staff_code)
     ).all()
     software = _software_by_asset(db)
+    marks = marks_by_asset(db)
     secret_kinds = _secret_kinds(db) if include_secret_flag else None
 
     def secret_kind(person: Person | None) -> str | None:
@@ -151,7 +151,8 @@ def build_ledger_rows(db: Session, include_secret_flag: bool = False) -> list[di
                 assignment.borrowed_at.strftime("%d/%m/%Y") if assignment and assignment.borrowed_at else None
             ),
             "note": asset.note,
-            "row_kind": _row_kind(person, asset.note),
+            "mark": marks.get(asset.id),
+            "row_kind": _row_kind(person),
         })
 
     for person in persons:
@@ -171,7 +172,8 @@ def build_ledger_rows(db: Session, include_secret_flag: bool = False) -> list[di
             "secret_kind": secret_kind(person),
             "borrowed_at": None,
             "note": person.note,
-            "row_kind": _row_kind(person, None),
+            "mark": None,
+            "row_kind": _row_kind(person),
         })
     return rows
 
