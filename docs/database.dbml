@@ -133,7 +133,7 @@ Table asset_categories {
 
 Table asset_tags {
   id integer [pk]
-  code varchar(30) [not null, note: 'ZSCALER, MES... Mã bắt đầu SW- là phần mềm. Duy nhất']
+  code varchar(30) [not null, note: 'Mã SW- là phần mềm, mã MARK- là kiểu đánh dấu màu trên Sổ tổng (mỗi máy tối đa một). Duy nhất']
   name_en varchar(100) [not null]
   name_ja varchar(100)
   color varchar(7)
