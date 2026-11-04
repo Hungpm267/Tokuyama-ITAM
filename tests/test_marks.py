@@ -190,3 +190,17 @@ def test_tag_admin_refuses_switching_between_mark_and_software(db, seed, old_cod
     request = DummyRequest(session={"user_id": seed["user"].id}, db=db)
     with pytest.raises(ValueError):
         asyncio.run(AssetTagAdmin().on_model_change({"code": new_code, "name_en": "X"}, tag, False, request))
+
+
+def test_page_has_mark_legend_and_manager(admin_client, db, seed):  # noqa: F811
+    html = admin_client.get("/admin/so-tong").text
+    assert 'id="stLegend"' in html and 'id="stMarkManager"' in html and "renderLegend" in html
+    assert 'id="stMarkManage"' in html
+    assert "st-mes" not in html
+
+
+def test_viewer_sees_legend_without_manage_button(client, db, seed):  # noqa: F811
+    _login(client, _viewer(db, "legend_viewer"), RoleCode.EXECUTIVE.value)
+    html = client.get("/admin/so-tong").text
+    assert 'id="stLegend"' in html
+    assert 'id="stMarkManage"' not in html

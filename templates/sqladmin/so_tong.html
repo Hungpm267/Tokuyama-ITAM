@@ -18,7 +18,19 @@
   .st-count { font-size: 12.5px; color: #64748b; margin-left: auto; }
   #soTongGrid { font-size: 13px; border: 1px solid #e2e8f0; border-radius: 8px; }
   #soTongGrid .tabulator-row.st-resigned, #soTongGrid .tabulator-row.st-resigned .tabulator-cell { background: #e2e8f0; color: #475569; }
-  #soTongGrid .tabulator-row.st-mes, #soTongGrid .tabulator-row.st-mes .tabulator-cell { background: #fef9c3; }
+  #soTongGrid .tabulator-row.st-marked, #soTongGrid .tabulator-row.st-marked .tabulator-cell { background: var(--st-mark); color: var(--st-mark-text); }
+  .st-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 10px; font-size: 12.5px; }
+  .st-legend-title { color: #64748b; font-weight: 600; margin-right: 2px; }
+  .st-legend-item { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #e2e8f0; background: #fff; border-radius: 999px; padding: 3px 10px; cursor: pointer; color: #334155; }
+  .st-legend-item.active { border-color: #4D5CB0; box-shadow: 0 0 0 2px rgba(77, 92, 176, .25); }
+  .st-legend-item small { color: #64748b; }
+  .st-legend-empty { color: #94a3b8; }
+  .st-swatch { display: inline-block; width: 14px; height: 14px; border-radius: 4px; border: 1px solid rgba(15, 23, 42, .2); flex: none; }
+  .st-mark-cell { display: inline-flex; align-items: center; gap: 6px; }
+  .st-mark-row { display: flex; align-items: center; gap: 6px; padding: 6px 0; border-bottom: 1px solid #f1f5f9; flex-wrap: wrap; }
+  .st-mark-row input[type=text] { flex: 1 1 160px; }
+  .st-mark-row input[type=color] { width: 42px; height: 32px; padding: 2px; flex: none; }
+  .st-mark-confirm { width: 100%; font-size: 12.5px; color: #991b1b; }
   .st-open { color: #4D5CB0; cursor: pointer; text-align: center; }
   .st-panel { position: fixed; top: 0; right: 0; bottom: 0; width: 400px; max-width: 100vw; background: #fff; border-left: 1px solid #e2e8f0; box-shadow: -8px 0 24px rgba(15, 23, 42, .12); z-index: 1040; padding: 20px; overflow-y: auto; display: none; font-size: 13px; }
   .st-panel.open { display: block; }
@@ -33,11 +45,11 @@
   .st-cards { display: none; }
   .st-card { display: block; width: 100%; text-align: left; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; margin-bottom: 8px; font-size: 14px; color: #0f172a; }
   .st-card.st-resigned { background: #e2e8f0; }
-  .st-card.st-mes { background: #fef9c3; }
   .st-card-top { display: flex; justify-content: space-between; gap: 8px; font-weight: 700; }
   .st-card-status { font-size: 12px; font-weight: 600; color: #4D5CB0; white-space: nowrap; }
   .st-card-holder { margin-top: 2px; }
   .st-card-sub { margin-top: 2px; font-size: 12.5px; color: #64748b; word-break: break-word; }
+  .st-card.st-card-marked .st-card-status, .st-card.st-card-marked .st-card-sub { color: inherit; opacity: .85; }
   @media (max-width: 767.98px) {
     .st-wrap { padding: 10px; border-radius: 12px; }
     .st-title { width: 100%; margin: 0; }
@@ -74,6 +86,15 @@
     </button>
     <span id="stCount" class="st-count"></span>
   </div>
+  <div class="st-legend">
+    <span class="st-legend-title">{{ L('Màu đánh dấu', 'Colour marks', '色分け') }}:</span>
+    <span id="stLegend" style="display: contents;"></span>
+    {% if perms.assets %}
+    <button type="button" id="stMarkManage" class="btn btn-outline-secondary btn-sm py-0" data-bs-toggle="modal" data-bs-target="#stMarkManager">
+      <i class="fa-solid fa-palette me-1"></i>{{ L('Quản lý màu', 'Manage colours', '色を管理') }}
+    </button>
+    {% endif %}
+  </div>
   <div id="soTongGrid"></div>
   <div id="stCards" class="st-cards"></div>
 </div>
@@ -85,6 +106,10 @@
   </div>
   <div id="stPanelInfo" class="st-panel-info mt-2"></div>
   <div id="stPanelActions" class="d-flex flex-wrap gap-2 mt-3"></div>
+  <div id="stPanelMarkBox" class="d-none">
+    <h5>{{ L('Màu đánh dấu', 'Colour mark', '色分け') }}</h5>
+    <select id="stPanelMark" class="form-select form-select-sm"></select>
+  </div>
   <div id="stPanelSoftwareBox" class="d-none">
     <h5>{{ L('Phần mềm trên máy', 'Software on this PC', 'インストール済みソフト') }}</h5>
     <div id="stPanelSoftware"></div>
@@ -97,6 +122,26 @@
 </aside>
 <div id="stToast" class="st-toast" role="alert"></div>
 
+<div class="modal fade" id="stMarkManager" tabindex="-1" aria-labelledby="stMarkManagerTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="stMarkManagerTitle">{{ L('Quản lý màu đánh dấu', 'Manage colour marks', '色分けの管理') }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ L('Đóng', 'Close', '閉じる') }}"></button>
+      </div>
+      <div class="modal-body">
+        <div id="stMarkList"></div>
+        <div class="st-mark-row mt-2">
+          <input type="text" id="stMarkNewName" class="form-control form-control-sm" maxlength="100"
+                 placeholder="{{ L('Tên, ví dụ: Máy MES', 'Name, e.g. MES PC', '名前（例：MES用PC）') }}">
+          <input type="color" id="stMarkNewColor" value="#fde68a" aria-label="{{ L('Màu', 'Colour', '色') }}">
+          <button type="button" id="stMarkAdd" class="btn btn-primary btn-sm">{{ L('Thêm', 'Add', '追加') }}</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% if can_loan(request) %}
 {% include 'sqladmin/asset_actions_modal.html' %}
 {% endif %}
@@ -106,6 +151,7 @@
 (function () {
   const PERMS = {{ perms | tojson }};
   const CAN_LOAN = {{ can_loan(request) | tojson }};
+  let MARKS = {{ marks | tojson }};
   const DEPARTMENTS = {{ departments | tojson }};
   const SOFTWARE = {{ software_tags | tojson }};
   const TEXT = {
@@ -132,6 +178,12 @@
       SCHEDULED: {{ L('Sắp vào làm', 'Scheduled', '入社予定') | trim | tojson }},
       RESIGNED: {{ L('Đã nghỉ việc', 'Resigned', '退職') | trim | tojson }}
     },
+    noMark: {{ L('Không đánh dấu', 'No mark', 'なし') | trim | tojson }},
+    noMarksYet: {{ L('Chưa có màu nào.', 'No colours yet.', '色分けはまだありません。') | trim | tojson }},
+    save: {{ L('Lưu', 'Save', '保存') | trim | tojson }},
+    remove: {{ L('Xóa', 'Delete', '削除') | trim | tojson }},
+    cancel: {{ L('Hủy', 'Cancel', 'キャンセル') | trim | tojson }},
+    confirmRemove: {{ L('máy sẽ mất màu này. Xóa?', 'PCs will lose this colour. Delete?', '台の色分けが外れます。削除しますか？') | trim | tojson }},
     secretKind: {
       none: {{ L('Không có', 'None', 'なし') | trim | tojson }},
       pc: 'PC',
@@ -168,6 +220,7 @@
     if (field === 'serial' || field === 'asset_code') return PERMS.assets && !!row.asset_id;
     if (field === 'note') return row.asset_id ? PERMS.assets : PERMS.persons;
     if (field === 'borrowed_at') return PERMS.assignments && !!row.asset_id && !!row.person_id;
+    if (field === 'mark') return PERMS.assets && !!row.asset_id;
     return PERMS.persons && !!row.person_id;
   }
   const editable = { editor: 'input', editable: canEdit };
@@ -180,6 +233,31 @@
     if (!ka) return dir === 'asc' ? 1 : -1;
     if (!kb) return dir === 'asc' ? -1 : 1;
     return ka < kb ? -1 : (ka > kb ? 1 : 0);
+  }
+
+  // Chữ tối trên nền sáng, chữ trắng trên nền tối.
+  function textColorFor(hex) {
+    const n = parseInt(String(hex || '#ffffff').slice(1), 16);
+    const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+    return (0.299 * r + 0.587 * g + 0.114 * b) > 150 ? '#0f172a' : '#ffffff';
+  }
+  function swatch(color) {
+    const box = document.createElement('span');
+    box.className = 'st-swatch';
+    box.style.backgroundColor = color;
+    return box;
+  }
+  function markCell(cell) {
+    const mark = cell.getValue();
+    if (!mark) return '';
+    const wrap = document.createElement('span');
+    wrap.className = 'st-mark-cell';
+    wrap.appendChild(swatch(mark.color));
+    wrap.appendChild(document.createTextNode(mark.name));
+    return wrap;
+  }
+  function markOptions() {
+    return [{ label: TEXT.noMark, value: '' }].concat(MARKS.map(function (m) { return { label: m.name, value: String(m.id) }; }));
   }
 
   const columns = [
@@ -202,6 +280,11 @@
       headerFilterParams: { values: Object.assign({ '': '' }, TEXT.personStatus), clearable: true },
       formatter: statusLabel(TEXT.personStatus), accessorDownload: labelFor(TEXT.personStatus) },
     { title: {{ L('Phần mềm', 'Software', 'ソフトウェア') | trim | tojson }}, field: 'software', width: 200, ...text },
+    { title: {{ L('Đánh dấu', 'Mark', '色分け') | trim | tojson }}, field: 'mark', width: 150, formatter: markCell,
+      headerFilter: 'input', headerFilterFunc: function (term, value) { return !!value && value.name.toLowerCase().includes(String(term).toLowerCase()); },
+      sorter: function (a, b) { return (a ? a.name : '').localeCompare(b ? b.name : ''); },
+      accessorDownload: function (value) { return value ? csvSafe(value.name) : ''; },
+      editor: 'list', editorParams: function () { return { values: markOptions() }; }, editable: canEdit },
     { title: {{ L('Mật khẩu', 'Password', 'パスワード') | trim | tojson }}, field: 'secret_kind', width: 120, download: false, clipboard: false,
       visible: PERMS.secrets, headerFilter: 'list',
       headerFilterParams: { values: Object.assign({ '': '' }, TEXT.secretKind), clearable: true },
@@ -213,7 +296,10 @@
   let quickFilter = 'all';
   let searchTerm = '';
 
+  let markFilter = null;
+
   function matchesQuick(row) {
+    if (markFilter !== null && !(row.mark && row.mark.id === markFilter)) return false;
     if (quickFilter === 'in_use') return row.asset_status === 'IN_USE';
     if (quickFilter === 'in_stock') return row.asset_status === 'IN_STOCK';
     if (quickFilter === 'resigned') return row.person_status === 'RESIGNED';
@@ -222,7 +308,8 @@
   function matchesSearch(row) {
     if (!searchTerm) return true;
     return columns.some(function (c) {
-      const value = row[c.field];
+      const raw = row[c.field];
+      const value = raw && typeof raw === 'object' ? raw.name : raw;
       return value && String(value).toLowerCase().includes(searchTerm);
     });
   }
@@ -249,9 +336,14 @@
     clipboardCopyRowRange: 'range',
     clipboardCopyConfig: { columnHeaders: false, rowHeaders: false, columnGroups: false },
     rowFormatter: function (row) {
-      const kind = row.getData().row_kind;
-      row.getElement().classList.toggle('st-resigned', kind === 'resigned');
-      row.getElement().classList.toggle('st-mes', kind === 'mes');
+      const data = row.getData();
+      const element = row.getElement();
+      element.classList.toggle('st-marked', !!data.mark);
+      element.classList.toggle('st-resigned', !data.mark && data.row_kind === 'resigned');
+      if (data.mark) {
+        element.style.setProperty('--st-mark', data.mark.color);
+        element.style.setProperty('--st-mark-text', textColorFor(data.mark.color));
+      }
     }
   });
 
@@ -267,7 +359,12 @@
     rows.forEach(function (row) {
       const card = document.createElement('button');
       card.type = 'button';
-      card.className = 'st-card' + (row.row_kind ? ' st-' + row.row_kind : '');
+      card.className = 'st-card' + (!row.mark && row.row_kind ? ' st-' + row.row_kind : '');
+      if (row.mark) {
+        card.classList.add('st-card-marked');
+        card.style.backgroundColor = row.mark.color;
+        card.style.color = textColorFor(row.mark.color);
+      }
       const top = document.createElement('div');
       top.className = 'st-card-top';
       const name = document.createElement('span');
@@ -344,6 +441,16 @@
 
   table.on('cellEdited', async function (cell) {
     const row = cell.getRow().getData();
+    if (cell.getField() === 'mark') {
+      const picked = cell.getValue();
+      try {
+        await setMark(row.asset_id, picked && typeof picked !== 'object' ? parseInt(picked, 10) : (picked && picked.id) || null);
+      } catch (error) {
+        cell.restoreOldValue();
+        toast(error.message);
+      }
+      return;
+    }
     try {
       const result = await send('/admin/api/so-tong/cell', 'PATCH', { id: row.id, field: cell.getField(), value: cell.getValue() });
       await table.updateData(result.rows);
@@ -354,6 +461,132 @@
   });
 
   let panelRowId = null;
+
+  async function setMark(assetId, tagId) {
+    const result = await send('/admin/api/so-tong/mark', 'PUT', { asset_id: assetId, tag_id: tagId });
+    MARKS = result.marks;
+    renderLegend();
+    await table.updateData(result.rows);
+    table.getRows().forEach(function (r) { r.reformat(); });
+    updateCount();
+  }
+
+  function renderLegend() {
+    const box = document.getElementById('stLegend');
+    box.textContent = '';
+    if (markFilter !== null && !MARKS.some(function (m) { return m.id === markFilter; })) markFilter = null;
+    if (!MARKS.length) {
+      const empty = document.createElement('span');
+      empty.className = 'st-legend-empty';
+      empty.textContent = TEXT.noMarksYet;
+      box.appendChild(empty);
+    }
+    MARKS.forEach(function (mark) {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'st-legend-item' + (markFilter === mark.id ? ' active' : '');
+      item.appendChild(swatch(mark.color));
+      item.appendChild(document.createTextNode(mark.name));
+      const count = document.createElement('small');
+      count.textContent = '(' + mark.count + ')';
+      item.appendChild(count);
+      item.addEventListener('click', function () {
+        markFilter = markFilter === mark.id ? null : mark.id;
+        renderLegend();
+        applyFilters();
+      });
+      box.appendChild(item);
+    });
+  }
+
+  async function afterMarkChange(result) {
+    MARKS = result.marks;
+    renderLegend();
+    renderManager();
+    await table.replaceData();
+  }
+
+  function renderManager() {
+    const list = document.getElementById('stMarkList');
+    if (!list) return;
+    list.textContent = '';
+    MARKS.forEach(function (mark) {
+      const line = document.createElement('div');
+      line.className = 'st-mark-row';
+      const name = document.createElement('input');
+      name.type = 'text';
+      name.className = 'form-control form-control-sm';
+      name.maxLength = 100;
+      name.value = mark.name;
+      const color = document.createElement('input');
+      color.type = 'color';
+      color.value = mark.color;
+      const save = document.createElement('button');
+      save.type = 'button';
+      save.className = 'btn btn-outline-primary btn-sm';
+      save.textContent = TEXT.save;
+      save.addEventListener('click', async function () {
+        try {
+          await afterMarkChange(await send('/admin/api/so-tong/marks/' + mark.id, 'PATCH', { name: name.value, color: color.value }));
+        } catch (error) { toast(error.message); }
+      });
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'btn btn-outline-danger btn-sm';
+      remove.textContent = TEXT.remove;
+      remove.addEventListener('click', async function () {
+        // Máy đang mang màu này: hỏi lại ngay trong hộp, không dùng window.confirm.
+        if (mark.count > 0 && !line.querySelector('.st-mark-confirm')) {
+          const confirmBox = document.createElement('div');
+          confirmBox.className = 'st-mark-confirm d-flex align-items-center gap-2';
+          const message = document.createElement('span');
+          message.textContent = mark.count + ' ' + TEXT.confirmRemove;
+          const yes = document.createElement('button');
+          yes.type = 'button';
+          yes.className = 'btn btn-danger btn-sm';
+          yes.textContent = TEXT.remove;
+          yes.addEventListener('click', function () { deleteMark(mark.id); });
+          const no = document.createElement('button');
+          no.type = 'button';
+          no.className = 'btn btn-light btn-sm';
+          no.textContent = TEXT.cancel;
+          no.addEventListener('click', function () { confirmBox.remove(); });
+          confirmBox.appendChild(message);
+          confirmBox.appendChild(yes);
+          confirmBox.appendChild(no);
+          line.appendChild(confirmBox);
+          return;
+        }
+        if (mark.count === 0) deleteMark(mark.id);
+      });
+      line.appendChild(swatch(mark.color));
+      line.appendChild(name);
+      line.appendChild(color);
+      line.appendChild(save);
+      line.appendChild(remove);
+      list.appendChild(line);
+    });
+  }
+
+  async function deleteMark(markId) {
+    try {
+      await afterMarkChange(await send('/admin/api/so-tong/marks/' + markId, 'DELETE'));
+    } catch (error) { toast(error.message); }
+  }
+
+  const addButton = document.getElementById('stMarkAdd');
+  if (addButton) {
+    addButton.addEventListener('click', async function () {
+      const name = document.getElementById('stMarkNewName');
+      const color = document.getElementById('stMarkNewColor');
+      try {
+        await afterMarkChange(await send('/admin/api/so-tong/marks', 'POST', { name: name.value, color: color.value }));
+        name.value = '';
+      } catch (error) { toast(error.message); }
+    });
+  }
+  renderLegend();
+  renderManager();
 
   function infoLine(parent, label, value) {
     if (!value) return;
@@ -406,7 +639,7 @@
     const info = document.getElementById('stPanelInfo');
     info.textContent = '';
     columns.forEach(function (column) {
-      if (['open_panel', 'pc_name', 'secret_kind', 'software'].includes(column.field)) return;
+      if (['open_panel', 'pc_name', 'secret_kind', 'software', 'mark'].includes(column.field)) return;
       const value = row[column.field];
       const map = column.field === 'asset_status' ? TEXT.assetStatus : (column.field === 'person_status' ? TEXT.personStatus : null);
       infoLine(info, column.title, map ? map[value] : value);
@@ -424,6 +657,25 @@
     if (PERMS.secrets && row.person_id) {
       actionButton(actions, TEXT.vault, 'btn-outline-success', function () { window.location.href = '/admin/person-secret/list'; });
     }
+
+    const markBox = document.getElementById('stPanelMarkBox');
+    const markSelect = document.getElementById('stPanelMark');
+    markBox.classList.toggle('d-none', !row.asset_id);
+    markSelect.textContent = '';
+    markOptions().forEach(function (option) {
+      const element = document.createElement('option');
+      element.value = option.value;
+      element.textContent = option.label;
+      markSelect.appendChild(element);
+    });
+    markSelect.value = row.mark ? String(row.mark.id) : '';
+    markSelect.disabled = !PERMS.assets;
+    markSelect.onchange = async function () {
+      try {
+        await setMark(row.asset_id, markSelect.value ? parseInt(markSelect.value, 10) : null);
+        openPanel(row.id);
+      } catch (error) { toast(error.message); }
+    };
 
     const softwareBox = document.getElementById('stPanelSoftwareBox');
     const softwareList = document.getElementById('stPanelSoftware');

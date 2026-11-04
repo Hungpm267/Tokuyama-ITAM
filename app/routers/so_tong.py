@@ -73,6 +73,7 @@ async def so_tong_page(request: Request, db: Session = Depends(get_db)) -> Respo
         },
         "departments": ledger_service.list_department_names(db),
         "software_tags": ledger_service.list_software_tags(db),
+        "marks": mark_service.list_marks(db),
     }
     return await admin.templates.TemplateResponse(request, "sqladmin/so_tong.html", context)
 
