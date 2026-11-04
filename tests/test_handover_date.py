@@ -79,3 +79,78 @@ def test_machine_with_unknown_date_can_be_returned(db, seed):
     asgn = _open(db, seed)
     return_asset(db, seed["asset"].id, dt.date(2026, 10, 1), user_id=seed["user"].id)
     assert asgn.returned_at == dt.date(2026, 10, 1)
+
+
+# --- Sửa ngày trên Sổ tổng -------------------------------------------------------
+
+import pytest  # noqa: E402
+
+from app.core.clock import today_local  # noqa: E402
+from app.models import AuditLog  # noqa: E402
+from tests.test_so_tong_edit import _login, _patch, _viewer  # noqa: E402
+from app.enums import RoleCode  # noqa: E402
+
+
+def _row_id(seed):
+    return f"asset-{seed['asset'].id}"
+
+
+def test_edit_date_accepts_both_formats(admin_client, db, seed):  # noqa: F811
+    asgn = _open(db, seed, dt.date(2026, 10, 16))
+    assert _patch(admin_client, _row_id(seed), "borrowed_at", "15/09/2026").status_code == 200
+    assert asgn.borrowed_at == dt.date(2026, 9, 15)
+    assert _patch(admin_client, _row_id(seed), "borrowed_at", "2026-09-14").status_code == 200
+    assert asgn.borrowed_at == dt.date(2026, 9, 14)
+    assert db.query(AuditLog).filter_by(table_name="assignments", record_id=asgn.id).count() == 2
+
+
+def test_clear_date_keeps_holder(admin_client, db, seed):  # noqa: F811
+    asgn = _open(db, seed, dt.date(2026, 10, 16))
+    res = _patch(admin_client, _row_id(seed), "borrowed_at", "")
+    assert res.status_code == 200
+    assert asgn.borrowed_at is None and asgn.returned_at is None
+    assert asgn.person_id == seed["person"].id
+    row = next(r for r in res.json()["rows"] if r["id"] == _row_id(seed))
+    assert row["borrowed_at"] is None and row["holder"] == seed["person"].full_name
+
+
+@pytest.mark.parametrize("value", ["abc", "31/02/2026", "15-09-2026x", "2026/13/01"])
+def test_bad_date_is_400(admin_client, db, seed, value):  # noqa: F811
+    asgn = _open(db, seed, dt.date(2026, 10, 16))
+    assert _patch(admin_client, _row_id(seed), "borrowed_at", value).status_code == 400
+    assert asgn.borrowed_at == dt.date(2026, 10, 16)
+
+
+def test_future_date_is_refused(admin_client, db, seed):  # noqa: F811
+    _open(db, seed, dt.date(2026, 10, 16))
+    tomorrow = (today_local() + dt.timedelta(days=1)).strftime("%d/%m/%Y")
+    assert _patch(admin_client, _row_id(seed), "borrowed_at", tomorrow).status_code == 400
+
+
+def test_date_cannot_overlap_previous_holder(admin_client, db, seed):  # noqa: F811
+    db.add(Assignment(asset_id=seed["asset"].id, person_id=seed["person_b"].id,
+                      borrowed_at=dt.date(2026, 9, 1), returned_at=dt.date(2026, 9, 20)))
+    db.flush()
+    _open(db, seed, dt.date(2026, 10, 16))
+    assert _patch(admin_client, _row_id(seed), "borrowed_at", "10/09/2026").status_code == 400
+
+
+def test_date_may_equal_previous_return_date(admin_client, db, seed):  # noqa: F811
+    db.add(Assignment(asset_id=seed["asset"].id, person_id=seed["person_b"].id,
+                      borrowed_at=dt.date(2026, 9, 1), returned_at=dt.date(2026, 9, 20)))
+    db.flush()
+    _open(db, seed, dt.date(2026, 10, 16))
+    assert _patch(admin_client, _row_id(seed), "borrowed_at", "20/09/2026").status_code == 200
+
+
+@pytest.mark.parametrize("row", ["asset", "person"])
+def test_row_without_open_assignment_refuses_date(admin_client, db, seed, row):  # noqa: F811
+    row_id = _row_id(seed) if row == "asset" else f"person-{seed['person'].id}"
+    assert _patch(admin_client, row_id, "borrowed_at", "01/10/2026").status_code == 400
+
+
+def test_view_only_user_cannot_edit_date(client, db, seed):  # noqa: F811
+    asgn = _open(db, seed, dt.date(2026, 10, 16))
+    _login(client, _viewer(db, "date_viewer"), RoleCode.EXECUTIVE.value)
+    assert _patch(client, _row_id(seed), "borrowed_at", "01/10/2026").status_code == 403
+    assert asgn.borrowed_at == dt.date(2026, 10, 16)

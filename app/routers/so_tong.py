@@ -68,6 +68,7 @@ async def so_tong_page(request: Request, db: Session = Depends(get_db)) -> Respo
         "perms": {
             "assets": has_permission(db, user, Module.ASSETS, PermissionAction.CHANGE),
             "persons": has_permission(db, user, Module.PERSONS, PermissionAction.CHANGE),
+            "assignments": has_permission(db, user, Module.ASSIGNMENTS, PermissionAction.CHANGE),
             "secrets": has_permission(db, user, Module.SECRETS, PermissionAction.VIEW),
         },
         "departments": ledger_service.list_department_names(db),

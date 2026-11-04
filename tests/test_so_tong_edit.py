@@ -193,7 +193,7 @@ def test_note_goes_to_machine_or_person_depending_on_row(admin_client, db, seed)
 
 
 @pytest.mark.parametrize(
-    "field", ["holder", "asset_status", "person_status", "staff_code", "pc_name", "pc_password", "borrowed_at"]
+    "field", ["holder", "asset_status", "person_status", "staff_code", "pc_name", "pc_password"]
 )
 def test_non_editable_fields_are_refused(admin_client, db, seed, field):
     assert _patch(admin_client, f"asset-{seed['asset'].id}", field, "x").status_code == 400

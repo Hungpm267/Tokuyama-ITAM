@@ -16,8 +16,10 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.audit import record_audit
+from app.core.clock import today_local
 from app.enums import AuditAction, Module, PersonStatus
 from app.models import Asset, AssetTag, AssetTagLink, Assignment, Department, Person, PersonSecret
+from app.services.assignment_service import get_active_assignment
 
 SOFTWARE_TAG_PREFIX = "SW-"
 
@@ -182,6 +184,8 @@ def module_of_field(row_kind: str, field: str) -> Module:
         return Module.PERSONS
     if field == "note":
         return Module.ASSETS if row_kind == "asset" else Module.PERSONS
+    if field == "borrowed_at":
+        return Module.ASSIGNMENTS
     raise ValueError("Ô này không sửa trực tiếp được.")
 
 
@@ -238,6 +242,43 @@ def _save(db: Session, obj: Any, table: str, column: str, new_value: Any, user_i
     )
 
 
+def _parse_date(value: str | None) -> dt.date | None:
+    """Nhận dd/mm/yyyy hoặc yyyy-mm-dd; rỗng là không rõ ngày."""
+    if not value:
+        return None
+    try:
+        return dt.datetime.strptime(value, "%d/%m/%Y").date()
+    except ValueError:
+        pass
+    try:
+        return dt.date.fromisoformat(value)
+    except ValueError:
+        raise ValueError("Ngày bàn giao không hợp lệ (dd/mm/yyyy).") from None
+
+
+def _update_borrowed_at(db: Session, asset: Asset | None, value: str | None, user_id: int | None, ip: str | None) -> None:
+    """Chỉ đổi ngày của lượt đang mở: không tạo lượt mới, không đổi máy hay người."""
+    assignment = get_active_assignment(db, asset.id) if asset else None
+    if assignment is None:
+        raise ValueError("Máy này chưa bàn giao cho ai.")
+    borrowed_at = _parse_date(value)
+    if borrowed_at is not None:
+        if borrowed_at > today_local():
+            raise ValueError("Ngày bàn giao không được ở tương lai.")
+        previous_return = db.scalar(
+            select(func.max(Assignment.returned_at)).where(
+                Assignment.asset_id == asset.id,
+                Assignment.id != assignment.id,
+                Assignment.is_deleted.is_(False),
+            )
+        )
+        if previous_return and borrowed_at < previous_return:
+            raise ValueError(
+                f"Ngày bàn giao không được trước ngày người trước trả máy ({previous_return.strftime('%d/%m/%Y')})."
+            )
+    _save(db, assignment, "assignments", "borrowed_at", borrowed_at, user_id, ip)
+
+
 def update_cell(
     db: Session, row_kind: str, row_pk: int, field: str, value: str | None,
     user_id: int | None = None, ip_address: str | None = None,
@@ -246,6 +287,10 @@ def update_cell(
     module_of_field(row_kind, field)
     clean = value.strip() or None if isinstance(value, str) else None
     asset = _alive_asset(db, row_pk) if row_kind == "asset" else None
+
+    if field == "borrowed_at":
+        _update_borrowed_at(db, asset, clean, user_id, ip_address)
+        return
 
     if field == "note":
         if asset:

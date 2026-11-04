@@ -161,9 +161,20 @@
     const row = cell.getRow().getData();
     if (field === 'serial' || field === 'asset_code') return PERMS.assets && !!row.asset_id;
     if (field === 'note') return row.asset_id ? PERMS.assets : PERMS.persons;
+    if (field === 'borrowed_at') return PERMS.assignments && !!row.asset_id && !!row.person_id;
     return PERMS.persons && !!row.person_id;
   }
   const editable = { editor: 'input', editable: canEdit };
+
+  // dd/mm/yyyy -> yyyymmdd để so sánh; ô trống (không rõ ngày) luôn nằm cuối dù sắp tăng hay giảm.
+  function dateSorter(a, b, aRow, bRow, column, dir) {
+    const key = function (v) { return v ? v.split('/').reverse().join('') : ''; };
+    const ka = key(a), kb = key(b);
+    if (!ka && !kb) return 0;
+    if (!ka) return dir === 'asc' ? 1 : -1;
+    if (!kb) return dir === 'asc' ? -1 : 1;
+    return ka < kb ? -1 : (ka > kb ? 1 : 0);
+  }
 
   const columns = [
     { title: '', field: 'open_panel', frozen: true, width: 36, hozAlign: 'center', headerSort: false, download: false, clipboard: false, resizable: false,
@@ -187,7 +198,7 @@
     { title: {{ L('Phần mềm', 'Software', 'ソフトウェア') | trim | tojson }}, field: 'software', width: 200, ...text },
     { title: {{ L('Mật khẩu', 'Password', 'パスワード') | trim | tojson }}, field: 'secret_set', width: 100, headerSort: false, download: false, clipboard: false,
       visible: PERMS.secrets, formatter: function (cell) { return cell.getValue() ? '••••••' : ''; } },
-    { title: {{ L('Ngày bàn giao', 'Hand-over date', '貸出日') | trim | tojson }}, field: 'borrowed_at', width: 125, ...text },
+    { title: {{ L('Ngày bàn giao', 'Hand-over date', '貸出日') | trim | tojson }}, field: 'borrowed_at', width: 125, ...text, ...editable, sorter: dateSorter },
     { title: {{ L('Ghi chú', 'Note', '備考') | trim | tojson }}, field: 'note', width: 420, ...text, ...editable }
   ];
 
