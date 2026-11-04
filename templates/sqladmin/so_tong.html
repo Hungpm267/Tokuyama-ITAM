@@ -131,6 +131,12 @@
       ACTIVE: {{ L('Đang làm việc', 'Active', '在職') | trim | tojson }},
       SCHEDULED: {{ L('Sắp vào làm', 'Scheduled', '入社予定') | trim | tojson }},
       RESIGNED: {{ L('Đã nghỉ việc', 'Resigned', '退職') | trim | tojson }}
+    },
+    secretKind: {
+      none: {{ L('Không có', 'None', 'なし') | trim | tojson }},
+      pc: 'PC',
+      email: 'Email',
+      both: 'PC + Email'
     }
   };
 
@@ -196,8 +202,10 @@
       headerFilterParams: { values: Object.assign({ '': '' }, TEXT.personStatus), clearable: true },
       formatter: statusLabel(TEXT.personStatus), accessorDownload: labelFor(TEXT.personStatus) },
     { title: {{ L('Phần mềm', 'Software', 'ソフトウェア') | trim | tojson }}, field: 'software', width: 200, ...text },
-    { title: {{ L('Mật khẩu', 'Password', 'パスワード') | trim | tojson }}, field: 'secret_set', width: 100, headerSort: false, download: false, clipboard: false,
-      visible: PERMS.secrets, formatter: function (cell) { return cell.getValue() ? '••••••' : ''; } },
+    { title: {{ L('Mật khẩu', 'Password', 'パスワード') | trim | tojson }}, field: 'secret_kind', width: 120, download: false, clipboard: false,
+      visible: PERMS.secrets, headerFilter: 'list',
+      headerFilterParams: { values: Object.assign({ '': '' }, TEXT.secretKind), clearable: true },
+      formatter: statusLabel(TEXT.secretKind) },
     { title: {{ L('Ngày bàn giao', 'Hand-over date', '貸出日') | trim | tojson }}, field: 'borrowed_at', width: 125, ...text, ...editable, sorter: dateSorter },
     { title: {{ L('Ghi chú', 'Note', '備考') | trim | tojson }}, field: 'note', width: 420, ...text, ...editable }
   ];
@@ -398,7 +406,7 @@
     const info = document.getElementById('stPanelInfo');
     info.textContent = '';
     columns.forEach(function (column) {
-      if (['open_panel', 'pc_name', 'secret_set', 'software'].includes(column.field)) return;
+      if (['open_panel', 'pc_name', 'secret_kind', 'software'].includes(column.field)) return;
       const value = row[column.field];
       const map = column.field === 'asset_status' ? TEXT.assetStatus : (column.field === 'person_status' ? TEXT.personStatus : null);
       infoLine(info, column.title, map ? map[value] : value);

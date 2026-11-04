@@ -89,14 +89,17 @@ def _software_by_asset(db: Session) -> dict[int, list[AssetTag]]:
     return result
 
 
-def _people_with_secret(db: Session) -> set[int]:
-    return set(
-        db.scalars(
-            select(PersonSecret.person_id).where(
-                PersonSecret.pc_password_enc.is_not(None) | PersonSecret.email_password_enc.is_not(None)
-            )
-        ).all()
-    )
+def _secret_kinds(db: Session) -> dict[int, str]:
+    """Chỉ đọc cờ có / không của từng loại mật khẩu, không bao giờ đọc cột mã hóa."""
+    kinds = {(True, False): "pc", (False, True): "email", (True, True): "both"}
+    rows = db.execute(
+        select(
+            PersonSecret.person_id,
+            PersonSecret.pc_password_enc.is_not(None),
+            PersonSecret.email_password_enc.is_not(None),
+        )
+    ).all()
+    return {person_id: kinds[(pc, email)] for person_id, pc, email in rows if pc or email}
 
 
 def build_ledger_rows(db: Session, include_secret_flag: bool = False) -> list[dict[str, Any]]:
@@ -117,7 +120,12 @@ def build_ledger_rows(db: Session, include_secret_flag: bool = False) -> list[di
         .order_by(Person.staff_code)
     ).all()
     software = _software_by_asset(db)
-    with_secret = _people_with_secret(db) if include_secret_flag else set()
+    secret_kinds = _secret_kinds(db) if include_secret_flag else None
+
+    def secret_kind(person: Person | None) -> str | None:
+        if secret_kinds is None or person is None:
+            return None
+        return secret_kinds.get(person.id, "none")
 
     rows: list[dict[str, Any]] = []
     holder_ids: set[int] = set()
@@ -138,7 +146,7 @@ def build_ledger_rows(db: Session, include_secret_flag: bool = False) -> list[di
             **_person_fields(person),
             "software": ", ".join(t.name_en for t in tags) or None,
             "software_codes": [t.code for t in tags],
-            "secret_set": bool(person and person.id in with_secret),
+            "secret_kind": secret_kind(person),
             "borrowed_at": (
                 assignment.borrowed_at.strftime("%d/%m/%Y") if assignment and assignment.borrowed_at else None
             ),
@@ -160,7 +168,7 @@ def build_ledger_rows(db: Session, include_secret_flag: bool = False) -> list[di
             **_person_fields(person),
             "software": None,
             "software_codes": [],
-            "secret_set": person.id in with_secret,
+            "secret_kind": secret_kind(person),
             "borrowed_at": None,
             "note": person.note,
             "row_kind": _row_kind(person, None),
