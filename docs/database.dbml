@@ -233,7 +233,7 @@ Table assignments {
   id integer [pk]
   asset_id integer [not null, note: 'Mỗi máy chỉ có một lượt đang mở']
   person_id integer [not null]
-  borrowed_at date [not null]
+  borrowed_at date [note: 'Trống là không rõ ngày giao, máy vẫn ở chỗ người đó']
   returned_at date [note: 'Trống là đang giữ máy. Không được trước borrowed_at']
   note text
   created_at timestamptz [not null, default: `now()`]

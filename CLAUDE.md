@@ -52,7 +52,7 @@ FastAPI + SQLAlchemy 2.0 (`Mapped[...]`) + PostgreSQL + Alembic. Gần như toà
 
 ### Dữ liệu
 
-- `app/models.py` là nguồn sự thật duy nhất của schema; đổi schema chỉ qua Alembic (`alembic/versions/`, hiện tới `0005`, 12 bảng; sơ đồ ở `docs/database.dbml`, đổi schema thì cập nhật cả file này). Trạng thái là ENUM native của PostgreSQL, lưu theo `.value`.
+- `app/models.py` là nguồn sự thật duy nhất của schema; đổi schema chỉ qua Alembic (`alembic/versions/`, hiện tới `0006`, 12 bảng; sơ đồ ở `docs/database.dbml`, đổi schema thì cập nhật cả file này). Trạng thái là ENUM native của PostgreSQL, lưu theo `.value`.
 - Xóa là xóa mềm (`is_deleted`, bắt buộc `delete_reason`, có CHECK ở DB). Ràng buộc duy nhất là partial unique index `WHERE is_deleted = false` (`alive_unique`); "chỉ một bản ghi đang mở" là partial index `WHERE <cột đóng> IS NULL` (`one_open_per`) — xem `app/db.py`.
 - Lịch sử `assignments` không xóa, chỉ đóng bằng ngày kết thúc; dòng đã đóng không được đổi máy / người. `audit_logs` chỉ INSERT / SELECT, có trigger DB chặn.
 - `assets.status` phải khớp với lượt bàn giao đang mở: `IN_USE` chỉ sinh ra qua bàn giao, không gõ tay (`_sync_asset_status`).

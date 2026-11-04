@@ -1869,7 +1869,7 @@ class AssignmentAdmin(BaseAdminView, model=Assignment):
                                 raise ValueError(f"This asset is currently in use by '{holder}'. Please record return date first.")
                             else:
                                 raise ValueError(f"Thiết bị này hiện đang được bàn giao cho '{holder}' (chưa thu hồi). Vui lòng ghi nhận Ngày thu hồi trước khi tạo lượt bàn giao mới.")
-                        if b_at >= o_start or r_at > o_start:
+                        if o_start and ((b_at and b_at >= o_start) or (r_at and r_at > o_start)):
                             if is_ja:
                                 raise ValueError(f"割当期間の重複: この機器は {o_start} から '{holder}' が使用中です。")
                             elif is_en:
@@ -1877,7 +1877,7 @@ class AssignmentAdmin(BaseAdminView, model=Assignment):
                             else:
                                 raise ValueError(f"Trùng lặp thời gian cấp phát: Thiết bị này đang được bàn giao cho '{holder}' từ ngày {o_start.strftime('%d/%m/%Y')} (chưa thu hồi). Thời gian cấp phát mới không thể trùng lấn với người đang sử dụng.")
                     else:
-                        if b_at < o_end and (r_at is None or r_at > o_start):
+                        if b_at < o_end and (r_at is None or o_start is None or r_at > o_start):
                             if is_ja:
                                 raise ValueError(
                                     f"割当期間の重複: この機器はすでに {o_start} から {o_end} まで '{holder}' に割り当てられています。"
@@ -1891,7 +1891,7 @@ class AssignmentAdmin(BaseAdminView, model=Assignment):
                             else:
                                 raise ValueError(
                                     f"Trùng lặp thời gian cấp phát: Thiết bị này đã được bàn giao cho '{holder}' "
-                                    f"từ ngày {o_start.strftime('%d/%m/%Y')} đến ngày {o_end.strftime('%d/%m/%Y')}. "
+                                    f"từ ngày {o_start.strftime('%d/%m/%Y') if o_start else 'không rõ'} đến ngày {o_end.strftime('%d/%m/%Y')}. "
                                     f"Thời gian cấp phát ({b_at.strftime('%d/%m/%Y')} - {r_at.strftime('%d/%m/%Y') if r_at else 'chưa thu hồi'}) "
                                     f"bị trùng lấn với lượt bàn giao trước."
                                 )

@@ -137,7 +137,9 @@ def build_ledger_rows(db: Session, include_secret_flag: bool = False) -> list[di
             "software": ", ".join(t.name_en for t in tags) or None,
             "software_codes": [t.code for t in tags],
             "secret_set": bool(person and person.id in with_secret),
-            "borrowed_at": assignment.borrowed_at.strftime("%d/%m/%Y") if assignment else None,
+            "borrowed_at": (
+                assignment.borrowed_at.strftime("%d/%m/%Y") if assignment and assignment.borrowed_at else None
+            ),
             "note": asset.note,
             "row_kind": _row_kind(person, asset.note),
         })

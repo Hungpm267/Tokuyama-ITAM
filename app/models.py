@@ -385,7 +385,8 @@ class Assignment(BizBase):
     person_id: Mapped[int] = mapped_column(
         ForeignKey("persons.id", ondelete="RESTRICT"), nullable=False
     )
-    borrowed_at: Mapped[dt.date] = mapped_column(Date, nullable=False)
+    #: Trống là không rõ ngày giao (dữ liệu cũ từ Excel), máy vẫn ở chỗ người đó.
+    borrowed_at: Mapped[dt.date | None] = mapped_column(Date, nullable=True)
     returned_at: Mapped[dt.date | None] = mapped_column(Date, nullable=True)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
