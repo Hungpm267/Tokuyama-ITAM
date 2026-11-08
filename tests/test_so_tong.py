@@ -159,14 +159,15 @@ def test_closed_assignment_does_not_show_a_holder(db, seed):
     assert row["holder"] is None and row["asset_status"] == AssetStatus.IN_STOCK.value
 
 
-def test_row_kind_marks_resigned_people_and_mes_machines(db, seed):
+def test_row_kind_marks_resigned_people_only(db, seed):
     seed["person_b"].status = PersonStatus.RESIGNED
     mes = Asset(pc_name="TKY-PC0060", category_id=seed["cat"].id, note="Người dùng theo file Excel: MES system PC 01")
     db.add(mes)
     db.flush()
     rows = build_ledger_rows(db)
     assert _row(rows, staff_code="TVC00002")["row_kind"] == "resigned"
-    assert _row(rows, pc_name="TKY-PC0060")["row_kind"] == "mes"
+    # Màu máy MES nay do người dùng tự đánh dấu (mark_service), không suy ra từ ghi chú.
+    assert _row(rows, pc_name="TKY-PC0060")["row_kind"] == ""
     assert _row(rows, pc_name=seed["asset"].pc_name)["row_kind"] == ""
 
 

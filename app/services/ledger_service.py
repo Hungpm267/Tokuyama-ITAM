@@ -16,8 +16,11 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.audit import record_audit
+from app.core.clock import today_local
 from app.enums import AuditAction, Module, PersonStatus
 from app.models import Asset, AssetTag, AssetTagLink, Assignment, Department, Person, PersonSecret
+from app.services.assignment_service import get_active_assignment
+from app.services.mark_service import marks_by_asset
 
 SOFTWARE_TAG_PREFIX = "SW-"
 
@@ -48,12 +51,10 @@ def _person_fields(person: Person | None) -> dict[str, Any]:
     }
 
 
-def _row_kind(person: Person | None, note: str | None) -> str:
-    """Thay cho việc tô màu tay trong Excel: xám là người đã nghỉ, vàng là máy MES."""
+def _row_kind(person: Person | None) -> str:
+    """Xám là người đã nghỉ. Màu của máy do người dùng tự đánh dấu (xem mark_service)."""
     if person is not None and person.status == PersonStatus.RESIGNED:
         return "resigned"
-    if note and "MES" in note:
-        return "mes"
     return ""
 
 
@@ -87,14 +88,17 @@ def _software_by_asset(db: Session) -> dict[int, list[AssetTag]]:
     return result
 
 
-def _people_with_secret(db: Session) -> set[int]:
-    return set(
-        db.scalars(
-            select(PersonSecret.person_id).where(
-                PersonSecret.pc_password_enc.is_not(None) | PersonSecret.email_password_enc.is_not(None)
-            )
-        ).all()
-    )
+def _secret_kinds(db: Session) -> dict[int, str]:
+    """Chỉ đọc cờ có / không của từng loại mật khẩu, không bao giờ đọc cột mã hóa."""
+    kinds = {(True, False): "pc", (False, True): "email", (True, True): "both"}
+    rows = db.execute(
+        select(
+            PersonSecret.person_id,
+            PersonSecret.pc_password_enc.is_not(None),
+            PersonSecret.email_password_enc.is_not(None),
+        )
+    ).all()
+    return {person_id: kinds[(pc, email)] for person_id, pc, email in rows if pc or email}
 
 
 def build_ledger_rows(db: Session, include_secret_flag: bool = False) -> list[dict[str, Any]]:
@@ -115,7 +119,13 @@ def build_ledger_rows(db: Session, include_secret_flag: bool = False) -> list[di
         .order_by(Person.staff_code)
     ).all()
     software = _software_by_asset(db)
-    with_secret = _people_with_secret(db) if include_secret_flag else set()
+    marks = marks_by_asset(db)
+    secret_kinds = _secret_kinds(db) if include_secret_flag else None
+
+    def secret_kind(person: Person | None) -> str | None:
+        if secret_kinds is None or person is None:
+            return None
+        return secret_kinds.get(person.id, "none")
 
     rows: list[dict[str, Any]] = []
     holder_ids: set[int] = set()
@@ -136,10 +146,13 @@ def build_ledger_rows(db: Session, include_secret_flag: bool = False) -> list[di
             **_person_fields(person),
             "software": ", ".join(t.name_en for t in tags) or None,
             "software_codes": [t.code for t in tags],
-            "secret_set": bool(person and person.id in with_secret),
-            "borrowed_at": assignment.borrowed_at.strftime("%d/%m/%Y") if assignment else None,
+            "secret_kind": secret_kind(person),
+            "borrowed_at": (
+                assignment.borrowed_at.strftime("%d/%m/%Y") if assignment and assignment.borrowed_at else None
+            ),
             "note": asset.note,
-            "row_kind": _row_kind(person, asset.note),
+            "mark": marks.get(asset.id),
+            "row_kind": _row_kind(person),
         })
 
     for person in persons:
@@ -156,10 +169,11 @@ def build_ledger_rows(db: Session, include_secret_flag: bool = False) -> list[di
             **_person_fields(person),
             "software": None,
             "software_codes": [],
-            "secret_set": person.id in with_secret,
+            "secret_kind": secret_kind(person),
             "borrowed_at": None,
             "note": person.note,
-            "row_kind": _row_kind(person, None),
+            "mark": None,
+            "row_kind": _row_kind(person),
         })
     return rows
 
@@ -180,6 +194,8 @@ def module_of_field(row_kind: str, field: str) -> Module:
         return Module.PERSONS
     if field == "note":
         return Module.ASSETS if row_kind == "asset" else Module.PERSONS
+    if field == "borrowed_at":
+        return Module.ASSIGNMENTS
     raise ValueError("Ô này không sửa trực tiếp được.")
 
 
@@ -236,6 +252,43 @@ def _save(db: Session, obj: Any, table: str, column: str, new_value: Any, user_i
     )
 
 
+def _parse_date(value: str | None) -> dt.date | None:
+    """Nhận dd/mm/yyyy hoặc yyyy-mm-dd; rỗng là không rõ ngày."""
+    if not value:
+        return None
+    try:
+        return dt.datetime.strptime(value, "%d/%m/%Y").date()
+    except ValueError:
+        pass
+    try:
+        return dt.date.fromisoformat(value)
+    except ValueError:
+        raise ValueError("Ngày bàn giao không hợp lệ (dd/mm/yyyy).") from None
+
+
+def _update_borrowed_at(db: Session, asset: Asset | None, value: str | None, user_id: int | None, ip: str | None) -> None:
+    """Chỉ đổi ngày của lượt đang mở: không tạo lượt mới, không đổi máy hay người."""
+    assignment = get_active_assignment(db, asset.id) if asset else None
+    if assignment is None:
+        raise ValueError("Máy này chưa bàn giao cho ai.")
+    borrowed_at = _parse_date(value)
+    if borrowed_at is not None:
+        if borrowed_at > today_local():
+            raise ValueError("Ngày bàn giao không được ở tương lai.")
+        previous_return = db.scalar(
+            select(func.max(Assignment.returned_at)).where(
+                Assignment.asset_id == asset.id,
+                Assignment.id != assignment.id,
+                Assignment.is_deleted.is_(False),
+            )
+        )
+        if previous_return and borrowed_at < previous_return:
+            raise ValueError(
+                f"Ngày bàn giao không được trước ngày người trước trả máy ({previous_return.strftime('%d/%m/%Y')})."
+            )
+    _save(db, assignment, "assignments", "borrowed_at", borrowed_at, user_id, ip)
+
+
 def update_cell(
     db: Session, row_kind: str, row_pk: int, field: str, value: str | None,
     user_id: int | None = None, ip_address: str | None = None,
@@ -244,6 +297,10 @@ def update_cell(
     module_of_field(row_kind, field)
     clean = value.strip() or None if isinstance(value, str) else None
     asset = _alive_asset(db, row_pk) if row_kind == "asset" else None
+
+    if field == "borrowed_at":
+        _update_borrowed_at(db, asset, clean, user_id, ip_address)
+        return
 
     if field == "note":
         if asset:

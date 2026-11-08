@@ -16,7 +16,7 @@ from app.db import get_db
 from app.enums import Module, PermissionAction
 from app.models import User
 from app.routers.assets import get_current_actor
-from app.services import ledger_service
+from app.services import ledger_service, mark_service
 
 router = APIRouter(prefix="/admin", tags=["So tong"])
 
@@ -68,10 +68,12 @@ async def so_tong_page(request: Request, db: Session = Depends(get_db)) -> Respo
         "perms": {
             "assets": has_permission(db, user, Module.ASSETS, PermissionAction.CHANGE),
             "persons": has_permission(db, user, Module.PERSONS, PermissionAction.CHANGE),
+            "assignments": has_permission(db, user, Module.ASSIGNMENTS, PermissionAction.CHANGE),
             "secrets": has_permission(db, user, Module.SECRETS, PermissionAction.VIEW),
         },
         "departments": ledger_service.list_department_names(db),
         "software_tags": ledger_service.list_software_tags(db),
+        "marks": mark_service.list_marks(db),
     }
     return await admin.templates.TemplateResponse(request, "sqladmin/so_tong.html", context)
 
@@ -127,3 +129,76 @@ async def so_tong_set_software(request: Request, db: Session = Depends(get_db)) 
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc))
     return JSONResponse(content={"success": True, "rows": _rows_touching(db, user, f"asset-{asset_id}")})
+
+
+def _require_mark_change(request: Request, db: Session) -> User:
+    user = _require_ledger_view(request, db)
+    if not has_permission(db, user, Module.ASSETS, PermissionAction.CHANGE):
+        raise _forbidden()
+    return user
+
+
+def _client_ip(request: Request) -> str | None:
+    return request.client.host if request.client else None
+
+
+def _mark_response(db: Session, run: Any) -> JSONResponse:
+    try:
+        run()
+        db.commit()
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc))
+    return JSONResponse(content={"success": True, "marks": mark_service.list_marks(db)})
+
+
+@router.get("/api/so-tong/marks")
+def so_tong_marks(request: Request, db: Session = Depends(get_db)) -> JSONResponse:
+    _require_ledger_view(request, db)
+    return JSONResponse(content=mark_service.list_marks(db))
+
+
+@router.post("/api/so-tong/marks")
+async def so_tong_create_mark(request: Request, db: Session = Depends(get_db)) -> JSONResponse:
+    user = _require_mark_change(request, db)
+    body = await read_json_object(request)
+    return _mark_response(db, lambda: mark_service.create_mark(
+        db, body.get("name"), body.get("color"), user_id=user.id, ip_address=_client_ip(request)
+    ))
+
+
+@router.patch("/api/so-tong/marks/{tag_id}")
+async def so_tong_update_mark(tag_id: int, request: Request, db: Session = Depends(get_db)) -> JSONResponse:
+    user = _require_mark_change(request, db)
+    body = await read_json_object(request)
+    return _mark_response(db, lambda: mark_service.update_mark(
+        db, tag_id, body.get("name"), body.get("color"), user_id=user.id, ip_address=_client_ip(request)
+    ))
+
+
+@router.delete("/api/so-tong/marks/{tag_id}")
+def so_tong_delete_mark(tag_id: int, request: Request, db: Session = Depends(get_db)) -> JSONResponse:
+    user = _require_mark_change(request, db)
+    return _mark_response(db, lambda: mark_service.delete_mark(
+        db, tag_id, user_id=user.id, ip_address=_client_ip(request)
+    ))
+
+
+@router.put("/api/so-tong/mark")
+async def so_tong_set_mark(request: Request, db: Session = Depends(get_db)) -> JSONResponse:
+    user = _require_mark_change(request, db)
+    body = await read_json_object(request)
+    asset_id = require_positive_int(body.get("asset_id"), "Thiết bị không hợp lệ.")
+    raw_tag = body.get("tag_id")
+    tag_id = None if raw_tag is None else require_positive_int(raw_tag, "Kiểu đánh dấu không hợp lệ.")
+    try:
+        mark_service.set_asset_mark(db, asset_id, tag_id, user_id=user.id, ip_address=_client_ip(request))
+        db.commit()
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc))
+    return JSONResponse(content={
+        "success": True,
+        "marks": mark_service.list_marks(db),
+        "rows": _rows_touching(db, user, f"asset-{asset_id}"),
+    })

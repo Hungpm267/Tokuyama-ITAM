@@ -198,7 +198,7 @@ def return_asset(
     if not asgn:
         raise ValueError(f"Thiết bị '{asset.asset_code or asset.serial}' không có bản ghi bàn giao nào đang mở để thu hồi.")
 
-    if returned_at < asgn.borrowed_at:
+    if asgn.borrowed_at and returned_at < asgn.borrowed_at:
         raise ValueError(
             f"Ngày thu hồi ({returned_at.strftime('%d/%m/%Y')}) không được trước ngày bàn giao "
             f"({asgn.borrowed_at.strftime('%d/%m/%Y')})."

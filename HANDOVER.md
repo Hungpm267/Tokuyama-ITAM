@@ -126,6 +126,16 @@ Thiết kế: `docs/superpowers/specs/2026-11-02-so-tong-design.md`. Đã xong c
 
 ---
 
+### 3g. Sổ tổng: màu đánh dấu, ngày bàn giao, cột mật khẩu (04/11/2026, nhánh `feat/so-tong-mau-ngay`)
+
+Thiết kế: `docs/superpowers/specs/2026-11-04-so-tong-mau-ngay-mat-khau-design.md`. Kế hoạch: `docs/superpowers/plans/2026-11-04-so-tong-mau-ngay-mat-khau.md`.
+
+- **Màu đánh dấu**: người dùng tự tạo kiểu (tên + màu), mỗi máy tối đa một màu, có chú giải lọc được. Lưu là `asset_tags` mã `MARK-…` (`app/services/mark_service.py`); API `/admin/api/so-tong/marks`, `/admin/api/so-tong/mark`. Bỏ luật tự tô vàng theo chữ "MES" trong ghi chú.
+- **Ngày bàn giao** để trống được (migration `0006`), sửa / xóa trống ngay trên Sổ tổng (`ledger_service.update_cell`, field `borrowed_at`, quyền `assignments:change`).
+- **Cột mật khẩu**: `secret_kind` = `none` / `pc` / `email` / `both`, chỉ người có quyền kho mật khẩu thấy.
+- **Script dọn dữ liệu** `scripts/cleanup_excel_import.py` (mặc định chạy thử, `--apply` để ghi): xóa 51 ngày tạm, ghi chú agent tự ghi khi nhập Excel, gắn "Máy MES" cho 8 máy MES, rút gọn ghi chú máy dùng chung / người đã nghỉ. Đã chạy thử trên bản khôi phục local của bản sao lưu 02/11.
+- **Thứ tự lên production** (mỗi bước cần người dùng cho phép): sao lưu Aiven → `alembic upgrade head` (0006) → merge `main` vào `master` và chờ Render "Deploy live" đúng commit (Render deploy từ `master`, không phải `main`) → chạy thử script trên Aiven, xem báo cáo → `--apply`.
+
 ## 4. CẤU TRÚC CODEBASE & NGUỒN SỰ THẬT
 
 ```

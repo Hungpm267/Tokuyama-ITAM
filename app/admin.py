@@ -1360,6 +1360,25 @@ class AssetTagAdmin(BaseAdminView, model=AssetTag):
         "color": "Màu nhãn",
     }
 
+    async def on_model_change(
+        self, data: dict, model: Any, is_created: bool, request: Request
+    ) -> None:
+        await super().on_model_change(data, model, is_created, request)
+        # Nhãn phần mềm (SW-) và kiểu đánh dấu màu (MARK-) là hai loại khác nhau trên Sổ tổng:
+        # đổi mã từ loại này sang loại kia sẽ làm máy âm thầm mất màu hoặc mất phần mềm.
+        if is_created or "code" not in data:
+            return
+        old_code = str(getattr(model, "code", "") or "").upper()
+        new_code = str(data.get("code") or "").upper()
+        for prefix in ("MARK-", "SW-"):
+            if old_code.startswith(prefix) != new_code.startswith(prefix):
+                raise ValueError(_msg(
+                    _request_lang(request),
+                    f"Không được đổi nhãn giữa loại '{prefix}' và loại khác. Hãy tạo nhãn mới.",
+                    f"A tag cannot be moved into or out of the '{prefix}' kind. Create a new tag instead.",
+                    f"「{prefix}」種別とそれ以外の間でタグを変更できません。新しいタグを作成してください。",
+                ))
+
 
 
 
@@ -1841,7 +1860,8 @@ class AssignmentAdmin(BaseAdminView, model=Assignment):
             else:
                 raise ValueError("Ngày thu hồi thiết bị không được trước ngày cấp phát.")
 
-        if aid and b_at:
+        # Chạy cả khi ngày giao để trống (không rõ ngày): vẫn phải chặn hai lượt cùng mở trên một máy.
+        if aid:
             current_id = getattr(model, "id", None) if not is_created else None
             with _get_admin_db(request) as db:
                 query = (
@@ -1869,7 +1889,7 @@ class AssignmentAdmin(BaseAdminView, model=Assignment):
                                 raise ValueError(f"This asset is currently in use by '{holder}'. Please record return date first.")
                             else:
                                 raise ValueError(f"Thiết bị này hiện đang được bàn giao cho '{holder}' (chưa thu hồi). Vui lòng ghi nhận Ngày thu hồi trước khi tạo lượt bàn giao mới.")
-                        if b_at >= o_start or r_at > o_start:
+                        if o_start and ((b_at and b_at >= o_start) or (r_at and r_at > o_start)):
                             if is_ja:
                                 raise ValueError(f"割当期間の重複: この機器は {o_start} から '{holder}' が使用中です。")
                             elif is_en:
@@ -1877,7 +1897,8 @@ class AssignmentAdmin(BaseAdminView, model=Assignment):
                             else:
                                 raise ValueError(f"Trùng lặp thời gian cấp phát: Thiết bị này đang được bàn giao cho '{holder}' từ ngày {o_start.strftime('%d/%m/%Y')} (chưa thu hồi). Thời gian cấp phát mới không thể trùng lấn với người đang sử dụng.")
                     else:
-                        if b_at < o_end and (r_at is None or r_at > o_start):
+                        # Ngày giao không rõ thì không đối chiếu được với lượt đã đóng.
+                        if b_at and b_at < o_end and (r_at is None or o_start is None or r_at > o_start):
                             if is_ja:
                                 raise ValueError(
                                     f"割当期間の重複: この機器はすでに {o_start} から {o_end} まで '{holder}' に割り当てられています。"
@@ -1891,7 +1912,7 @@ class AssignmentAdmin(BaseAdminView, model=Assignment):
                             else:
                                 raise ValueError(
                                     f"Trùng lặp thời gian cấp phát: Thiết bị này đã được bàn giao cho '{holder}' "
-                                    f"từ ngày {o_start.strftime('%d/%m/%Y')} đến ngày {o_end.strftime('%d/%m/%Y')}. "
+                                    f"từ ngày {o_start.strftime('%d/%m/%Y') if o_start else 'không rõ'} đến ngày {o_end.strftime('%d/%m/%Y')}. "
                                     f"Thời gian cấp phát ({b_at.strftime('%d/%m/%Y')} - {r_at.strftime('%d/%m/%Y') if r_at else 'chưa thu hồi'}) "
                                     f"bị trùng lấn với lượt bàn giao trước."
                                 )

@@ -193,7 +193,7 @@ def test_note_goes_to_machine_or_person_depending_on_row(admin_client, db, seed)
 
 
 @pytest.mark.parametrize(
-    "field", ["holder", "asset_status", "person_status", "staff_code", "pc_name", "pc_password", "borrowed_at"]
+    "field", ["holder", "asset_status", "person_status", "staff_code", "pc_name", "pc_password"]
 )
 def test_non_editable_fields_are_refused(admin_client, db, seed, field):
     assert _patch(admin_client, f"asset-{seed['asset'].id}", field, "x").status_code == 400
@@ -263,12 +263,12 @@ def test_secret_flag_only_shows_presence_and_only_with_permission(client, db, se
     db.add(PersonSecret(person_id=seed["person"].id, pc_password_enc=b"\x01CIPHERTEXT", key_version=1))
     db.flush()
     with_flag = build_ledger_rows(db, include_secret_flag=True)
-    assert next(r for r in with_flag if r["staff_code"] == "TVC00001")["secret_set"] is True
+    assert next(r for r in with_flag if r["staff_code"] == "TVC00001")["secret_kind"] == "pc"
     without_flag = build_ledger_rows(db)
-    assert next(r for r in without_flag if r["staff_code"] == "TVC00001")["secret_set"] is False
+    assert next(r for r in without_flag if r["staff_code"] == "TVC00001")["secret_kind"] is None
     _login(client, _viewer(db, "st_v4"), RoleCode.EXECUTIVE.value)
     res = client.get("/admin/api/so-tong")
-    assert all(r["secret_set"] is False for r in res.json())
+    assert all(r["secret_kind"] is None for r in res.json())
     assert "CIPHERTEXT" not in res.text
 
 
@@ -277,3 +277,24 @@ def test_page_offers_editing_only_to_those_allowed(client, db, seed):
     html = client.get("/admin/so-tong").text
     assert '"assets": false' in html and '"persons": false' in html
     assert "modal-assign-asset" not in html
+
+
+def test_secret_kind_tells_pc_email_or_both(db, seed):
+    from app.models import Person
+
+    people = [Person(full_name=f"Secret {i}") for i in range(4)]
+    db.add_all(people)
+    db.flush()
+    db.add_all([
+        PersonSecret(person_id=people[0].id, pc_password_enc=b"x", key_version=1),
+        PersonSecret(person_id=people[1].id, email_password_enc=b"x", key_version=1),
+        PersonSecret(person_id=people[2].id, pc_password_enc=b"x", email_password_enc=b"x", key_version=1),
+    ])
+    db.flush()
+    rows = {r["holder"]: r for r in build_ledger_rows(db, include_secret_flag=True)}
+    assert [rows[f"Secret {i}"]["secret_kind"] for i in range(4)] == ["pc", "email", "both", "none"]
+
+
+def test_machine_without_holder_has_no_secret_kind(db, seed):
+    row = next(r for r in build_ledger_rows(db, include_secret_flag=True) if r["id"] == f"asset-{seed['asset'].id}")
+    assert row["person_id"] is None and row["secret_kind"] is None
