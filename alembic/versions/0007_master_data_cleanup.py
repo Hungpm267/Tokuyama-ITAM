@@ -65,7 +65,8 @@ def _assign_codes(bind) -> None:
             {"t": kind, "c": code, "i": person_id},
         )
         unlisted = "" if email in VENDOR_EMAILS + BUSINESS_TRIP_EMAILS else "  (không có trong danh sách, mặc định Vendor)"
-        print(f"  {full_name}: {kind} {code}{unlisted}")
+        # Console Windows (cp1252) không in được tiếng Việt: thay ký tự lạ thay vì làm hỏng migration.
+        print(f"  {full_name}: {kind} {code}{unlisted}".encode("ascii", "backslashreplace").decode("ascii"))
 
 
 def upgrade() -> None:
