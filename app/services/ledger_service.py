@@ -26,6 +26,7 @@ SOFTWARE_TAG_PREFIX = "SW-"
 
 #: Ô sửa trực tiếp được: tên trên dòng -> (cột, độ dài tối đa, nhãn trong thông báo lỗi)
 ASSET_TEXT_FIELDS = {
+    "device_code": ("device_code", 50, "Mã thiết bị"),
     "serial": ("serial", 100, "Số serial"),
 }
 PERSON_TEXT_FIELDS = {
@@ -311,6 +312,8 @@ def update_cell(
         if asset is None:
             raise ValueError("Dòng này chưa có máy.")
         column, max_length, label = ASSET_TEXT_FIELDS[field]
+        if column == "device_code" and not clean:
+            raise ValueError("Mã thiết bị không được để trống.")
         if clean and len(clean) > max_length:
             raise ValueError(f"{label} quá dài (tối đa {max_length} ký tự).")
         if clean:

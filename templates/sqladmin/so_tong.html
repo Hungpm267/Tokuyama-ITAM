@@ -223,7 +223,7 @@
   function canEdit(cell) {
     const field = cell.getField();
     const row = cell.getRow().getData();
-    if (field === 'serial') return PERMS.assets && !!row.asset_id;
+    if (field === 'serial' || field === 'device_code') return PERMS.assets && !!row.asset_id;
     if (field === 'note') return row.asset_id ? PERMS.assets : PERMS.persons;
     if (field === 'borrowed_at') return PERMS.assignments && !!row.asset_id && !!row.person_id;
     if (field === 'mark') return PERMS.assets && !!row.asset_id;
@@ -276,7 +276,7 @@
     { title: '', field: 'open_panel', frozen: true, width: 36, hozAlign: 'center', headerSort: false, download: false, clipboard: false, resizable: false,
       cssClass: 'st-open', formatter: function () { return '<i class="fa-solid fa-circle-info"></i>'; },
       cellClick: function (event, cell) { openPanel(cell.getRow().getData().id); } },
-    { title: {{ L('Mã thiết bị', 'Device code', '機器コード') | trim | tojson }}, field: 'device_code', frozen: true, width: 130, ...text },
+    { title: {{ L('Mã thiết bị', 'Device code', '機器コード') | trim | tojson }}, field: 'device_code', frozen: true, width: 130, ...text, ...editable },
     { title: {{ L('Người giữ', 'Holder', '使用者') | trim | tojson }}, field: 'holder', frozen: true, width: 210, ...text },
     { title: {{ L('Số serial', 'Serial', 'シリアル') | trim | tojson }}, field: 'serial', width: 130, ...text, ...editable },
     { title: {{ L('Trạng thái máy', 'Asset status', '機器状態') | trim | tojson }}, field: 'asset_status', width: 140, headerFilter: 'list',

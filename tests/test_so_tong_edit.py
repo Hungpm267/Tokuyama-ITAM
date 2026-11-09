@@ -193,7 +193,7 @@ def test_note_goes_to_machine_or_person_depending_on_row(admin_client, db, seed)
 
 
 @pytest.mark.parametrize(
-    "field", ["holder", "asset_status", "person_status", "staff_code", "device_code", "pc_password"]
+    "field", ["holder", "asset_status", "person_status", "staff_code", "pc_password"]
 )
 def test_non_editable_fields_are_refused(admin_client, db, seed, field):
     assert _patch(admin_client, f"asset-{seed['asset'].id}", field, "x").status_code == 400
@@ -298,3 +298,34 @@ def test_secret_kind_tells_pc_email_or_both(db, seed):
 def test_machine_without_holder_has_no_secret_kind(db, seed):
     row = next(r for r in build_ledger_rows(db, include_secret_flag=True) if r["id"] == f"asset-{seed['asset'].id}")
     assert row["person_id"] is None and row["secret_kind"] is None
+
+
+def test_edit_device_code_saved_trimmed_and_audited(admin_client, db, seed):
+    res = _patch(admin_client, f"asset-{seed['asset'].id}", "device_code", "  TKY-PC0500 ")
+    assert res.status_code == 200
+    assert seed["asset"].device_code == "TKY-PC0500"
+    assert db.query(AuditLog).filter_by(table_name="assets", record_id=seed["asset"].id).count() == 1
+
+
+def test_device_code_cannot_be_blank(admin_client, db, seed):
+    assert _patch(admin_client, f"asset-{seed['asset'].id}", "device_code", "  ").status_code == 400
+
+
+def test_device_code_duplicate_ignoring_case_is_refused(admin_client, db, seed):
+    other = Asset(device_code="TKY-PC0002", category_id=seed["cat"].id)
+    db.add(other)
+    db.flush()
+    assert _patch(admin_client, f"asset-{other.id}", "device_code", "tky-pc0001").status_code == 400
+
+
+def test_asset_form_refuses_blank_device_code(db, seed):
+    import asyncio
+
+    from app.admin import AssetAdmin
+    from tests.test_wave4_logic_audit import DummyRequest
+
+    request = DummyRequest(session={"user_id": seed["user"].id}, db=db)
+    with pytest.raises(ValueError):
+        asyncio.run(AssetAdmin().on_model_change(
+            {"device_code": "   ", "status": "IN_STOCK"}, Asset(), True, request
+        ))
