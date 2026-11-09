@@ -58,6 +58,9 @@ def engine():
 @pytest.fixture
 def db(engine) -> Session:
     """Session có rollback tự động sau mỗi test."""
+    from app.core.permissions import invalidate_permission_cache
+
+    invalidate_permission_cache()
     conn = engine.connect()
     trans = conn.begin()
     session = Session(bind=conn, join_transaction_mode="create_savepoint")

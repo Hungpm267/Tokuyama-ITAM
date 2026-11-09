@@ -7,13 +7,45 @@ Mô hình phân quyền theo GEMINI.md:
 
 from __future__ import annotations
 
+import time
 from typing import Callable
 from fastapi import HTTPException, Request, status
-from sqlalchemy import select
+from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 
 from app.enums import Module, PermissionAction
 from app.models import RolePermission, User
+
+
+#: Quyền của từng vai trò, giữ trong bộ nhớ 60 giây. Mỗi lần hỏi Aiven mất một vòng mạng,
+#: và một trang có thể kiểm hàng chục quyền. Ghi vào role_permissions qua ORM xóa cache ngay.
+_ROLE_PERMS_CACHE: dict[int, tuple[float, frozenset[tuple[str, str]]]] = {}
+_ROLE_PERMS_TTL = 60.0
+
+
+def invalidate_permission_cache() -> None:
+    _ROLE_PERMS_CACHE.clear()
+
+
+@event.listens_for(Session, "after_flush")
+def _clear_on_permission_write(session: Session, _ctx) -> None:
+    for obj in (*session.new, *session.dirty, *session.deleted):
+        if isinstance(obj, RolePermission):
+            invalidate_permission_cache()
+            return
+
+
+def role_permissions(db: Session, role_id: int) -> frozenset[tuple[str, str]]:
+    """Mọi cặp (module, action) của một vai trò."""
+    entry = _ROLE_PERMS_CACHE.get(role_id)
+    if entry and time.monotonic() - entry[0] < _ROLE_PERMS_TTL:
+        return entry[1]
+    rows = db.execute(
+        select(RolePermission.module, RolePermission.action).where(RolePermission.role_id == role_id)
+    ).all()
+    perms = frozenset((row.module, row.action) for row in rows)
+    _ROLE_PERMS_CACHE[role_id] = (time.monotonic(), perms)
+    return perms
 
 
 def has_permission(
@@ -35,14 +67,7 @@ def has_permission(
     mod_val = module.value if isinstance(module, Module) else str(module)
     act_val = action.value if isinstance(action, PermissionAction) else str(action)
 
-    role_perm = db.scalar(
-        select(RolePermission).where(
-            RolePermission.role_id == user.role_id,
-            RolePermission.module == mod_val,
-            RolePermission.action == act_val,
-        )
-    )
-    return role_perm is not None
+    return (mod_val, act_val) in role_permissions(db, user.role_id)
 
 
 def get_user_permissions(db: Session, user: User) -> set[tuple[str, str]]:
@@ -50,13 +75,7 @@ def get_user_permissions(db: Session, user: User) -> set[tuple[str, str]]:
     if not user or not user.is_active or user.is_deleted:
         return set()
 
-    # Lấy quyền từ role
-    role_perms = db.execute(
-        select(RolePermission.module, RolePermission.action).where(
-            RolePermission.role_id == user.role_id
-        )
-    ).all()
-    return {(row.module, row.action) for row in role_perms}
+    return set(role_permissions(db, user.role_id))
 
 
 def require(
