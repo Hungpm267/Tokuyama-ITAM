@@ -136,6 +136,16 @@ Thiết kế: `docs/superpowers/specs/2026-11-04-so-tong-mau-ngay-mat-khau-desig
 - **Script dọn dữ liệu** `scripts/cleanup_excel_import.py` (mặc định chạy thử, `--apply` để ghi): xóa 51 ngày tạm, ghi chú agent tự ghi khi nhập Excel, gắn "Máy MES" cho 8 máy MES, rút gọn ghi chú máy dùng chung / người đã nghỉ. Đã chạy thử trên bản khôi phục local của bản sao lưu 02/11.
 - **Thứ tự lên production** (mỗi bước cần người dùng cho phép): sao lưu Aiven → `alembic upgrade head` (0006) → merge `main` vào `master` và chờ Render "Deploy live" đúng commit (Render deploy từ `master`, không phải `main`) → chạy thử script trên Aiven, xem báo cáo → `--apply`.
 
+### 3h. Dọn master data, loại nhân sự, Kho mật khẩu gọn (09/11/2026)
+
+Thiết kế: `docs/superpowers/specs/2026-11-09-don-master-data-va-kho-mat-khau-design.md`. Kế hoạch: `docs/superpowers/plans/2026-11-09-don-master-data-va-kho-mat-khau.md`.
+
+- **Migration `0007`**: `assets.pc_name` -> `device_code` (bắt buộc, duy nhất; mọi loại tài sản); bỏ `assets.asset_code` (tem GA) và CHECK "phải có một mã"; bỏ `departments.code`; thêm `persons.person_type` (`EMPLOYEE` / `VENDOR` / `BUSINESS_TRIP`), cấp mã `VND-001..003` / `JP-001..003` cho 6 người chưa có mã (theo email), sau đó `staff_code` bắt buộc. Bản ghi tài sản đã xóa mềm không có PC name lấy serial làm mã. Xóa vĩnh viễn cột mã phòng ban nên người dùng tự chạy migration sau khi sao lưu.
+- **Mã nhân sự** (`app/services/person_code_service.py`): nhân viên chính thức nhập mã TVC; vendor / công tác Nhật để trống thì app cấp `VND-NNN` / `JP-NNN` (không cấp lại mã đã dùng, kể cả đã xóa). Mã phải khớp loại. Le Nguyen Nhat Khanh tạm là Vendor (người dùng chưa chắc).
+- **Giao diện**: ẩn cột ID ở mọi màn hình (database vẫn giữ `id`); nhật ký truy vết hiện mã thiết bị / mã nhân viên thay cho số; ẩn menu "Nhãn tài sản" (`AssetTagAdmin.is_visible`); mã thiết bị sửa được trên Sổ tổng; Sổ tổng có cột "Loại nhân sự"; hộp "Quản lý màu và phần mềm" trên Sổ tổng thêm / đổi tên / xóa phần mềm `SW-` (`mark_service.create_software` …, API `/admin/api/so-tong/software-catalog`).
+- **Kho mật khẩu** (`templates/sqladmin/person_secrets.html`): một bảng 3 cột Nhân sự / PC / Email, nhãn "Đã lưu" / "Chưa có", nút mắt xem qua cổng xác thực như cũ, bấm dòng để sửa, chip Tất cả / Thiếu PC / Thiếu Email, thanh tiến độ số người đã lưu.
+- **Thứ tự lên production**: sao lưu Aiven -> người dùng chạy `alembic upgrade head` (0007) -> merge `main` vào `master`, chờ Render "Deploy live" đúng commit (khoảng một phút các trang tài sản báo lỗi giữa hai bước) -> kiểm tra.
+
 ## 4. CẤU TRÚC CODEBASE & NGUỒN SỰ THẬT
 
 ```
