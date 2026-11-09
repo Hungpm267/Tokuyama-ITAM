@@ -185,6 +185,11 @@
     remove: {{ L('Xóa', 'Delete', '削除') | trim | tojson }},
     cancel: {{ L('Hủy', 'Cancel', 'キャンセル') | trim | tojson }},
     confirmRemove: {{ L('máy sẽ mất màu này. Xóa?', 'PCs will lose this colour. Delete?', '台の色分けが外れます。削除しますか？') | trim | tojson }},
+    personType: {
+      EMPLOYEE: {{ L('Nhân viên chính thức', 'Employee', '正社員') | trim | tojson }},
+      VENDOR: 'Vendor',
+      BUSINESS_TRIP: {{ L('Công tác Nhật', 'Japan business trip', '日本出張者') | trim | tojson }}
+    },
     secretKind: {
       none: {{ L('Không có', 'None', 'なし') | trim | tojson }},
       pc: 'PC',
@@ -278,6 +283,9 @@
       headerFilterParams: { values: Object.assign({ '': '' }, TEXT.assetStatus), clearable: true },
       formatter: statusLabel(TEXT.assetStatus), accessorDownload: labelFor(TEXT.assetStatus) },
     { title: {{ L('Mã nhân viên', 'Staff code', '社員番号') | trim | tojson }}, field: 'staff_code', width: 125, ...text },
+    { title: {{ L('Loại nhân sự', 'Staff type', '区分') | trim | tojson }}, field: 'person_type', width: 140, headerFilter: 'list',
+      headerFilterParams: { values: Object.assign({ '': '' }, TEXT.personType), clearable: true },
+      formatter: statusLabel(TEXT.personType), accessorDownload: labelFor(TEXT.personType) },
     { title: 'userId', field: 'user_id', width: 100, ...text, ...editable },
     { title: 'Email', field: 'email', width: 250, ...text, ...editable },
     { title: {{ L('Phòng ban', 'Department', '部署') | trim | tojson }}, field: 'department', width: 160, ...text, editor: 'list', editable: canEdit,

@@ -293,6 +293,9 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         "vi": "Đã nghỉ việc",
         "en": "Resigned",
     },
+    "Nhân viên chính thức": {"vi": "Nhân viên chính thức", "en": "Employee"},
+    "Vendor": {"vi": "Vendor", "en": "Vendor"},
+    "Công tác Nhật": {"vi": "Công tác Nhật", "en": "Japan business trip"},
     "Đang sửa chữa": {
         "vi": "Đang sửa chữa",
         "en": "In Repair",
@@ -840,6 +843,7 @@ MODEL_SPECIFIC_LABELS: Final[dict[tuple[str, str], dict[str, str]]] = {
 
     # Person
     ("person", "staff_code"): {"vi": "Mã nhân viên", "en": "Staff Code"},
+    ("person", "person_type"): {"vi": "Loại nhân sự", "en": "Staff type"},
     ("person", "full_name"): {"vi": "Họ và tên nhân viên", "en": "Employee Full Name"},
     ("person", "department"): {"vi": "Phòng ban", "en": "Department"},
     ("person", "status"): {"vi": "Tình trạng công tác", "en": "Employment Status"},
@@ -959,6 +963,9 @@ JA_TRANSLATIONS: Final[dict[str, str]] = {
     "Đang làm việc": "在籍",
     "Sắp vào làm": "入社予定",
     "Đã nghỉ việc": "退職",
+    "Nhân viên chính thức": "正社員",
+    "Vendor": "ベンダー",
+    "Công tác Nhật": "日本出張者",
     "Đang sửa chữa": "修理中",
     "Đã thanh lý": "廃棄済み",
     "Đã trả": "返却済み",
@@ -1243,6 +1250,7 @@ JA_MODEL_SPECIFIC_LABELS: Final[dict[tuple[str, str], str]] = {
     ("assignment", "borrowed_at"): "割当日時",
     ("assignment", "returned_at"): "返却日時",
     ("person", "staff_code"): "社員番号",
+    ("person", "person_type"): "区分",
     ("person", "full_name"): "氏名",
     ("person", "department"): "所属部署",
     ("person", "status"): "就業状態",

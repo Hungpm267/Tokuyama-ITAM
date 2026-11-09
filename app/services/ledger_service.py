@@ -37,12 +37,13 @@ PERSON_TEXT_FIELDS = {
 def _person_fields(person: Person | None) -> dict[str, Any]:
     if person is None:
         return {
-            "holder": None, "staff_code": None, "user_id": None, "email": None,
+            "holder": None, "staff_code": None, "person_type": None, "user_id": None, "email": None,
             "department": None, "person_status": None,
         }
     return {
         "holder": person.full_name,
         "staff_code": person.staff_code,
+        "person_type": person.person_type.value if person.person_type else None,
         "user_id": person.user_id,
         "email": person.email,
         "department": person.department.name_en if person.department else None,

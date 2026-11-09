@@ -60,6 +60,7 @@ from app.enums import (
     Module,
     PermissionAction,
     PersonStatus,
+    PersonType,
     RoleCode,
 )
 from app.models import (
@@ -75,6 +76,7 @@ from app.models import (
     Role,
     User,
 )
+from app.services import person_code_service
 
 logger = logging.getLogger(__name__)
 
@@ -1379,6 +1381,13 @@ class AssetTagAdmin(BaseAdminView, model=AssetTag):
 
 
 
+_PERSON_TYPE_LABEL = {
+    PersonType.EMPLOYEE: "Nhân viên chính thức",
+    PersonType.VENDOR: "Vendor",
+    PersonType.BUSINESS_TRIP: "Công tác Nhật",
+}
+
+
 class PersonAdmin(BaseAdminView, model=Person):
     unique_text_fields = ("staff_code", "email", "user_id")
     module = Module.PERSONS
@@ -1386,11 +1395,12 @@ class PersonAdmin(BaseAdminView, model=Person):
     name_plural = "Hồ sơ Nhân sự"
     icon = "fa-solid fa-id-card-clip"
     category = "Nhân sự"
-    column_list = [Person.id, Person.staff_code, Person.full_name, Person.department, Person.status, Person.email, Person.start_working_date]
+    column_list = [Person.id, Person.staff_code, Person.full_name, Person.person_type, Person.department, Person.status, Person.email, Person.start_working_date]
     column_details_list = [
         Person.id,
         Person.staff_code,
         Person.full_name,
+        Person.person_type,
         Person.department,
         Person.email,
         Person.user_id,
@@ -1401,6 +1411,7 @@ class PersonAdmin(BaseAdminView, model=Person):
     column_searchable_list = [Person.staff_code, Person.full_name, Person.email]
     column_labels = {
         "staff_code": "Mã nhân viên",
+        "person_type": "Loại nhân sự",
         "full_name": "Họ và tên nhân viên",
         "department": "Phòng ban",
         "status": "Tình trạng",
@@ -1410,6 +1421,7 @@ class PersonAdmin(BaseAdminView, model=Person):
         "note": "Ghi chú",
     }
     column_formatters = {
+        "person_type": lambda m, a: translate(_PERSON_TYPE_LABEL.get(m.person_type, ""), get_admin_lang()),
         "status": lambda m, a: (
             Markup(f'<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fa-solid fa-user-check me-1"></i>{translate("Đang làm việc", get_admin_lang())}</span>')
             if m.status == PersonStatus.ACTIVE
@@ -1421,6 +1433,7 @@ class PersonAdmin(BaseAdminView, model=Person):
         ),
     }
     column_formatters_detail = {
+        "person_type": lambda m, a: translate(_PERSON_TYPE_LABEL.get(m.person_type, ""), get_admin_lang()),
         "status": lambda m, a: (
             Markup(f'<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fa-solid fa-user-check me-1"></i>{translate("Đang làm việc", get_admin_lang())} (ACTIVE)</span>')
             if m.status == PersonStatus.ACTIVE
@@ -1437,6 +1450,14 @@ class PersonAdmin(BaseAdminView, model=Person):
         self, data: dict, model: Any, is_created: bool, request: Request
     ) -> None:
         await super().on_model_change(data, model, is_created, request)
+        if is_created or "staff_code" in data or "person_type" in data:
+            # Mã phải khớp loại nhân sự; vendor / công tác Nhật để trống mã thì app tự cấp.
+            person_type = (
+                _enum_of(PersonType, data.get("person_type")) if "person_type" in data else None
+            ) or getattr(model, "person_type", None) or PersonType.EMPLOYEE
+            code = data["staff_code"] if "staff_code" in data else getattr(model, "staff_code", None)
+            with _get_admin_db(request) as db:
+                data["staff_code"] = person_code_service.resolve_code(db, person_type, code)
         new_status = _enum_of(PersonStatus, data.get("status")) if "status" in data else None
         person_id = None if is_created else getattr(model, "id", None)
         # Chỉ chặn lúc CHUYỂN sang "đã nghỉ"; người đã nghỉ từ trước (dữ liệu cũ) vẫn sửa hồ sơ được.
