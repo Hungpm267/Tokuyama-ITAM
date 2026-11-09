@@ -2005,37 +2005,61 @@ def _valid_audit_action(raw: str | None) -> str | None:
     return raw if raw in {a.value for a in AuditAction} else None
 
 
+def _audit_record_labels(db: Session, pairs: Any) -> dict[tuple[str, int], str]:
+    """Tên dễ đọc (mã thiết bị, mã nhân viên, tên danh mục) cho nhiều bản ghi nhật ký.
+
+    Mỗi bảng một câu truy vấn cho cả trang, thay vì một câu (và một kết nối) cho từng dòng.
+    """
+    ids: dict[str, set[int]] = {}
+    for table, record_id in pairs:
+        if table and record_id is not None:
+            ids.setdefault(table, set()).add(int(record_id))
+    labels: dict[tuple[str, int], str] = {}
+
+    def put(table: str, rows: Any, fmt: Any) -> None:
+        for row in rows:
+            labels[(table, row[0])] = fmt(row)
+
+    for table, wanted in ids.items():
+        if table == "assets":
+            put(table, db.execute(select(Asset.id, Asset.device_code).where(Asset.id.in_(wanted))), lambda r: r[1])
+        elif table in ("persons", "person_secrets"):
+            put(table, db.execute(
+                select(Person.id, Person.staff_code, Person.full_name).where(Person.id.in_(wanted))
+            ), lambda r: f"{r[1]} · {r[2]}")
+        elif table == "assignments":
+            put(table, db.execute(
+                select(Assignment.id, Asset.device_code, Person.staff_code)
+                .join(Asset, Assignment.asset_id == Asset.id)
+                .join(Person, Person.id == Assignment.person_id)
+                .where(Assignment.id.in_(wanted))
+            ), lambda r: f"{r[1]} → {r[2]}")
+        elif table == "departments":
+            put(table, db.execute(select(Department.id, Department.name_en).where(Department.id.in_(wanted))), lambda r: r[1])
+        elif table == "asset_categories":
+            put(table, db.execute(
+                select(AssetCategory.id, AssetCategory.name_en).where(AssetCategory.id.in_(wanted))
+            ), lambda r: r[1])
+        elif table == "asset_tags":
+            put(table, db.execute(select(AssetTag.id, AssetTag.name_en).where(AssetTag.id.in_(wanted))), lambda r: r[1])
+        elif table == "users":
+            put(table, db.execute(select(User.id, User.username).where(User.id.in_(wanted))), lambda r: r[1])
+        elif table == "roles":
+            put(table, db.execute(select(Role.id, Role.code).where(Role.id.in_(wanted))), lambda r: r[1])
+    return labels
+
+
 def _audit_record_label(table: str | None, record_id: int | None) -> str:
-    """Tên dễ đọc của bản ghi trong nhật ký (mã thiết bị, mã nhân viên, tên danh mục) thay cho số ID."""
+    """Tên dễ đọc của một bản ghi nhật ký; trang danh sách đã tra sẵn cả trang trong AuditLogAdmin.list."""
     if record_id is None:
         return "-"
+    request = current_request_ctx.get()
+    prefetched = getattr(request.state, "itam_audit_labels", None) if request is not None else None
+    if prefetched is not None and (table, record_id) in prefetched:
+        return prefetched[(table, record_id)]
     try:
         with SessionLocal() as db:
-            if table == "assets":
-                label = db.scalar(select(Asset.device_code).where(Asset.id == record_id))
-            elif table in ("persons", "person_secrets"):
-                row = db.execute(select(Person.staff_code, Person.full_name).where(Person.id == record_id)).first()
-                label = f"{row[0]} · {row[1]}" if row else None
-            elif table == "assignments":
-                row = db.execute(
-                    select(Asset.device_code, Person.staff_code)
-                    .join(Assignment, Assignment.asset_id == Asset.id)
-                    .join(Person, Person.id == Assignment.person_id)
-                    .where(Assignment.id == record_id)
-                ).first()
-                label = f"{row[0]} → {row[1]}" if row else None
-            elif table == "departments":
-                label = db.scalar(select(Department.name_en).where(Department.id == record_id))
-            elif table == "asset_categories":
-                label = db.scalar(select(AssetCategory.name_en).where(AssetCategory.id == record_id))
-            elif table == "asset_tags":
-                label = db.scalar(select(AssetTag.name_en).where(AssetTag.id == record_id))
-            elif table == "users":
-                label = db.scalar(select(User.username).where(User.id == record_id))
-            elif table == "roles":
-                label = db.scalar(select(Role.code).where(Role.id == record_id))
-            else:
-                label = None
+            label = _audit_record_labels(db, [(table, record_id)]).get((table, record_id))
     except Exception:  # nhật ký vẫn phải mở được dù tra tên lỗi
         logger.exception("Không tra được tên bản ghi %s #%s", table, record_id)
         label = None
@@ -2103,6 +2127,17 @@ class AuditLogAdmin(BaseAdminView, model=AuditLog):
         "record_id": lambda m, a: _audit_record_label(m.table_name, m.record_id),
         "summary": lambda m, a: m.summary or "-",
     }
+
+    async def list(self, request: Request) -> Any:
+        pagination = await super().list(request)
+        try:
+            with self.session_maker() as db:
+                request.state.itam_audit_labels = _audit_record_labels(
+                    db, [(m.table_name, m.record_id) for m in pagination.rows]
+                )
+        except Exception:  # thiếu tên thì formatter tự tra từng dòng
+            logger.exception("Không tra trước được tên bản ghi nhật ký")
+        return pagination
 
     def list_query(self, request: Request) -> Select:
         stmt = super().list_query(request)
