@@ -14,6 +14,12 @@ class PersonStatus(str, Enum):
     RESIGNED = "RESIGNED"  # đã nghỉ việc
 
 
+class PersonType(str, Enum):
+    EMPLOYEE = "EMPLOYEE"  # nhân viên chính thức, mã TVC
+    VENDOR = "VENDOR"  # vendor thuê tạm thời, mã VND-NNN do app cấp
+    BUSINESS_TRIP = "BUSINESS_TRIP"  # người Nhật sang công tác, mã JP-NNN do app cấp
+
+
 class AssetStatus(str, Enum):
     IN_STOCK = "IN_STOCK"  # trong kho
     IN_USE = "IN_USE"  # đang cho mượn

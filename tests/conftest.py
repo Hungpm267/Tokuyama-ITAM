@@ -107,7 +107,7 @@ def seed(db: Session):
     db.add_all([person, person_b])
     db.flush()
 
-    asset = m.Asset(asset_code="TVC-E00027", pc_name="TKY-PC0001",
+    asset = m.Asset(device_code="TKY-PC0001",
                     serial="SN-0001", category_id=cat.id)
     db.add(asset)
     db.flush()

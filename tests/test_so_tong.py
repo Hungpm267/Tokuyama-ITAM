@@ -107,9 +107,9 @@ def test_assigned_asset_row_joins_machine_and_holder(db, seed):
     seed["person"].email = "a@tokuyama.vn"
     seed["person"].user_id = "57959"
     assign_asset(db, seed["asset"].id, seed["person"].id, PAST)
-    row = _row(build_ledger_rows(db), pc_name=seed["asset"].pc_name)
+    row = _row(build_ledger_rows(db), device_code=seed["asset"].device_code)
     assert row["serial"] == "SN-0001"
-    assert row["asset_code"] == "TVC-E00027"
+    assert "asset_code" not in row
     assert row["asset_status"] == "IN_USE"
     assert row["holder"] == "Nguyen Van A"
     assert row["staff_code"] == "TVC00001"
@@ -122,7 +122,7 @@ def test_assigned_asset_row_joins_machine_and_holder(db, seed):
 
 
 def test_unassigned_asset_has_a_row_without_holder(db, seed):
-    row = _row(build_ledger_rows(db), pc_name=seed["asset"].pc_name)
+    row = _row(build_ledger_rows(db), device_code=seed["asset"].device_code)
     assert row["asset_status"] == "IN_STOCK"
     assert row["holder"] is None and row["staff_code"] is None
 
@@ -130,17 +130,17 @@ def test_unassigned_asset_has_a_row_without_holder(db, seed):
 def test_person_without_machine_has_a_row_without_machine_columns(db, seed):
     row = _row(build_ledger_rows(db), staff_code="TVC00002")
     assert row["holder"] == "Tran Thi B"
-    assert row["pc_name"] is None and row["asset_status"] is None
+    assert row["device_code"] is None and row["asset_status"] is None
 
 
 def test_person_holding_two_machines_gets_two_rows_and_no_empty_row(db, seed):
-    second = Asset(pc_name="TKY-PC0999", category_id=seed["cat"].id)
+    second = Asset(device_code="TKY-PC0999", category_id=seed["cat"].id)
     db.add(second)
     db.flush()
     assign_asset(db, seed["asset"].id, seed["person"].id, PAST)
     assign_asset(db, second.id, seed["person"].id, PAST)
     rows = [r for r in build_ledger_rows(db) if r["staff_code"] == "TVC00001"]
-    assert sorted(r["pc_name"] for r in rows) == ["TKY-PC0001", "TKY-PC0999"]
+    assert sorted(r["device_code"] for r in rows) == ["TKY-PC0001", "TKY-PC0999"]
 
 
 def test_soft_deleted_rows_are_excluded(db, seed):
@@ -148,27 +148,27 @@ def test_soft_deleted_rows_are_excluded(db, seed):
     _soft_delete(seed["person_b"])
     db.flush()
     rows = build_ledger_rows(db)
-    assert not [r for r in rows if r["pc_name"] == seed["asset"].pc_name]
+    assert not [r for r in rows if r["device_code"] == seed["asset"].device_code]
     assert not [r for r in rows if r["staff_code"] == "TVC00002"]
 
 
 def test_closed_assignment_does_not_show_a_holder(db, seed):
     assign_asset(db, seed["asset"].id, seed["person"].id, PAST)
     return_asset(db, seed["asset"].id, today_local())
-    row = _row(build_ledger_rows(db), pc_name=seed["asset"].pc_name)
+    row = _row(build_ledger_rows(db), device_code=seed["asset"].device_code)
     assert row["holder"] is None and row["asset_status"] == AssetStatus.IN_STOCK.value
 
 
 def test_row_kind_marks_resigned_people_only(db, seed):
     seed["person_b"].status = PersonStatus.RESIGNED
-    mes = Asset(pc_name="TKY-PC0060", category_id=seed["cat"].id, note="Người dùng theo file Excel: MES system PC 01")
+    mes = Asset(device_code="TKY-PC0060", category_id=seed["cat"].id, note="Người dùng theo file Excel: MES system PC 01")
     db.add(mes)
     db.flush()
     rows = build_ledger_rows(db)
     assert _row(rows, staff_code="TVC00002")["row_kind"] == "resigned"
     # Màu máy MES nay do người dùng tự đánh dấu (mark_service), không suy ra từ ghi chú.
-    assert _row(rows, pc_name="TKY-PC0060")["row_kind"] == ""
-    assert _row(rows, pc_name=seed["asset"].pc_name)["row_kind"] == ""
+    assert _row(rows, device_code="TKY-PC0060")["row_kind"] == ""
+    assert _row(rows, device_code=seed["asset"].device_code)["row_kind"] == ""
 
 
 def test_api_returns_rows_and_never_any_secret(admin_client, db, seed):

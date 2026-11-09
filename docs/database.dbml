@@ -1,4 +1,4 @@
-// ITAM Tokuyama Vietnam: schema sau migration 0005 (12 bảng).
+// ITAM Tokuyama Vietnam: schema sau migration 0007 (12 bảng).
 // Dán toàn bộ file này vào https://dbdiagram.io để xem sơ đồ.
 //
 // Bảng nghiệp vụ đều có created_by, updated_by, deleted_by trỏ tới users.id.
@@ -8,6 +8,12 @@
 Project itam_tokuyama {
   database_type: 'PostgreSQL'
   Note: 'Quản lý laptop và nhân sự. Nguồn sự thật của schema là app/models.py.'
+}
+
+Enum person_type {
+  EMPLOYEE [note: 'Nhân viên chính thức, mã TVC']
+  VENDOR [note: 'Vendor thuê tạm, mã VND-NNN do app cấp']
+  BUSINESS_TRIP [note: 'Người Nhật công tác, mã JP-NNN do app cấp']
 }
 
 Enum person_status {
@@ -104,7 +110,6 @@ Table role_permissions {
 
 Table departments {
   id integer [pk]
-  code varchar(30) [note: 'Duy nhất nếu có']
   name_en varchar(100) [not null, note: 'Duy nhất']
   name_ja varchar(100)
   created_at timestamptz [not null, default: `now()`]
@@ -149,7 +154,8 @@ Table asset_tags {
 
 Table persons {
   id integer [pk]
-  staff_code varchar(50) [note: 'Mã nhân viên, được để trống. Duy nhất nếu có']
+  staff_code varchar(50) [not null, note: 'Mã nhân viên. Duy nhất, không phải khóa chính (có thể đổi khi đổi loại)']
+  person_type person_type [not null, default: 'EMPLOYEE']
   user_id varchar(50) [note: 'UserID phía Nhật, không phải khóa tới users. Duy nhất nếu có']
   full_name varchar(100) [not null]
   department_id integer
@@ -189,8 +195,7 @@ Table person_secrets {
 
 Table assets {
   id integer [pk]
-  asset_code varchar(50) [note: 'Mã tem GA, vd TVC-E00027. Duy nhất nếu có']
-  pc_name varchar(50) [note: 'Tên máy, vd TKY-PC0001. Duy nhất nếu có']
+  device_code varchar(50) [not null, note: 'Mã thiết bị IT đặt, vd TKY-PC0001. Duy nhất']
   category_id integer [not null]
   model varchar(150)
   form_factor varchar(30)
@@ -215,7 +220,7 @@ Table assets {
     mac_wifi
   }
 
-  Note: 'Thiết bị. Phải có ít nhất một trong asset_code, pc_name, serial'
+  Note: 'Thiết bị mọi loại, nhận diện bằng device_code'
 }
 
 Table asset_tag_links {

@@ -127,7 +127,7 @@ async def trash_list_view(
             details = ""
 
             if ent_key == "asset":
-                identifier = rec.asset_code or (f"Asset #{rec.id}")
+                identifier = rec.device_code
                 details = f"Model: {rec.model or '—'} | S/N: {rec.serial or '—'}"
             elif ent_key == "person":
                 identifier = rec.staff_code or f"#{rec.id}"
@@ -285,30 +285,18 @@ def check_restore_conflicts(db: Session, entity_type: str, rec: Any) -> str | No
                 )
             )
             if dup_serial:
-                return f"Không thể khôi phục: Serial '{rec.serial}' hiện đã được sử dụng bởi thiết bị #{dup_serial.id} ({dup_serial.asset_code})."
+                return f"Không thể khôi phục: Serial '{rec.serial}' hiện đã được sử dụng bởi thiết bị #{dup_serial.id} ({dup_serial.device_code})."
 
-        # Check Asset Code
-        if rec.asset_code:
-            dup_code = db.scalar(
-                select(Asset).where(
-                    Asset.id != rec.id,
-                    func.lower(Asset.asset_code) == rec.asset_code.lower(),
-                    Asset.is_deleted.is_(False),
-                )
-            )
-            if dup_code:
-                return f"Không thể khôi phục: Mã GA '{rec.asset_code}' hiện đã được sử dụng bởi thiết bị #{dup_code.id}."
-
-        if rec.pc_name:
+        if rec.device_code:
             dup_vendor = db.scalar(
                 select(Asset).where(
                     Asset.id != rec.id,
-                    func.lower(Asset.pc_name) == rec.pc_name.lower(),
+                    func.lower(Asset.device_code) == rec.device_code.lower(),
                     Asset.is_deleted.is_(False),
                 )
             )
             if dup_vendor:
-                return f"Không thể khôi phục: PC Name '{rec.pc_name}' hiện đã được sử dụng bởi thiết bị #{dup_vendor.id}."
+                return f"Không thể khôi phục: Mã thiết bị '{rec.device_code}' hiện đã được sử dụng bởi thiết bị #{dup_vendor.id}."
 
     elif entity_type == "person":
         # Check Staff code

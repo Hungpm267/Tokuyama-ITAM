@@ -192,7 +192,7 @@ def test_asset_with_drifted_status_can_still_be_edited_when_status_unchanged(db,
 
 def test_closed_assignment_cannot_be_repointed(db, seed):
     asgn = Assignment(asset_id=seed["asset"].id, person_id=seed["person"].id, borrowed_at=PAST, returned_at=PAST)
-    other = Asset(asset_code="W5-OTHER", category_id=seed["cat"].id)
+    other = Asset(device_code="W5-OTHER", category_id=seed["cat"].id)
     db.add_all([asgn, other])
     db.flush()
     base = {"borrowed_at": PAST, "returned_at": PAST}
@@ -215,7 +215,7 @@ def test_closed_assignment_cannot_be_repointed(db, seed):
 def test_trash_search_reaches_items_beyond_the_first_50(admin_client, db, seed):
     base = dt.datetime.now(dt.timezone.utc)
     for i in range(55):
-        asset = Asset(serial=f"W5-TRASH-{i:03d}", category_id=seed["cat"].id)
+        asset = Asset(device_code=f"W5-TRASH-{i:03d}", serial=f"W5-TRASH-{i:03d}", category_id=seed["cat"].id)
         asset.is_deleted = True
         asset.deleted_at = base - dt.timedelta(days=i)
         asset.delete_reason = "test"
@@ -231,17 +231,18 @@ def test_trash_search_reaches_items_beyond_the_first_50(admin_client, db, seed):
 
 
 def test_whitespace_only_required_text_is_rejected(admin_client, db, seed):
-    res = admin_client.post("/admin/department/create", data={"code": "W5", "name_en": "   "})
+    count = db.query(Department).count()
+    res = admin_client.post("/admin/department/create", data={"name_en": "   "})
     assert res.status_code == 400
-    assert db.scalar(select(Department).where(Department.code == "W5")) is None
+    assert db.query(Department).count() == count
 
 
 def test_text_is_trimmed_and_audit_columns_are_filled(admin_client, db, seed):
     res = admin_client.post(
-        "/admin/department/create", data={"code": "  W5T  ", "name_en": "  Quality  "}, follow_redirects=True
+        "/admin/department/create", data={"name_en": "  Quality  "}, follow_redirects=True
     )
     assert res.status_code == 200
-    dept = db.scalar(select(Department).where(Department.code == "W5T"))
+    dept = db.scalar(select(Department).where(Department.name_en == "Quality"))
     assert dept is not None
     assert dept.name_en == "Quality"
     assert dept.created_by == seed["user"].id

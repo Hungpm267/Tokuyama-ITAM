@@ -219,7 +219,7 @@ def test_assignment_form_still_allows_closing_an_open_loan(db, seed):
 
 def test_assignment_form_changing_asset_releases_the_old_asset(db, seed):
     asset_a = seed["asset"]
-    asset_b = Asset(asset_code="TVC-E00099", category_id=seed["cat"].id)
+    asset_b = Asset(device_code="TVC-E00099", category_id=seed["cat"].id)
     db.add(asset_b)
     db.flush()
     asgn = assign_asset(db, asset_a.id, seed["person"].id, PAST)
@@ -252,7 +252,7 @@ def test_asset_form_cannot_set_in_use_without_assignment(db, seed):
     with pytest.raises(ValueError):
         _run(AssetAdmin().on_model_change({"status": "IN_USE"}, seed["asset"], False, _req(db)))
     with pytest.raises(ValueError):
-        _run(AssetAdmin().on_model_change({"asset_code": "NEW-1", "status": "IN_USE"}, Asset(), True, _req(db)))
+        _run(AssetAdmin().on_model_change({"device_code": "NEW-1", "status": "IN_USE"}, Asset(), True, _req(db)))
 
 
 def test_asset_form_allows_normal_status_change(db, seed):
@@ -303,7 +303,7 @@ def test_person_search_is_not_capped_at_20_for_the_assign_dropdown(admin_client,
 
 
 def test_restore_asset_with_reused_pc_name_is_a_clean_400(admin_client, db, seed):
-    dead = Asset(asset_code="W4-DEAD", pc_name="TKY-PC0001", category_id=seed["cat"].id)
+    dead = Asset(device_code="TKY-PC0001", category_id=seed["cat"].id)
     _soft_delete(dead)
     db.add(dead)
     db.flush()
@@ -378,14 +378,14 @@ def test_reveal_audit_summary_names_the_field(db, seed):
     assert "pc_password" in log.summary
 
 
-def test_duplicate_asset_code_is_not_reported_as_duplicate_serial():
+def test_duplicate_device_code_is_not_reported_as_duplicate_serial():
     raw = (
-        '(psycopg.errors.UniqueViolation) duplicate key value violates unique constraint "uq_alive_assets_asset_code"\n'
-        "DETAIL:  Key (asset_code)=(A1) already exists.\n"
-        "[SQL: INSERT INTO assets (asset_code, pc_name, serial, model) VALUES (%(asset_code)s, %(serial)s)]"
+        '(psycopg.errors.UniqueViolation) duplicate key value violates unique constraint "uq_alive_assets_device_code"\n'
+        "DETAIL:  Key (device_code)=(A1) already exists.\n"
+        "[SQL: INSERT INTO assets (device_code, serial, model) VALUES (%(device_code)s, %(serial)s)]"
     )
     msg = humanize_error_str(raw, lang="vi")
-    assert "Mã tài sản" in msg
+    assert "Mã thiết bị" in msg
     assert "Serial" not in msg
 
 
@@ -515,8 +515,7 @@ def test_http_asset_form_cannot_mark_a_loaned_asset_in_stock(admin_client, db, s
     assign_asset(db, asset.id, seed["person"].id, PAST)
     db.flush()
     res = admin_client.post(f"/admin/asset/edit/{asset.id}", data={
-        "asset_code": asset.asset_code,
-        "pc_name": asset.pc_name,
+        "device_code": asset.device_code,
         "serial": asset.serial,
         "category": str(seed["cat"].id),
         "status": "IN_STOCK",
@@ -552,7 +551,7 @@ def test_editing_a_row_keeps_its_soft_deleted_category(admin_client, db, seed):
     old_cat = AssetCategory(name_en="Old Monitor Category")
     db.add(old_cat)
     db.flush()
-    asset = Asset(asset_code="W4-KEEP-1", category_id=old_cat.id)
+    asset = Asset(device_code="W4-KEEP-1", category_id=old_cat.id)
     db.add(asset)
     db.flush()
     _soft_delete(old_cat)
@@ -563,7 +562,7 @@ def test_editing_a_row_keeps_its_soft_deleted_category(admin_client, db, seed):
     assert "Old Monitor Category" in page.text
 
     res = admin_client.post(f"/admin/asset/edit/{asset.id}", data={
-        "asset_code": "W4-KEEP-1",
+        "device_code": "W4-KEEP-1",
         "category": str(old_cat.id),
         "status": "IN_STOCK",
         "note": "chỉ sửa ghi chú",
@@ -620,8 +619,8 @@ def test_whitespace_delete_reason_does_not_crash(db, seed):
 
 
 def test_form_dropdowns_hide_soft_deleted_rows(admin_client, db, seed):
-    dead_asset = Asset(serial="DEAD-ASSET-SN", category_id=seed["cat"].id)
-    live_asset = Asset(serial="LIVE-ASSET-SN", category_id=seed["cat"].id)
+    dead_asset = Asset(device_code="DEAD-ASSET-SN", serial="DEAD-ASSET-SN", category_id=seed["cat"].id)
+    live_asset = Asset(device_code="LIVE-ASSET-SN", serial="LIVE-ASSET-SN", category_id=seed["cat"].id)
     dead_person = Person(staff_code="TVC08888", full_name="Nguoi Da Xoa", status=PersonStatus.ACTIVE)
     _soft_delete(dead_asset)
     _soft_delete(dead_person)

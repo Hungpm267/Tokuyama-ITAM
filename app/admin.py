@@ -590,8 +590,8 @@ def humanize_error_str(msg: str, lang: str = "vi") -> str:
     """Chuyển đổi các thông báo lỗi kỹ thuật/SQL/Constraint thành thông báo tiếng Việt/Anh/Nhật thân thiện."""
     if not msg:
         return ""
-    # Cắt phần "[SQL: INSERT INTO assets (asset_code, pc_name, serial...)]" trước khi
-    # so khớp: câu SQL liệt kê mọi cột nên trùng asset_code từng bị báo thành trùng serial.
+    # Cắt phần "[SQL: INSERT INTO assets (device_code, serial...)]" trước khi
+    # so khớp: câu SQL liệt kê mọi cột nên trùng mã thiết bị từng bị báo thành trùng serial.
     full = str(msg)
     m = full.split("[SQL:")[0]
     is_en = (lang == "en")
@@ -630,10 +630,8 @@ def humanize_error_str(msg: str, lang: str = "vi") -> str:
 
         if "serial" in m:
             return _tr("Số Serial này đã tồn tại trong hệ thống (bị trùng lặp).", "Serial number already exists in system.", "このシリアル番号はすでにシステムに存在します。")
-        if "asset_code" in m:
-            return _tr("Mã tài sản này đã tồn tại trong hệ thống (bị trùng lặp).", "Asset code already exists in system.", "この資産コードはすでにシステムに存在します。")
-        if "pc_name" in m:
-            return _tr("PC Name này đã tồn tại trong hệ thống (bị trùng lặp).", "PC Name already exists in system.", "このPC名はすでにシステムに存在します。")
+        if "device_code" in m:
+            return _tr("Mã thiết bị này đã tồn tại trong hệ thống (bị trùng lặp).", "Device code already exists in system.", "この機器コードはすでにシステムに存在します。")
         if "staff_code" in m:
             return _tr("Mã nhân viên này đã tồn tại trong hệ thống (bị trùng lặp).", "Staff code already exists in system.", "この社員番号はすでにシステムに存在します。")
         if "persons_user_id" in m:
@@ -1297,16 +1295,15 @@ class RoleAdmin(BaseAdminView, model=Role):
 
 
 class DepartmentAdmin(BaseAdminView, model=Department):
-    unique_text_fields = ("code", "name_en")
+    unique_text_fields = ("name_en",)
     module = Module.PERSONS
     name = "Phòng ban"
     name_plural = "Danh mục Phòng ban"
     icon = "fa-solid fa-sitemap"
     category = "Danh mục Dùng chung"
-    column_list = [Department.id, Department.code, Department.name_en, Department.name_ja]
-    column_details_list = [Department.id, Department.code, Department.name_en, Department.name_ja] + COMMON_EXCLUDED_COLUMNS
+    column_list = [Department.id, Department.name_en, Department.name_ja]
+    column_details_list = [Department.id, Department.name_en, Department.name_ja] + COMMON_EXCLUDED_COLUMNS
     column_labels = {
-        "code": "Mã phòng ban",
         "name_en": "Tên phòng ban (Tiếng Anh/Việt)",
         "name_ja": "Tên phòng ban (Tiếng Nhật)",
     }
@@ -1528,7 +1525,7 @@ class PersonSecretAdmin(BaseAdminView, model=PersonSecret):
 
 
 class AssetAdmin(BaseAdminView, model=Asset):
-    unique_text_fields = ("asset_code", "pc_name", "serial")
+    unique_text_fields = ("device_code", "serial")
     module = Module.ASSETS
     name = "Tài sản IT"
     name_plural = "Danh sách Thiết bị"
@@ -1536,8 +1533,7 @@ class AssetAdmin(BaseAdminView, model=Asset):
     category = "Tài sản"
     column_list = [
         Asset.id,
-        Asset.asset_code,
-        Asset.pc_name,
+        Asset.device_code,
         Asset.serial,
         Asset.category,
         "status_badge",
@@ -1547,8 +1543,7 @@ class AssetAdmin(BaseAdminView, model=Asset):
     ]
     column_details_list = [
         Asset.id,
-        Asset.asset_code,
-        Asset.pc_name,
+        Asset.device_code,
         Asset.serial,
         Asset.category,
         Asset.status,
@@ -1564,8 +1559,7 @@ class AssetAdmin(BaseAdminView, model=Asset):
         "status_badge": "Trạng thái",
         "current_holder": "Người đang sử dụng",
         "actions_quick": "Thao tác nhanh",
-        "asset_code": "Mã GA",
-        "pc_name": "PC Name",
+        "device_code": "Mã thiết bị",
         "serial": "Số Serial",
         "status": "Trạng thái",
         "model": "Model thiết bị",
@@ -1596,7 +1590,7 @@ class AssetAdmin(BaseAdminView, model=Asset):
         "actions_quick": lambda m, a: (
             Markup(
                 f'<button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 fw-semibold" '
-                f'data-id="{m.id}" data-code="{escape(m.asset_code or m.serial or "")}" data-model="{escape(m.model or "")}" '
+                f'data-id="{m.id}" data-code="{escape(m.device_code)}" data-model="{escape(m.model or "")}" '
                 f'onclick="openAssignModal(this.dataset.id, this.dataset.code, this.dataset.model)" style="font-size: 11.5px;">'
                 f'<i class="fa-solid fa-handshake me-1"></i>{translate("Bàn giao", get_admin_lang())}</button>'
             )
@@ -1604,7 +1598,7 @@ class AssetAdmin(BaseAdminView, model=Asset):
             else (
                 Markup(
                     f'<button type="button" class="btn btn-sm btn-outline-warning text-dark py-0 px-2 fw-bold" '
-                    f'data-id="{m.id}" data-code="{escape(m.asset_code or m.serial or "")}" data-holder="{escape(m.current_holder or "")}" '
+                    f'data-id="{m.id}" data-code="{escape(m.device_code)}" data-holder="{escape(m.current_holder or "")}" '
                     f'onclick="openReturnModal(this.dataset.id, this.dataset.code, this.dataset.holder)" style="font-size: 11.5px;">'
                     f'<i class="fa-solid fa-arrow-rotate-left me-1"></i>{translate("Thu hồi", get_admin_lang())}</button>'
                 )
@@ -1637,7 +1631,7 @@ class AssetAdmin(BaseAdminView, model=Asset):
             else Markup(f'<span class="text-muted fst-italic">- ({translate("Trong kho", get_admin_lang())})</span>')
         ),
     }
-    column_searchable_list = [Asset.asset_code, Asset.serial, Asset.pc_name, Asset.model]
+    column_searchable_list = [Asset.device_code, Asset.serial, Asset.model]
     form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["assignments"]
 
     def list_query(self, request: Request) -> Select:
@@ -1742,7 +1736,7 @@ class AssignmentAdmin(BaseAdminView, model=Assignment):
         "actions_quick": lambda m, a: (
             Markup(
                 f'<button type="button" class="btn btn-sm btn-outline-warning text-dark py-0 px-2 fw-bold" '
-                f'data-id="{m.asset_id}" data-code="{escape(m.asset.asset_code or m.asset.serial or "" if m.asset else "")}" data-holder="{escape(m.person.full_name if m.person else "")}" '
+                f'data-id="{m.asset_id}" data-code="{escape(m.asset.device_code if m.asset else "")}" data-holder="{escape(m.person.full_name if m.person else "")}" '
                 f'onclick="openReturnModal(this.dataset.id, this.dataset.code, this.dataset.holder)" style="font-size: 11.5px;">'
                 f'<i class="fa-solid fa-arrow-rotate-left me-1"></i>{translate("Thu hồi", get_admin_lang())}</button>'
             )

@@ -27,7 +27,6 @@ SOFTWARE_TAG_PREFIX = "SW-"
 #: Ô sửa trực tiếp được: tên trên dòng -> (cột, độ dài tối đa, nhãn trong thông báo lỗi)
 ASSET_TEXT_FIELDS = {
     "serial": ("serial", 100, "Số serial"),
-    "asset_code": ("asset_code", 50, "Mã GA"),
 }
 PERSON_TEXT_FIELDS = {
     "email": ("email", 150, "Email"),
@@ -104,7 +103,7 @@ def _secret_kinds(db: Session) -> dict[int, str]:
 def build_ledger_rows(db: Session, include_secret_flag: bool = False) -> list[dict[str, Any]]:
     """`include_secret_flag` chỉ bật cho người có quyền xem kho mật khẩu."""
     assets = db.scalars(
-        select(Asset).where(Asset.is_deleted.is_(False)).order_by(Asset.pc_name, Asset.id)
+        select(Asset).where(Asset.is_deleted.is_(False)).order_by(Asset.device_code, Asset.id)
     ).all()
     open_assignments = db.scalars(
         select(Assignment)
@@ -139,8 +138,7 @@ def build_ledger_rows(db: Session, include_secret_flag: bool = False) -> list[di
             "id": f"asset-{asset.id}",
             "asset_id": asset.id,
             "person_id": person.id if person else None,
-            "pc_name": asset.pc_name,
-            "asset_code": asset.asset_code,
+            "device_code": asset.device_code,
             "serial": asset.serial,
             "asset_status": asset.status.value if asset.status else None,
             **_person_fields(person),
@@ -162,8 +160,7 @@ def build_ledger_rows(db: Session, include_secret_flag: bool = False) -> list[di
             "id": f"person-{person.id}",
             "asset_id": None,
             "person_id": person.id,
-            "pc_name": None,
-            "asset_code": None,
+            "device_code": None,
             "serial": None,
             "asset_status": None,
             **_person_fields(person),
@@ -317,10 +314,6 @@ def update_cell(
             raise ValueError(f"{label} quá dài (tối đa {max_length} ký tự).")
         if clean:
             _reject_duplicate(db, Asset, column, clean, asset.id, label)
-        identifiers = {"asset_code": asset.asset_code, "pc_name": asset.pc_name, "serial": asset.serial}
-        identifiers[column] = clean
-        if not any(identifiers.values()):
-            raise ValueError("Thiết bị phải còn ít nhất một mã: mã GA, mã KDDI hoặc số serial.")
         _save(db, asset, "assets", column, clean, user_id, ip_address)
         return
 

@@ -83,10 +83,10 @@
             <tr>
               <td>
                 <a href="{{ url_for('admin:details', identity='asset', pk=item.id) }}" class="fw-bold font-monospace text-dark text-decoration-none">
-                  {{ item.asset_code }}
+                  {{ item.device_code }}
                 </a>
               </td>
-              <td class="font-monospace text-secondary" style="font-size: 12px;">{{ item.pc_name or '—' }}</td>
+              <td class="font-monospace text-secondary" style="font-size: 12px;">{{ item.device_code or '—' }}</td>
               <td>
                 <div class="fw-bold text-dark" style="font-size: 13px;">{{ item.model }}</div>
                 <div class="text-muted small">{{ item.category.name_ja if (current_lang == 'ja' and item.category.name_ja) else item.category.name_en }}</div>

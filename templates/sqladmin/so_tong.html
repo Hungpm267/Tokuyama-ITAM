@@ -218,7 +218,7 @@
   function canEdit(cell) {
     const field = cell.getField();
     const row = cell.getRow().getData();
-    if (field === 'serial' || field === 'asset_code') return PERMS.assets && !!row.asset_id;
+    if (field === 'serial') return PERMS.assets && !!row.asset_id;
     if (field === 'note') return row.asset_id ? PERMS.assets : PERMS.persons;
     if (field === 'borrowed_at') return PERMS.assignments && !!row.asset_id && !!row.person_id;
     if (field === 'mark') return PERMS.assets && !!row.asset_id;
@@ -271,9 +271,8 @@
     { title: '', field: 'open_panel', frozen: true, width: 36, hozAlign: 'center', headerSort: false, download: false, clipboard: false, resizable: false,
       cssClass: 'st-open', formatter: function () { return '<i class="fa-solid fa-circle-info"></i>'; },
       cellClick: function (event, cell) { openPanel(cell.getRow().getData().id); } },
-    { title: {{ L('Tên máy', 'PC name', 'PC名') | trim | tojson }}, field: 'pc_name', frozen: true, width: 130, ...text },
+    { title: {{ L('Mã thiết bị', 'Device code', '機器コード') | trim | tojson }}, field: 'device_code', frozen: true, width: 130, ...text },
     { title: {{ L('Người giữ', 'Holder', '使用者') | trim | tojson }}, field: 'holder', frozen: true, width: 210, ...text },
-    { title: {{ L('Mã GA', 'GA code', 'GAコード') | trim | tojson }}, field: 'asset_code', width: 120, ...text, ...editable },
     { title: {{ L('Số serial', 'Serial', 'シリアル') | trim | tojson }}, field: 'serial', width: 130, ...text, ...editable },
     { title: {{ L('Trạng thái máy', 'Asset status', '機器状態') | trim | tojson }}, field: 'asset_status', width: 140, headerFilter: 'list',
       headerFilterParams: { values: Object.assign({ '': '' }, TEXT.assetStatus), clearable: true },
@@ -375,14 +374,14 @@
       const top = document.createElement('div');
       top.className = 'st-card-top';
       const name = document.createElement('span');
-      name.textContent = row.pc_name || row.holder || '';
+      name.textContent = row.device_code || row.holder || '';
       const status = document.createElement('span');
       status.className = 'st-card-status';
       status.textContent = row.asset_status ? TEXT.assetStatus[row.asset_status] : (TEXT.personStatus[row.person_status] || '');
       top.appendChild(name);
       top.appendChild(status);
       card.appendChild(top);
-      if (row.pc_name && row.holder) {
+      if (row.device_code && row.holder) {
         const holder = document.createElement('div');
         holder.className = 'st-card-holder';
         holder.textContent = row.holder;
@@ -642,11 +641,11 @@
   function openPanel(rowId) {
     const row = table.getRow(rowId).getData();
     panelRowId = rowId;
-    document.getElementById('stPanelTitle').textContent = row.pc_name || row.holder || '';
+    document.getElementById('stPanelTitle').textContent = row.device_code || row.holder || '';
     const info = document.getElementById('stPanelInfo');
     info.textContent = '';
     columns.forEach(function (column) {
-      if (['open_panel', 'pc_name', 'secret_kind', 'software', 'mark'].includes(column.field)) return;
+      if (['open_panel', 'device_code', 'secret_kind', 'software', 'mark'].includes(column.field)) return;
       const value = row[column.field];
       const map = column.field === 'asset_status' ? TEXT.assetStatus : (column.field === 'person_status' ? TEXT.personStatus : null);
       infoLine(info, column.title, map ? map[value] : value);
@@ -654,7 +653,7 @@
 
     const actions = document.getElementById('stPanelActions');
     actions.textContent = '';
-    const code = row.pc_name || row.serial || '';
+    const code = row.device_code || row.serial || '';
     if (CAN_LOAN && row.asset_status === 'IN_STOCK') {
       actionButton(actions, TEXT.assign, 'btn-primary', function () { openAssignModal(row.asset_id, code, ''); });
     }

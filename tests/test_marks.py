@@ -87,7 +87,7 @@ def test_set_asset_software_keeps_mark(db, seed):
 def test_delete_mark_unlinks_assets_and_soft_deletes(db, seed):
     from app.models import Asset
 
-    other = Asset(serial="SN-OTHER", category_id=seed["cat"].id)
+    other = Asset(device_code="SN-OTHER", serial="SN-OTHER", category_id=seed["cat"].id)
     db.add(other)
     db.flush()
     tag = _mark(db, seed=seed)

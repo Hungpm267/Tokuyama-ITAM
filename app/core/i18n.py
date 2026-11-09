@@ -699,8 +699,7 @@ PROPERTY_LABELS: Final[dict[str, dict[str, str]]] = {
     "secret": {"vi": "Mật khẩu bảo mật", "en": "Secrets"},
 
     # IT Assets & Assignments
-    "asset_code": {"vi": "Mã tài sản (GA)", "en": "Asset Code (GA)"},
-    "pc_name": {"vi": "PC Name", "en": "PC Name"},
+    "device_code": {"vi": "Mã thiết bị", "en": "Device code"},
     "category_id": {"vi": "Loại tài sản", "en": "Asset Category"},
     "category": {"vi": "Loại tài sản", "en": "Asset Category"},
     "contract_line_id": {"vi": "Hạng mục hợp đồng", "en": "Contract Line"},
@@ -790,7 +789,6 @@ PROPERTY_LABELS: Final[dict[str, dict[str, str]]] = {
 
 MODEL_SPECIFIC_LABELS: Final[dict[tuple[str, str], dict[str, str]]] = {
     # Department
-    ("department", "code"): {"vi": "Mã phòng ban", "en": "Department Code"},
     ("department", "name_en"): {"vi": "Tên phòng ban (Tiếng Anh/Việt)", "en": "Department Name (EN/VI)"},
     ("department", "name_ja"): {"vi": "Tên phòng ban (Tiếng Nhật)", "en": "Department Name (JA)"},
 
@@ -848,8 +846,7 @@ MODEL_SPECIFIC_LABELS: Final[dict[tuple[str, str], dict[str, str]]] = {
     ("person", "start_working_date"): {"vi": "Ngày vào làm việc", "en": "Start Date"},
 
     # Asset
-    ("asset", "asset_code"): {"vi": "Mã tài sản (GA)", "en": "Asset Code (GA)"},
-    ("asset", "pc_name"): {"vi": "PC Name", "en": "PC Name"},
+    ("asset", "device_code"): {"vi": "Mã thiết bị", "en": "Device code"},
     ("person", "user_id"): {"vi": "UserID", "en": "UserID"},
     ("asset", "category"): {"vi": "Loại thiết bị", "en": "Asset Category"},
     ("asset", "model"): {"vi": "Dòng máy (Model)", "en": "Model"},
@@ -1135,8 +1132,7 @@ JA_PROPERTY_LABELS: Final[dict[str, str]] = {
     "email_password_note": "メールパスワード備考",
     "key_version": "暗号化鍵バージョン",
     "secret": "機密情報",
-    "asset_code": "資産番号 (GA)",
-    "pc_name": "PC名",
+    "device_code": "機器コード",
     "category_id": "機器カテゴリ",
     "category": "機器カテゴリ",
     "contract_line_id": "契約明細",
@@ -1213,7 +1209,6 @@ JA_PROPERTY_LABELS: Final[dict[str, str]] = {
 }
 
 JA_MODEL_SPECIFIC_LABELS: Final[dict[tuple[str, str], str]] = {
-    ("department", "code"): "部署コード",
     ("department", "name_en"): "部署名 (英語/越語)",
     ("department", "name_ja"): "部署名 (日本語)",
     ("asset-category", "name_en"): "分類名 (英語/越語)",
@@ -1252,8 +1247,7 @@ JA_MODEL_SPECIFIC_LABELS: Final[dict[tuple[str, str], str]] = {
     ("person", "department"): "所属部署",
     ("person", "status"): "就業状態",
     ("person", "start_working_date"): "入社日",
-    ("asset", "asset_code"): "資産番号 (GA)",
-    ("asset", "pc_name"): "PC名",
+    ("asset", "device_code"): "機器コード",
     ("person", "user_id"): "UserID",
     ("asset", "category"): "機器カテゴリ",
     ("asset", "model"): "モデル",
