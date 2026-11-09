@@ -1540,6 +1540,10 @@ class PersonSecretAdmin(BaseAdminView, model=PersonSecret):
                         "has_pc_password": bool(sec and sec.pc_password_enc is not None),
                         "pc_password_note": sec.pc_password_note if sec else "",
                         "has_email_password": bool(sec and sec.email_password_enc is not None),
+                        "has_any_password": bool(
+                            sec and (sec.pc_password_enc is not None or sec.email_password_enc is not None)
+                        ),
+                        "person_type": p.person_type.value if p.person_type else "EMPLOYEE",
                         "email_password_note": sec.email_password_note if sec else "",
                         "updated_at": sec.updated_at.strftime("%d/%m/%Y %H:%M") if sec and sec.updated_at else "",
                     }
