@@ -129,7 +129,7 @@ def test_status_rejects_free_text(db: Session, seed):
 
 
 def test_serial_unique_among_alive_rows(db: Session, seed):
-    _violates(db, m.Asset(serial="SN-0001", category_id=seed["cat"].id))
+    _violates(db, m.Asset(device_code="SN-0001", serial="SN-0001", category_id=seed["cat"].id))
 
 
 def test_serial_can_be_reused_after_soft_delete(db: Session, seed):
@@ -138,7 +138,7 @@ def test_serial_can_be_reused_after_soft_delete(db: Session, seed):
     seed["asset"].deleted_at = dt.datetime.now(dt.timezone.utc)
     seed["asset"].delete_reason = "Nhap trung"
     db.flush()
-    db.add(m.Asset(serial="SN-0001", category_id=seed["cat"].id))
+    db.add(m.Asset(device_code="SN-0001", serial="SN-0001", category_id=seed["cat"].id))
     db.flush()  # không được lỗi
 
 

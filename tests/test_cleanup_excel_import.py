@@ -18,14 +18,14 @@ def _temp(date: dt.date) -> str:
 
 
 def _asset(db, seed, pc, note):
-    asset = Asset(pc_name=pc, category_id=seed["cat"].id, note=note)
+    asset = Asset(device_code=pc, category_id=seed["cat"].id, note=note)
     db.add(asset)
     db.flush()
     return asset
 
 
 def _person(db, name):
-    person = Person(full_name=name)
+    person = Person(full_name=name, staff_code=f"T-{db.query(Person).count() + 1:04d}")
     db.add(person)
     db.flush()
     return person

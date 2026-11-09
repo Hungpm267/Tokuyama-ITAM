@@ -91,8 +91,7 @@ async def global_search_view(
                 .where(
                     Asset.is_deleted.is_(False),
                     or_(
-                        Asset.asset_code.ilike(pattern),
-                        Asset.pc_name.ilike(pattern),
+                        Asset.device_code.ilike(pattern),
                         Asset.serial.ilike(pattern),
                         Asset.hwid.ilike(pattern),
                         Asset.mac_ethernet.ilike(pattern),
@@ -100,7 +99,7 @@ async def global_search_view(
                         Asset.model.ilike(pattern),
                     ),
                 )
-                .order_by(Asset.asset_code.asc())
+                .order_by(Asset.device_code.asc())
                 .limit(25)
             ).all()
             results["assets"] = assets

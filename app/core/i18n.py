@@ -293,6 +293,16 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         "vi": "Đã nghỉ việc",
         "en": "Resigned",
     },
+    "Nhân viên chính thức": {"vi": "Nhân viên chính thức", "en": "Employee"},
+    "Vendor": {"vi": "Vendor", "en": "Vendor"},
+    "Công tác Nhật": {"vi": "Công tác Nhật", "en": "Japan business trip"},
+    "Loại nhân sự": {"vi": "Loại nhân sự", "en": "Staff type"},
+    "Mã nhân viên": {"vi": "Mã nhân viên", "en": "Staff code"},
+    "Để trống với Vendor / Công tác Nhật để app tự cấp mã.": {
+        "vi": "Để trống với Vendor / Công tác Nhật để app tự cấp mã.",
+        "en": "Leave blank for Vendor / Japan business trip to get a code automatically.",
+    },
+    "Mã thiết bị": {"vi": "Mã thiết bị", "en": "Device code"},
     "Đang sửa chữa": {
         "vi": "Đang sửa chữa",
         "en": "In Repair",
@@ -699,8 +709,7 @@ PROPERTY_LABELS: Final[dict[str, dict[str, str]]] = {
     "secret": {"vi": "Mật khẩu bảo mật", "en": "Secrets"},
 
     # IT Assets & Assignments
-    "asset_code": {"vi": "Mã tài sản (GA)", "en": "Asset Code (GA)"},
-    "pc_name": {"vi": "PC Name", "en": "PC Name"},
+    "device_code": {"vi": "Mã thiết bị", "en": "Device code"},
     "category_id": {"vi": "Loại tài sản", "en": "Asset Category"},
     "category": {"vi": "Loại tài sản", "en": "Asset Category"},
     "contract_line_id": {"vi": "Hạng mục hợp đồng", "en": "Contract Line"},
@@ -790,7 +799,6 @@ PROPERTY_LABELS: Final[dict[str, dict[str, str]]] = {
 
 MODEL_SPECIFIC_LABELS: Final[dict[tuple[str, str], dict[str, str]]] = {
     # Department
-    ("department", "code"): {"vi": "Mã phòng ban", "en": "Department Code"},
     ("department", "name_en"): {"vi": "Tên phòng ban (Tiếng Anh/Việt)", "en": "Department Name (EN/VI)"},
     ("department", "name_ja"): {"vi": "Tên phòng ban (Tiếng Nhật)", "en": "Department Name (JA)"},
 
@@ -842,14 +850,14 @@ MODEL_SPECIFIC_LABELS: Final[dict[tuple[str, str], dict[str, str]]] = {
 
     # Person
     ("person", "staff_code"): {"vi": "Mã nhân viên", "en": "Staff Code"},
+    ("person", "person_type"): {"vi": "Loại nhân sự", "en": "Staff type"},
     ("person", "full_name"): {"vi": "Họ và tên nhân viên", "en": "Employee Full Name"},
     ("person", "department"): {"vi": "Phòng ban", "en": "Department"},
     ("person", "status"): {"vi": "Tình trạng công tác", "en": "Employment Status"},
     ("person", "start_working_date"): {"vi": "Ngày vào làm việc", "en": "Start Date"},
 
     # Asset
-    ("asset", "asset_code"): {"vi": "Mã tài sản (GA)", "en": "Asset Code (GA)"},
-    ("asset", "pc_name"): {"vi": "PC Name", "en": "PC Name"},
+    ("asset", "device_code"): {"vi": "Mã thiết bị", "en": "Device code"},
     ("person", "user_id"): {"vi": "UserID", "en": "UserID"},
     ("asset", "category"): {"vi": "Loại thiết bị", "en": "Asset Category"},
     ("asset", "model"): {"vi": "Dòng máy (Model)", "en": "Model"},
@@ -962,6 +970,13 @@ JA_TRANSLATIONS: Final[dict[str, str]] = {
     "Đang làm việc": "在籍",
     "Sắp vào làm": "入社予定",
     "Đã nghỉ việc": "退職",
+    "Nhân viên chính thức": "正社員",
+    "Vendor": "ベンダー",
+    "Công tác Nhật": "日本出張者",
+    "Loại nhân sự": "区分",
+    "Mã nhân viên": "社員番号",
+    "Để trống với Vendor / Công tác Nhật để app tự cấp mã.": "ベンダー／日本出張者は空欄にすると自動で採番されます。",
+    "Mã thiết bị": "機器コード",
     "Đang sửa chữa": "修理中",
     "Đã thanh lý": "廃棄済み",
     "Đã trả": "返却済み",
@@ -1135,8 +1150,7 @@ JA_PROPERTY_LABELS: Final[dict[str, str]] = {
     "email_password_note": "メールパスワード備考",
     "key_version": "暗号化鍵バージョン",
     "secret": "機密情報",
-    "asset_code": "資産番号 (GA)",
-    "pc_name": "PC名",
+    "device_code": "機器コード",
     "category_id": "機器カテゴリ",
     "category": "機器カテゴリ",
     "contract_line_id": "契約明細",
@@ -1213,7 +1227,6 @@ JA_PROPERTY_LABELS: Final[dict[str, str]] = {
 }
 
 JA_MODEL_SPECIFIC_LABELS: Final[dict[tuple[str, str], str]] = {
-    ("department", "code"): "部署コード",
     ("department", "name_en"): "部署名 (英語/越語)",
     ("department", "name_ja"): "部署名 (日本語)",
     ("asset-category", "name_en"): "分類名 (英語/越語)",
@@ -1248,12 +1261,12 @@ JA_MODEL_SPECIFIC_LABELS: Final[dict[tuple[str, str], str]] = {
     ("assignment", "borrowed_at"): "割当日時",
     ("assignment", "returned_at"): "返却日時",
     ("person", "staff_code"): "社員番号",
+    ("person", "person_type"): "区分",
     ("person", "full_name"): "氏名",
     ("person", "department"): "所属部署",
     ("person", "status"): "就業状態",
     ("person", "start_working_date"): "入社日",
-    ("asset", "asset_code"): "資産番号 (GA)",
-    ("asset", "pc_name"): "PC名",
+    ("asset", "device_code"): "機器コード",
     ("person", "user_id"): "UserID",
     ("asset", "category"): "機器カテゴリ",
     ("asset", "model"): "モデル",

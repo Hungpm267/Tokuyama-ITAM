@@ -51,7 +51,8 @@ from app.core.security import (
     verify_password,
     verify_session_token,
 )
-from wtforms import Form, PasswordField, SelectField
+from wtforms import Form, PasswordField, SelectField, StringField
+from wtforms.validators import Length, Optional
 from wtforms.widgets import PasswordInput
 from app.db import SessionLocal
 from app.enums import (
@@ -60,6 +61,7 @@ from app.enums import (
     Module,
     PermissionAction,
     PersonStatus,
+    PersonType,
     RoleCode,
 )
 from app.models import (
@@ -75,6 +77,7 @@ from app.models import (
     Role,
     User,
 )
+from app.services import person_code_service
 
 logger = logging.getLogger(__name__)
 
@@ -590,8 +593,8 @@ def humanize_error_str(msg: str, lang: str = "vi") -> str:
     """Chuyển đổi các thông báo lỗi kỹ thuật/SQL/Constraint thành thông báo tiếng Việt/Anh/Nhật thân thiện."""
     if not msg:
         return ""
-    # Cắt phần "[SQL: INSERT INTO assets (asset_code, pc_name, serial...)]" trước khi
-    # so khớp: câu SQL liệt kê mọi cột nên trùng asset_code từng bị báo thành trùng serial.
+    # Cắt phần "[SQL: INSERT INTO assets (device_code, serial...)]" trước khi
+    # so khớp: câu SQL liệt kê mọi cột nên trùng mã thiết bị từng bị báo thành trùng serial.
     full = str(msg)
     m = full.split("[SQL:")[0]
     is_en = (lang == "en")
@@ -612,8 +615,6 @@ def humanize_error_str(msg: str, lang: str = "vi") -> str:
         return _tr("Ngày thu hồi bản quyền không được trước ngày cấp phát.", "Removal date cannot be before assignment date.", "ライセンス回収日を割当日より前にすることはできません。")
     if "expected_after_borrowed" in m:
         return _tr("Ngày dự kiến trả không được trước ngày mượn.", "Expected return date cannot be before borrow date.", "返却予定日を貸出日より前にすることはできません。")
-    if "has_some_identifier" in m:
-        return _tr("Tài sản phải có ít nhất một mã định danh (Mã GA, PC Name hoặc Số Serial).", "Asset must have at least one identifier (GA code, PC Name or Serial).", "資産には少なくとも1つの識別子（GAコード、PC名、またはシリアル）が必要です。")
     if "staff_code_format" in m:
         return _tr("Mã nhân viên không đúng định dạng chuẩn TVC (Ví dụ: TVC00001).", "Staff code does not match standard TVC format (e.g. TVC00001).", "社員番号の形式が正しくありません（例：TVC00001）。")
     if "smallint out of range" in m or "numericvalueoutofrange" in m.lower():
@@ -630,10 +631,8 @@ def humanize_error_str(msg: str, lang: str = "vi") -> str:
 
         if "serial" in m:
             return _tr("Số Serial này đã tồn tại trong hệ thống (bị trùng lặp).", "Serial number already exists in system.", "このシリアル番号はすでにシステムに存在します。")
-        if "asset_code" in m:
-            return _tr("Mã tài sản này đã tồn tại trong hệ thống (bị trùng lặp).", "Asset code already exists in system.", "この資産コードはすでにシステムに存在します。")
-        if "pc_name" in m:
-            return _tr("PC Name này đã tồn tại trong hệ thống (bị trùng lặp).", "PC Name already exists in system.", "このPC名はすでにシステムに存在します。")
+        if "device_code" in m:
+            return _tr("Mã thiết bị này đã tồn tại trong hệ thống (bị trùng lặp).", "Device code already exists in system.", "この機器コードはすでにシステムに存在します。")
         if "staff_code" in m:
             return _tr("Mã nhân viên này đã tồn tại trong hệ thống (bị trùng lặp).", "Staff code already exists in system.", "この社員番号はすでにシステムに存在します。")
         if "persons_user_id" in m:
@@ -1183,9 +1182,8 @@ class UserAdmin(BaseAdminView, model=User):
     name_plural = "Tài khoản Đăng nhập"
     icon = "fa-solid fa-users-gear"
     category = "Hệ thống & Phân quyền"
-    column_list = [User.id, User.username, User.display_name, User.role, User.preferred_lang, User.is_active, User.last_login_at]
+    column_list = [User.username, User.display_name, User.role, User.preferred_lang, User.is_active, User.last_login_at]
     column_details_list = [
-        User.id,
         User.username,
         User.display_name,
         User.role,
@@ -1267,8 +1265,8 @@ class RoleAdmin(BaseAdminView, model=Role):
     name_plural = "Vai trò Hệ thống"
     icon = "fa-solid fa-user-shield"
     category = "Hệ thống & Phân quyền"
-    column_list = [Role.id, Role.code, Role.name_en, Role.name_ja]
-    column_details_list = [Role.id, Role.code, Role.name_en, Role.name_ja] + COMMON_EXCLUDED_COLUMNS
+    column_list = [Role.code, Role.name_en, Role.name_ja]
+    column_details_list = [Role.code, Role.name_en, Role.name_ja] + COMMON_EXCLUDED_COLUMNS
     column_labels = {
         "code": "Mã vai trò",
         "name_en": "Tên vai trò (Tiếng Anh/Việt)",
@@ -1297,16 +1295,15 @@ class RoleAdmin(BaseAdminView, model=Role):
 
 
 class DepartmentAdmin(BaseAdminView, model=Department):
-    unique_text_fields = ("code", "name_en")
+    unique_text_fields = ("name_en",)
     module = Module.PERSONS
     name = "Phòng ban"
     name_plural = "Danh mục Phòng ban"
     icon = "fa-solid fa-sitemap"
     category = "Danh mục Dùng chung"
-    column_list = [Department.id, Department.code, Department.name_en, Department.name_ja]
-    column_details_list = [Department.id, Department.code, Department.name_en, Department.name_ja] + COMMON_EXCLUDED_COLUMNS
+    column_list = [Department.name_en, Department.name_ja]
+    column_details_list = [Department.name_en, Department.name_ja] + COMMON_EXCLUDED_COLUMNS
     column_labels = {
-        "code": "Mã phòng ban",
         "name_en": "Tên phòng ban (Tiếng Anh/Việt)",
         "name_ja": "Tên phòng ban (Tiếng Nhật)",
     }
@@ -1336,8 +1333,8 @@ class AssetCategoryAdmin(BaseAdminView, model=AssetCategory):
     name_plural = "Danh mục Loại tài sản"
     icon = "fa-solid fa-tags"
     category = "Danh mục Dùng chung"
-    column_list = [AssetCategory.id, AssetCategory.name_en, AssetCategory.name_ja]
-    column_details_list = [AssetCategory.id, AssetCategory.name_en, AssetCategory.name_ja] + COMMON_EXCLUDED_COLUMNS
+    column_list = [AssetCategory.name_en, AssetCategory.name_ja]
+    column_details_list = [AssetCategory.name_en, AssetCategory.name_ja] + COMMON_EXCLUDED_COLUMNS
     column_labels = {
         "name_en": "Tên loại tài sản (Tiếng Anh/Việt)",
         "name_ja": "Tên loại tài sản (Tiếng Nhật)",
@@ -1345,14 +1342,18 @@ class AssetCategoryAdmin(BaseAdminView, model=AssetCategory):
 
 
 class AssetTagAdmin(BaseAdminView, model=AssetTag):
+    # Không hiện trên thanh bên: phần mềm và màu đánh dấu quản lý ngay trên Sổ tổng.
+    def is_visible(self, request: Request) -> bool:
+        return False
+
     unique_text_fields = ("code",)
     module = Module.ASSETS
     name = "Nhãn tài sản"
     name_plural = "Danh mục Nhãn (Tags)"
     icon = "fa-solid fa-tag"
     category = "Danh mục Dùng chung"
-    column_list = [AssetTag.id, AssetTag.code, AssetTag.name_en, AssetTag.color]
-    column_details_list = [AssetTag.id, AssetTag.code, AssetTag.name_en, AssetTag.name_ja, AssetTag.color] + COMMON_EXCLUDED_COLUMNS
+    column_list = [AssetTag.code, AssetTag.name_en, AssetTag.color]
+    column_details_list = [AssetTag.code, AssetTag.name_en, AssetTag.name_ja, AssetTag.color] + COMMON_EXCLUDED_COLUMNS
     column_labels = {
         "code": "Mã nhãn",
         "name_en": "Tên nhãn (Tiếng Anh/Việt)",
@@ -1382,6 +1383,13 @@ class AssetTagAdmin(BaseAdminView, model=AssetTag):
 
 
 
+_PERSON_TYPE_LABEL = {
+    PersonType.EMPLOYEE: "Nhân viên chính thức",
+    PersonType.VENDOR: "Vendor",
+    PersonType.BUSINESS_TRIP: "Công tác Nhật",
+}
+
+
 class PersonAdmin(BaseAdminView, model=Person):
     unique_text_fields = ("staff_code", "email", "user_id")
     module = Module.PERSONS
@@ -1389,11 +1397,11 @@ class PersonAdmin(BaseAdminView, model=Person):
     name_plural = "Hồ sơ Nhân sự"
     icon = "fa-solid fa-id-card-clip"
     category = "Nhân sự"
-    column_list = [Person.id, Person.staff_code, Person.full_name, Person.department, Person.status, Person.email, Person.start_working_date]
+    column_list = [Person.staff_code, Person.full_name, Person.person_type, Person.department, Person.status, Person.email, Person.start_working_date]
     column_details_list = [
-        Person.id,
         Person.staff_code,
         Person.full_name,
+        Person.person_type,
         Person.department,
         Person.email,
         Person.user_id,
@@ -1404,6 +1412,7 @@ class PersonAdmin(BaseAdminView, model=Person):
     column_searchable_list = [Person.staff_code, Person.full_name, Person.email]
     column_labels = {
         "staff_code": "Mã nhân viên",
+        "person_type": "Loại nhân sự",
         "full_name": "Họ và tên nhân viên",
         "department": "Phòng ban",
         "status": "Tình trạng",
@@ -1413,6 +1422,7 @@ class PersonAdmin(BaseAdminView, model=Person):
         "note": "Ghi chú",
     }
     column_formatters = {
+        "person_type": lambda m, a: translate(_PERSON_TYPE_LABEL.get(m.person_type, ""), get_admin_lang()),
         "status": lambda m, a: (
             Markup(f'<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fa-solid fa-user-check me-1"></i>{translate("Đang làm việc", get_admin_lang())}</span>')
             if m.status == PersonStatus.ACTIVE
@@ -1424,6 +1434,7 @@ class PersonAdmin(BaseAdminView, model=Person):
         ),
     }
     column_formatters_detail = {
+        "person_type": lambda m, a: translate(_PERSON_TYPE_LABEL.get(m.person_type, ""), get_admin_lang()),
         "status": lambda m, a: (
             Markup(f'<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fa-solid fa-user-check me-1"></i>{translate("Đang làm việc", get_admin_lang())} (ACTIVE)</span>')
             if m.status == PersonStatus.ACTIVE
@@ -1436,9 +1447,38 @@ class PersonAdmin(BaseAdminView, model=Person):
     }
     form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["secret", "assignments"]
 
+    async def scaffold_form(self, rules: list[str] | None = None) -> type[Form]:
+        base_form = await super().scaffold_form(rules)
+        lang = get_admin_lang()
+
+        class PersonForm(base_form):
+            # Không bắt buộc trên form: vendor / công tác Nhật để trống thì app tự cấp mã.
+            staff_code = StringField(
+                translate("Mã nhân viên", lang),
+                validators=[Optional(), Length(max=50)],
+                description=translate("Để trống với Vendor / Công tác Nhật để app tự cấp mã.", lang),
+                render_kw={"class": "form-control"},
+            )
+            person_type = SelectField(
+                translate("Loại nhân sự", lang),
+                choices=[(t.value, translate(label, lang)) for t, label in _PERSON_TYPE_LABEL.items()],
+                default=PersonType.EMPLOYEE.value,
+                render_kw={"class": "form-control form-select"},
+            )
+
+        return PersonForm
+
     async def on_model_change(
         self, data: dict, model: Any, is_created: bool, request: Request
     ) -> None:
+        if is_created or "staff_code" in data or "person_type" in data:
+            # Mã phải khớp loại nhân sự; vendor / công tác Nhật để trống mã thì app tự cấp.
+            person_type = (
+                _enum_of(PersonType, data.get("person_type")) if "person_type" in data else None
+            ) or getattr(model, "person_type", None) or PersonType.EMPLOYEE
+            code = data["staff_code"] if "staff_code" in data else getattr(model, "staff_code", None)
+            with _get_admin_db(request) as db:
+                data["staff_code"] = person_code_service.resolve_code(db, person_type, code)
         await super().on_model_change(data, model, is_created, request)
         new_status = _enum_of(PersonStatus, data.get("status")) if "status" in data else None
         person_id = None if is_created else getattr(model, "id", None)
@@ -1520,6 +1560,10 @@ class PersonSecretAdmin(BaseAdminView, model=PersonSecret):
                         "has_pc_password": bool(sec and sec.pc_password_enc is not None),
                         "pc_password_note": sec.pc_password_note if sec else "",
                         "has_email_password": bool(sec and sec.email_password_enc is not None),
+                        "has_any_password": bool(
+                            sec and (sec.pc_password_enc is not None or sec.email_password_enc is not None)
+                        ),
+                        "person_type": p.person_type.value if p.person_type else "EMPLOYEE",
                         "email_password_note": sec.email_password_note if sec else "",
                         "updated_at": sec.updated_at.strftime("%d/%m/%Y %H:%M") if sec and sec.updated_at else "",
                     }
@@ -1528,16 +1572,14 @@ class PersonSecretAdmin(BaseAdminView, model=PersonSecret):
 
 
 class AssetAdmin(BaseAdminView, model=Asset):
-    unique_text_fields = ("asset_code", "pc_name", "serial")
+    unique_text_fields = ("device_code", "serial")
     module = Module.ASSETS
     name = "Tài sản IT"
     name_plural = "Danh sách Thiết bị"
     icon = "fa-solid fa-laptop"
     category = "Tài sản"
     column_list = [
-        Asset.id,
-        Asset.asset_code,
-        Asset.pc_name,
+        Asset.device_code,
         Asset.serial,
         Asset.category,
         "status_badge",
@@ -1546,9 +1588,7 @@ class AssetAdmin(BaseAdminView, model=Asset):
         "actions_quick",
     ]
     column_details_list = [
-        Asset.id,
-        Asset.asset_code,
-        Asset.pc_name,
+        Asset.device_code,
         Asset.serial,
         Asset.category,
         Asset.status,
@@ -1564,8 +1604,7 @@ class AssetAdmin(BaseAdminView, model=Asset):
         "status_badge": "Trạng thái",
         "current_holder": "Người đang sử dụng",
         "actions_quick": "Thao tác nhanh",
-        "asset_code": "Mã GA",
-        "pc_name": "PC Name",
+        "device_code": "Mã thiết bị",
         "serial": "Số Serial",
         "status": "Trạng thái",
         "model": "Model thiết bị",
@@ -1596,7 +1635,7 @@ class AssetAdmin(BaseAdminView, model=Asset):
         "actions_quick": lambda m, a: (
             Markup(
                 f'<button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 fw-semibold" '
-                f'data-id="{m.id}" data-code="{escape(m.asset_code or m.serial or "")}" data-model="{escape(m.model or "")}" '
+                f'data-id="{m.id}" data-code="{escape(m.device_code)}" data-model="{escape(m.model or "")}" '
                 f'onclick="openAssignModal(this.dataset.id, this.dataset.code, this.dataset.model)" style="font-size: 11.5px;">'
                 f'<i class="fa-solid fa-handshake me-1"></i>{translate("Bàn giao", get_admin_lang())}</button>'
             )
@@ -1604,7 +1643,7 @@ class AssetAdmin(BaseAdminView, model=Asset):
             else (
                 Markup(
                     f'<button type="button" class="btn btn-sm btn-outline-warning text-dark py-0 px-2 fw-bold" '
-                    f'data-id="{m.id}" data-code="{escape(m.asset_code or m.serial or "")}" data-holder="{escape(m.current_holder or "")}" '
+                    f'data-id="{m.id}" data-code="{escape(m.device_code)}" data-holder="{escape(m.current_holder or "")}" '
                     f'onclick="openReturnModal(this.dataset.id, this.dataset.code, this.dataset.holder)" style="font-size: 11.5px;">'
                     f'<i class="fa-solid fa-arrow-rotate-left me-1"></i>{translate("Thu hồi", get_admin_lang())}</button>'
                 )
@@ -1637,7 +1676,7 @@ class AssetAdmin(BaseAdminView, model=Asset):
             else Markup(f'<span class="text-muted fst-italic">- ({translate("Trong kho", get_admin_lang())})</span>')
         ),
     }
-    column_searchable_list = [Asset.asset_code, Asset.serial, Asset.pc_name, Asset.model]
+    column_searchable_list = [Asset.device_code, Asset.serial, Asset.model]
     form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["assignments"]
 
     def list_query(self, request: Request) -> Select:
@@ -1707,7 +1746,6 @@ class AssignmentAdmin(BaseAdminView, model=Assignment):
     category = "Tài sản"
     can_delete = False
     column_list = [
-        Assignment.id,
         Assignment.asset,
         Assignment.person,
         "status_badge",
@@ -1716,7 +1754,6 @@ class AssignmentAdmin(BaseAdminView, model=Assignment):
         "actions_quick",
     ]
     column_details_list = [
-        Assignment.id,
         Assignment.asset,
         Assignment.person,
         "status_badge",
@@ -1742,7 +1779,7 @@ class AssignmentAdmin(BaseAdminView, model=Assignment):
         "actions_quick": lambda m, a: (
             Markup(
                 f'<button type="button" class="btn btn-sm btn-outline-warning text-dark py-0 px-2 fw-bold" '
-                f'data-id="{m.asset_id}" data-code="{escape(m.asset.asset_code or m.asset.serial or "" if m.asset else "")}" data-holder="{escape(m.person.full_name if m.person else "")}" '
+                f'data-id="{m.asset_id}" data-code="{escape(m.asset.device_code if m.asset else "")}" data-holder="{escape(m.person.full_name if m.person else "")}" '
                 f'onclick="openReturnModal(this.dataset.id, this.dataset.code, this.dataset.holder)" style="font-size: 11.5px;">'
                 f'<i class="fa-solid fa-arrow-rotate-left me-1"></i>{translate("Thu hồi", get_admin_lang())}</button>'
             )
@@ -1968,6 +2005,43 @@ def _valid_audit_action(raw: str | None) -> str | None:
     return raw if raw in {a.value for a in AuditAction} else None
 
 
+def _audit_record_label(table: str | None, record_id: int | None) -> str:
+    """Tên dễ đọc của bản ghi trong nhật ký (mã thiết bị, mã nhân viên, tên danh mục) thay cho số ID."""
+    if record_id is None:
+        return "-"
+    try:
+        with SessionLocal() as db:
+            if table == "assets":
+                label = db.scalar(select(Asset.device_code).where(Asset.id == record_id))
+            elif table in ("persons", "person_secrets"):
+                row = db.execute(select(Person.staff_code, Person.full_name).where(Person.id == record_id)).first()
+                label = f"{row[0]} · {row[1]}" if row else None
+            elif table == "assignments":
+                row = db.execute(
+                    select(Asset.device_code, Person.staff_code)
+                    .join(Assignment, Assignment.asset_id == Asset.id)
+                    .join(Person, Person.id == Assignment.person_id)
+                    .where(Assignment.id == record_id)
+                ).first()
+                label = f"{row[0]} → {row[1]}" if row else None
+            elif table == "departments":
+                label = db.scalar(select(Department.name_en).where(Department.id == record_id))
+            elif table == "asset_categories":
+                label = db.scalar(select(AssetCategory.name_en).where(AssetCategory.id == record_id))
+            elif table == "asset_tags":
+                label = db.scalar(select(AssetTag.name_en).where(AssetTag.id == record_id))
+            elif table == "users":
+                label = db.scalar(select(User.username).where(User.id == record_id))
+            elif table == "roles":
+                label = db.scalar(select(Role.code).where(Role.id == record_id))
+            else:
+                label = None
+    except Exception:  # nhật ký vẫn phải mở được dù tra tên lỗi
+        logger.exception("Không tra được tên bản ghi %s #%s", table, record_id)
+        label = None
+    return label or f"#{record_id}"
+
+
 class AuditLogAdmin(BaseAdminView, model=AuditLog):
     module = Module.AUDIT
     name = "Nhật ký kiểm toán"
@@ -1978,7 +2052,6 @@ class AuditLogAdmin(BaseAdminView, model=AuditLog):
     can_edit = False
     can_delete = False
     column_list = [
-        AuditLog.id,
         AuditLog.created_at,
         AuditLog.user,
         AuditLog.action,
@@ -1988,7 +2061,6 @@ class AuditLogAdmin(BaseAdminView, model=AuditLog):
         AuditLog.ip_address,
     ]
     column_details_list = [
-        AuditLog.id,
         AuditLog.created_at,
         AuditLog.user,
         AuditLog.action,
@@ -2004,7 +2076,7 @@ class AuditLogAdmin(BaseAdminView, model=AuditLog):
         "user": "Người thực hiện",
         "action": "Hành động",
         "table_name": "Bảng",
-        "record_id": "Mã bản ghi",
+        "record_id": "Bản ghi",
         "summary": "Chi tiết / Lý do",
         "ip_address": "Địa chỉ IP",
         "before_after": "Dữ liệu trước & sau",
@@ -2024,9 +2096,11 @@ class AuditLogAdmin(BaseAdminView, model=AuditLog):
         AuditLog.ip_address,
     ]
     column_formatters = {
+        "record_id": lambda m, a: _audit_record_label(m.table_name, m.record_id),
         "summary": lambda m, a: m.summary or "-",
     }
     column_formatters_detail = {
+        "record_id": lambda m, a: _audit_record_label(m.table_name, m.record_id),
         "summary": lambda m, a: m.summary or "-",
     }
 

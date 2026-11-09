@@ -50,6 +50,7 @@ from app.enums import (
     AssetStatus,
     AuditAction,
     PersonStatus,
+    PersonType,
 )
 
 
@@ -162,17 +163,13 @@ class RolePermission(Base):
 class Department(BizBase):
     __tablename__ = "departments"
 
-    code: Mapped[str | None] = mapped_column(String(30), nullable=True)
     name_en: Mapped[str] = mapped_column(String(100), nullable=False)
     name_ja: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
-    __table_args__ = biz_args(
-        alive_unique("departments", "code", extra="code IS NOT NULL"),
-        alive_unique("departments", "name_en"),
-    )
+    __table_args__ = biz_args(alive_unique("departments", "name_en"))
 
     def __str__(self) -> str:
-        return f"{self.name_en} ({self.code})" if self.code else self.name_en
+        return self.name_en
 
 
 class AssetCategory(BizBase):
@@ -225,8 +222,13 @@ class Person(BizBase):
 
     __tablename__ = "persons"
 
-    #: Để trống được: người mới có thể chưa được cấp mã.
-    staff_code: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    #: Bắt buộc. Nhân viên chính thức: mã TVC; vendor / công tác Nhật: VND-NNN / JP-NNN do app cấp.
+    staff_code: Mapped[str] = mapped_column(String(50), nullable=False)
+    person_type: Mapped[PersonType] = mapped_column(
+        _enum(PersonType, "person_type"),
+        server_default=text("'EMPLOYEE'"),
+        nullable=False,
+    )
     user_id: Mapped[str | None] = mapped_column(String(50), nullable=True)
     full_name: Mapped[str] = mapped_column(String(100), nullable=False)
     department_id: Mapped[int | None] = mapped_column(
@@ -255,7 +257,7 @@ class Person(BizBase):
     )
 
     def __str__(self) -> str:
-        return f"{self.full_name} ({self.staff_code})" if self.staff_code else self.full_name
+        return f"{self.full_name} ({self.staff_code})"
 
 
 class PersonSecret(Base):
@@ -307,15 +309,12 @@ class PersonSecret(Base):
 class Asset(BizBase):
     """Một thiết bị vật lý. Bảng trung tâm thứ hai.
 
-    Hai mã song song, cả hai đều có thể trống:
-      asset_code  - mã tem GA tự dán, vd TVC-E00027
-      pc_name     - tên máy KDDI gán khi giao, vd TKY-PC0001
+    device_code là mã IT đặt cho mọi thiết bị (vd TKY-PC0001), bắt buộc và duy nhất.
     """
 
     __tablename__ = "assets"
 
-    asset_code: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    pc_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    device_code: Mapped[str] = mapped_column(String(50), nullable=False)
     category_id: Mapped[int] = mapped_column(
         ForeignKey("asset_categories.id", ondelete="RESTRICT"), nullable=False
     )
@@ -336,21 +335,15 @@ class Asset(BizBase):
     assignments: Mapped[list[Assignment]] = relationship(back_populates="asset")
 
     __table_args__ = biz_args(
-        alive_unique("assets", "asset_code", extra="asset_code IS NOT NULL"),
-        alive_unique("assets", "pc_name", extra="pc_name IS NOT NULL"),
+        alive_unique("assets", "device_code", extra="device_code IS NOT NULL"),
         alive_unique("assets", "serial", extra="serial IS NOT NULL"),
         Index("ix_assets_hwid", "hwid"),
         Index("ix_assets_mac_ethernet", "mac_ethernet"),
         Index("ix_assets_mac_wifi", "mac_wifi"),
-        CheckConstraint(
-            "asset_code IS NOT NULL OR pc_name IS NOT NULL OR serial IS NOT NULL",
-            name="has_some_identifier",
-        ),
     )
 
     def __str__(self) -> str:
-        code = self.asset_code or self.pc_name or self.serial or f"Asset #{self.id}"
-        return f"{code} ({self.model})" if self.model else str(code)
+        return f"{self.device_code} ({self.model})" if self.model else self.device_code
 
     @property
     def current_holder(self) -> str | None:

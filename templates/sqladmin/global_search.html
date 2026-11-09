@@ -12,7 +12,7 @@
           <i class="fa-solid fa-magnifying-glass fs-5 text-primary"></i>
         </span>
         <input type="search" name="q" id="globalSearchInput" class="form-control form-control-lg border-start-0 ps-0"
-               placeholder="{{ 'GAコード、シリアル、モデル、MAC、社員名、契約番号、内線...' if current_lang == 'ja' else ('Search by GA code, serial, model, MAC, person name, contract code, extension...' if current_lang == 'en' else 'Nhập mã GA, serial, model, MAC, tên nhân sự, mã HĐ, số extension...') }}"
+               placeholder="{{ '機器コード、シリアル、モデル、MAC、社員名、契約番号、内線...' if current_lang == 'ja' else ('Search by device code, serial, model, MAC, person name, contract code, extension...' if current_lang == 'en' else 'Nhập mã thiết bị, serial, model, MAC, tên nhân sự, mã HĐ, số extension...') }}"
                value="{{ query }}" autofocus style="border-radius: 0 10px 10px 0; font-size: 15px;">
       </div>
     </div>
@@ -25,7 +25,7 @@
 
   <div class="d-flex flex-wrap align-items-center gap-2 mt-3 pt-2 border-top text-muted small">
     <span class="fw-bold text-dark"><i class="fa-regular fa-lightbulb me-1"></i>{{ '検索キーワードのヒント:' if current_lang == 'ja' else ('Suggestions:' if current_lang == 'en' else 'Gợi ý từ khóa:') }}</span>
-    <a href="/admin/global-search?q=GA-" class="badge bg-secondary text-decoration-none">GA-</a>
+    <a href="/admin/global-search?q=TKY-" class="badge bg-secondary text-decoration-none">TKY-</a>
     <a href="/admin/global-search?q=Dell" class="badge bg-secondary text-decoration-none">Dell</a>
     <a href="/admin/global-search?q=KHCM" class="badge bg-secondary text-decoration-none">KHCM-</a>
     <a href="/admin/global-search?q=Office" class="badge bg-secondary text-decoration-none">Office</a>
@@ -45,7 +45,7 @@
       <h4 class="fw-bold text-dark mb-2">{{ '検索結果が見つかりませんでした' if current_lang == 'ja' else ('No matching results found' if current_lang == 'en' else 'Không tìm thấy kết quả phù hợp') }}</h4>
       <p class="text-muted mx-auto" style="max-width: 480px; font-size: 13.5px;">
         {{ 'キーワードに一致するデータはありません:' if current_lang == 'ja' else ('No records matched query' if current_lang == 'en' else 'Không có bản ghi nào khớp với từ khóa') }} <strong>"{{ query }}"</strong>.
-        {{ '入力内容を確認するか、シリアル番号、GAコード、社員名で検索してください。' if current_lang == 'ja' else ('Please verify your spelling or try searching by serial number, GA code, or staff name.' if current_lang == 'en' else 'Vui lòng kiểm tra lại chính tả hoặc thử tìm bằng Serial, mã tem GA, tên nhân viên viết không dấu.') }}
+        {{ '入力内容を確認するか、シリアル番号、機器コード、社員名で検索してください。' if current_lang == 'ja' else ('Please verify your spelling or try searching by serial number, device code, or staff name.' if current_lang == 'en' else 'Vui lòng kiểm tra lại chính tả hoặc thử tìm bằng Serial, mã tem GA, tên nhân viên viết không dấu.') }}
       </p>
     </div>
   {% else %}
@@ -69,8 +69,7 @@
         <table class="table card-table table-vcenter text-nowrap mb-0">
           <thead>
             <tr>
-              <th style="width: 110px;">{{ t('Mã GA', current_lang) }}</th>
-              <th style="width: 140px;">{{ t('Mã Vendor', current_lang) }}</th>
+              <th style="width: 140px;">{{ t('Mã thiết bị', current_lang) }}</th>
               <th>{{ t('Model / Chủng loại', current_lang) }}</th>
               <th style="width: 150px;">{{ t('Serial Number', current_lang) }}</th>
               <th style="width: 150px;">MAC / HWID</th>
@@ -83,10 +82,9 @@
             <tr>
               <td>
                 <a href="{{ url_for('admin:details', identity='asset', pk=item.id) }}" class="fw-bold font-monospace text-dark text-decoration-none">
-                  {{ item.asset_code }}
+                  {{ item.device_code }}
                 </a>
               </td>
-              <td class="font-monospace text-secondary" style="font-size: 12px;">{{ item.pc_name or '—' }}</td>
               <td>
                 <div class="fw-bold text-dark" style="font-size: 13px;">{{ item.model }}</div>
                 <div class="text-muted small">{{ item.category.name_ja if (current_lang == 'ja' and item.category.name_ja) else item.category.name_en }}</div>

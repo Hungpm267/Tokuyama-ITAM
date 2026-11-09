@@ -527,7 +527,7 @@ def test_assignment_overlap_validation(db: Session):
     db.commit()
     db.refresh(person)
 
-    asset = Asset(asset_code="GA-LAP-TEST", category_id=cat.id)
+    asset = Asset(device_code="GA-LAP-TEST", category_id=cat.id)
     db.add(asset)
     db.commit()
     db.refresh(asset)
@@ -689,7 +689,7 @@ def test_details_view_human_friendly_labels(db: Session, rbac_roles_and_users):
     client.cookies.set("itam_session", admin_token)
     client.cookies.set("itam_lang", "vi")
 
-    dept = Department(code="TVC-TEST-DEPT", name_en="Phòng CNTT Thử nghiệm", name_ja="IT部門")
+    dept = Department(name_en="Phòng CNTT Thử nghiệm", name_ja="IT部門")
     db.add(dept)
     db.commit()
     db.refresh(dept)
@@ -697,7 +697,7 @@ def test_details_view_human_friendly_labels(db: Session, rbac_roles_and_users):
     res_vi = client.get(f"/admin/department/details/{dept.id}?lang=vi")
     assert res_vi.status_code == 200
     text_vi = res_vi.text
-    assert "Mã phòng ban" in text_vi
+    assert "Mã phòng ban" not in text_vi
     assert "Tên phòng ban (Tiếng Anh/Việt)" in text_vi
     assert "Tên phòng ban (Tiếng Nhật)" in text_vi
     assert "Thời gian tạo" in text_vi
@@ -713,7 +713,7 @@ def test_details_view_human_friendly_labels(db: Session, rbac_roles_and_users):
     res_en = client.get(f"/admin/department/details/{dept.id}?lang=en")
     assert res_en.status_code == 200
     text_en = res_en.text
-    assert "Department Code" in text_en
+    assert "Department Code" not in text_en
     assert "Department Name (EN/VI)" in text_en
     assert "Department Name (JA)" in text_en
     assert "Created At" in text_en

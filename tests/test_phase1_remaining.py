@@ -165,7 +165,7 @@ def test_global_search_finds_asset_by_serial_and_mac(client: TestClient, db: Ses
 
     asset = Asset(
         category_id=cat.id,
-        asset_code="GA-SRCH-1234",
+        device_code="GA-SRCH-1234",
         serial="SN-SRCH-9999",
         mac_ethernet="AA:BB:CC:11:22:33",
         model="Dell Latitude 5540 SearchTest",
@@ -238,7 +238,7 @@ def test_trash_list_shows_soft_deleted_records(client: TestClient, db: Session):
 
     del_asset = Asset(
         category_id=cat.id,
-        asset_code="GA-DEL-101",
+        device_code="GA-DEL-101",
         serial="SN-DEL-101",
         model="Old ThinkPad T490",
         is_deleted=True,
@@ -268,7 +268,7 @@ def test_trash_restore_success_and_audited(client: TestClient, db: Session):
 
     del_asset = Asset(
         category_id=cat.id,
-        asset_code="GA-RESTORE-202",
+        device_code="GA-RESTORE-202",
         serial="SN-RESTORE-202",
         model="Latitude 5420 RestoreMe",
         is_deleted=True,
@@ -323,7 +323,7 @@ def test_trash_restore_conflict_prevention(client: TestClient, db: Session):
     # 1. Bản ghi đang sống
     alive_asset = Asset(
         category_id=cat.id,
-        asset_code="GA-ALIVE-301",
+        device_code="GA-ALIVE-301",
         serial="DUPLICATE-SN-301",
         model="New Machine",
         is_deleted=False,
@@ -333,7 +333,7 @@ def test_trash_restore_conflict_prevention(client: TestClient, db: Session):
     # 2. Bản ghi đã xóa mềm có cùng serial
     del_asset = Asset(
         category_id=cat.id,
-        asset_code="GA-DEL-302",
+        device_code="GA-DEL-302",
         serial="DUPLICATE-SN-301",  # Cùng serial
         model="Old Machine",
         is_deleted=True,

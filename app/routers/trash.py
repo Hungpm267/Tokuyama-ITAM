@@ -127,10 +127,10 @@ async def trash_list_view(
             details = ""
 
             if ent_key == "asset":
-                identifier = rec.asset_code or (f"Asset #{rec.id}")
+                identifier = rec.device_code
                 details = f"Model: {rec.model or '—'} | S/N: {rec.serial or '—'}"
             elif ent_key == "person":
-                identifier = rec.staff_code or f"#{rec.id}"
+                identifier = rec.staff_code
                 details = f"{rec.full_name} ({rec.email or 'No email'})"
             elif ent_key == "role":
                 identifier = rec.code
@@ -139,8 +139,8 @@ async def trash_list_view(
                 identifier = rec.username
                 details = f"{rec.display_name} (@{rec.username})"
             else:
-                identifier = f"#{rec.id}"
-                details = getattr(rec, "name_en", str(rec))
+                identifier = getattr(rec, "name_en", None) or str(rec)
+                details = getattr(rec, "name_ja", None) or ""
 
             # Lọc theo từ khóa tìm kiếm nếu có
             if clean_q:
@@ -268,7 +268,7 @@ async def restore_item(
 
     return JSONResponse({
         "success": True,
-        "message": f"Khôi phục thành công bản ghi #{rec.id} ({model_cls.__name__}).",
+        "message": "Khôi phục thành công.",
     })
 
 
@@ -285,30 +285,18 @@ def check_restore_conflicts(db: Session, entity_type: str, rec: Any) -> str | No
                 )
             )
             if dup_serial:
-                return f"Không thể khôi phục: Serial '{rec.serial}' hiện đã được sử dụng bởi thiết bị #{dup_serial.id} ({dup_serial.asset_code})."
+                return f"Không thể khôi phục: Serial '{rec.serial}' hiện đã được sử dụng bởi thiết bị {dup_serial.device_code}."
 
-        # Check Asset Code
-        if rec.asset_code:
-            dup_code = db.scalar(
-                select(Asset).where(
-                    Asset.id != rec.id,
-                    func.lower(Asset.asset_code) == rec.asset_code.lower(),
-                    Asset.is_deleted.is_(False),
-                )
-            )
-            if dup_code:
-                return f"Không thể khôi phục: Mã GA '{rec.asset_code}' hiện đã được sử dụng bởi thiết bị #{dup_code.id}."
-
-        if rec.pc_name:
+        if rec.device_code:
             dup_vendor = db.scalar(
                 select(Asset).where(
                     Asset.id != rec.id,
-                    func.lower(Asset.pc_name) == rec.pc_name.lower(),
+                    func.lower(Asset.device_code) == rec.device_code.lower(),
                     Asset.is_deleted.is_(False),
                 )
             )
             if dup_vendor:
-                return f"Không thể khôi phục: PC Name '{rec.pc_name}' hiện đã được sử dụng bởi thiết bị #{dup_vendor.id}."
+                return f"Không thể khôi phục: Mã thiết bị '{rec.device_code}' hiện đã được sử dụng bởi thiết bị khác."
 
     elif entity_type == "person":
         # Check Staff code
@@ -320,7 +308,7 @@ def check_restore_conflicts(db: Session, entity_type: str, rec: Any) -> str | No
             )
         )
         if dup_staff:
-            return f"Không thể khôi phục: Mã nhân viên '{rec.staff_code}' đã tồn tại ở nhân sự #{dup_staff.id} ({dup_staff.full_name})."
+            return f"Không thể khôi phục: Mã nhân viên '{rec.staff_code}' đã tồn tại ở nhân sự {dup_staff.full_name}."
 
         # Check User ID
         if rec.user_id:
@@ -332,7 +320,7 @@ def check_restore_conflicts(db: Session, entity_type: str, rec: Any) -> str | No
                 )
             )
             if dup_uid:
-                return f"Không thể khôi phục: UserID '{rec.user_id}' đã thuộc về nhân sự #{dup_uid.id}."
+                return f"Không thể khôi phục: UserID '{rec.user_id}' đã thuộc về nhân sự {dup_uid.full_name}."
 
         if rec.email:
             dup_email = db.scalar(
@@ -343,7 +331,7 @@ def check_restore_conflicts(db: Session, entity_type: str, rec: Any) -> str | No
                 )
             )
             if dup_email:
-                return f"Không thể khôi phục: Email '{rec.email}' đã thuộc về nhân sự #{dup_email.id} ({dup_email.full_name})."
+                return f"Không thể khôi phục: Email '{rec.email}' đã thuộc về nhân sự {dup_email.full_name}."
 
     elif entity_type == "user":
         dup_user = db.scalar(
@@ -354,6 +342,6 @@ def check_restore_conflicts(db: Session, entity_type: str, rec: Any) -> str | No
             )
         )
         if dup_user:
-            return f"Không thể khôi phục: Tên đăng nhập '{rec.username}' đã thuộc về người dùng #{dup_user.id}."
+            return f"Không thể khôi phục: Tên đăng nhập '{rec.username}' đã thuộc về một tài khoản khác."
 
     return None

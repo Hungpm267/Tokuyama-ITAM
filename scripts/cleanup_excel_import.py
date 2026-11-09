@@ -76,7 +76,7 @@ def _set(db: Session, obj, table: str, values: dict, actor_id: int) -> None:
 
 
 def _label(asset: Asset | None) -> str:
-    return (asset.pc_name or asset.serial or f"#{asset.id}") if asset else "?"
+    return (asset.device_code or asset.serial or f"#{asset.id}") if asset else "?"
 
 
 def _temp_date(note: str | None) -> dt.date | None | bool:
@@ -131,7 +131,7 @@ def plan_and_apply(db: Session, actor_id: int) -> CleanupReport:
     mes_mark_id = _ensure_marks(db, actor_id)
     already_marked = mark_service.marks_by_asset(db)
     assets = db.scalars(
-        select(Asset).where(Asset.is_deleted.is_(False)).order_by(Asset.pc_name, Asset.id)
+        select(Asset).where(Asset.is_deleted.is_(False)).order_by(Asset.device_code, Asset.id)
     ).all()
     for asset in assets:
         note = asset.note

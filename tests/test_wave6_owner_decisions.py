@@ -204,7 +204,7 @@ def test_asset_serial_duplicate_is_case_insensitive(db, seed):
 
 
 def test_editing_a_record_does_not_collide_with_itself(db, seed):
-    data = {"serial": "sn-0001", "asset_code": seed["asset"].asset_code, "status": "IN_STOCK"}
+    data = {"serial": "sn-0001", "device_code": seed["asset"].device_code, "status": "IN_STOCK"}
     _run(AssetAdmin().on_model_change(data, seed["asset"], False, _req(db)))
 
 
@@ -227,7 +227,7 @@ def test_staff_code_and_category_name_duplicates_are_case_insensitive(db, seed):
 
 
 def test_restore_conflict_check_is_case_insensitive(admin_client, db, seed):
-    dead = Asset(serial="sn-0001", category_id=seed["cat"].id)
+    dead = Asset(device_code="sn-0001", serial="sn-0001", category_id=seed["cat"].id)
     dead.is_deleted = True
     dead.deleted_at = dt.datetime.now(dt.timezone.utc)
     dead.delete_reason = "x"
@@ -261,7 +261,7 @@ def test_asset_export_has_list_columns_and_opens_in_excel(admin_client, db, seed
 
 
 def test_export_follows_the_search_box(admin_client, db, seed):
-    db.add(Asset(asset_code="W6-EXPORT-OTHER", category_id=seed["cat"].id))
+    db.add(Asset(device_code="W6-EXPORT-OTHER", category_id=seed["cat"].id))
     db.flush()
     body = admin_client.get("/admin/asset/export/csv?search=W6-EXPORT-OTHER").content.decode("utf-8")
     assert "W6-EXPORT-OTHER" in body

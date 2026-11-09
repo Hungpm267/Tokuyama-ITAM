@@ -99,7 +99,7 @@ def assign_asset(
     if active or asset.status == AssetStatus.IN_USE:
         holder_name = active.person.full_name if (active and active.person) else "người khác"
         raise ValueError(
-            f"Thiết bị '{asset.asset_code or asset.serial}' đang có người sử dụng ({holder_name}), "
+            f"Thiết bị '{asset.device_code}' đang có người sử dụng ({holder_name}), "
             "vui lòng thu hồi trước khi bàn giao tiếp."
         )
 
@@ -196,7 +196,7 @@ def return_asset(
 
     asgn = get_active_assignment(db, asset_id)
     if not asgn:
-        raise ValueError(f"Thiết bị '{asset.asset_code or asset.serial}' không có bản ghi bàn giao nào đang mở để thu hồi.")
+        raise ValueError(f"Thiết bị '{asset.device_code}' không có bản ghi bàn giao nào đang mở để thu hồi.")
 
     if asgn.borrowed_at and returned_at < asgn.borrowed_at:
         raise ValueError(

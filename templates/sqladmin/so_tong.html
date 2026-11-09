@@ -30,6 +30,7 @@
   .st-mark-row { display: flex; align-items: center; gap: 6px; padding: 6px 0; border-bottom: 1px solid #f1f5f9; flex-wrap: wrap; }
   .st-mark-row input[type=text] { flex: 1 1 160px; }
   .st-mark-row input[type=color] { width: 42px; height: 32px; padding: 2px; flex: none; }
+  .st-manager-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #64748b; margin-bottom: 4px; }
   .st-mark-confirm { width: 100%; font-size: 12.5px; color: #991b1b; }
   .st-open { color: #4D5CB0; cursor: pointer; text-align: center; }
   .st-panel { position: fixed; top: 0; right: 0; bottom: 0; width: 400px; max-width: 100vw; background: #fff; border-left: 1px solid #e2e8f0; box-shadow: -8px 0 24px rgba(15, 23, 42, .12); z-index: 1040; padding: 20px; overflow-y: auto; display: none; font-size: 13px; }
@@ -91,7 +92,7 @@
     <span id="stLegend" style="display: contents;"></span>
     {% if perms.assets %}
     <button type="button" id="stMarkManage" class="btn btn-outline-secondary btn-sm py-0" data-bs-toggle="modal" data-bs-target="#stMarkManager">
-      <i class="fa-solid fa-palette me-1"></i>{{ L('Quản lý màu', 'Manage colours', '色を管理') }}
+      <i class="fa-solid fa-sliders me-1"></i>{{ L('Quản lý màu và phần mềm', 'Manage colours and software', '色とソフトの管理') }}
     </button>
     {% endif %}
   </div>
@@ -126,16 +127,24 @@
   <div class="modal-dialog modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="stMarkManagerTitle">{{ L('Quản lý màu đánh dấu', 'Manage colour marks', '色分けの管理') }}</h5>
+        <h5 class="modal-title" id="stMarkManagerTitle">{{ L('Quản lý màu và phần mềm', 'Manage colours and software', '色とソフトの管理') }}</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ L('Đóng', 'Close', '閉じる') }}"></button>
       </div>
       <div class="modal-body">
+        <h6 class="st-manager-title">{{ L('Màu đánh dấu', 'Colour marks', '色分け') }}</h6>
         <div id="stMarkList"></div>
         <div class="st-mark-row mt-2">
           <input type="text" id="stMarkNewName" class="form-control form-control-sm" maxlength="100"
                  placeholder="{{ L('Tên, ví dụ: Máy MES', 'Name, e.g. MES PC', '名前（例：MES用PC）') }}">
           <input type="color" id="stMarkNewColor" value="#fde68a" aria-label="{{ L('Màu', 'Colour', '色') }}">
           <button type="button" id="stMarkAdd" class="btn btn-primary btn-sm">{{ L('Thêm', 'Add', '追加') }}</button>
+        </div>
+        <h6 class="st-manager-title mt-4">{{ L('Phần mềm trên máy', 'Software on PCs', 'インストール済みソフト') }}</h6>
+        <div id="stSoftwareList"></div>
+        <div class="st-mark-row mt-2">
+          <input type="text" id="stSoftwareNewName" class="form-control form-control-sm" maxlength="100"
+                 placeholder="{{ L('Tên phần mềm, ví dụ: Visio', 'Software name, e.g. Visio', 'ソフト名（例：Visio）') }}">
+          <button type="button" id="stSoftwareAdd" class="btn btn-primary btn-sm">{{ L('Thêm', 'Add', '追加') }}</button>
         </div>
       </div>
     </div>
@@ -153,7 +162,8 @@
   const CAN_LOAN = {{ can_loan(request) | tojson }};
   let MARKS = {{ marks | tojson }};
   const DEPARTMENTS = {{ departments | tojson }};
-  const SOFTWARE = {{ software_tags | tojson }};
+  let SOFTWARE = {{ software_tags | tojson }};
+  let SOFTWARE_CATALOG = {{ software_catalog | tojson }};
   const TEXT = {
     saveError: {{ L('Không lưu được.', 'Could not save.', '保存できませんでした。') | trim | tojson }},
     assign: {{ L('Bàn giao', 'Assign', '貸出') | trim | tojson }},
@@ -184,7 +194,13 @@
     save: {{ L('Lưu', 'Save', '保存') | trim | tojson }},
     remove: {{ L('Xóa', 'Delete', '削除') | trim | tojson }},
     cancel: {{ L('Hủy', 'Cancel', 'キャンセル') | trim | tojson }},
+    confirmRemoveSoftware: {{ L('máy sẽ mất phần mềm này. Xóa?', 'PCs will lose this software. Delete?', '台からこのソフトが外れます。削除しますか？') | trim | tojson }},
     confirmRemove: {{ L('máy sẽ mất màu này. Xóa?', 'PCs will lose this colour. Delete?', '台の色分けが外れます。削除しますか？') | trim | tojson }},
+    personType: {
+      EMPLOYEE: {{ L('Nhân viên chính thức', 'Employee', '正社員') | trim | tojson }},
+      VENDOR: 'Vendor',
+      BUSINESS_TRIP: {{ L('Công tác Nhật', 'Japan business trip', '日本出張者') | trim | tojson }}
+    },
     secretKind: {
       none: {{ L('Không có', 'None', 'なし') | trim | tojson }},
       pc: 'PC',
@@ -218,7 +234,7 @@
   function canEdit(cell) {
     const field = cell.getField();
     const row = cell.getRow().getData();
-    if (field === 'serial' || field === 'asset_code') return PERMS.assets && !!row.asset_id;
+    if (field === 'serial' || field === 'device_code') return PERMS.assets && !!row.asset_id;
     if (field === 'note') return row.asset_id ? PERMS.assets : PERMS.persons;
     if (field === 'borrowed_at') return PERMS.assignments && !!row.asset_id && !!row.person_id;
     if (field === 'mark') return PERMS.assets && !!row.asset_id;
@@ -271,14 +287,16 @@
     { title: '', field: 'open_panel', frozen: true, width: 36, hozAlign: 'center', headerSort: false, download: false, clipboard: false, resizable: false,
       cssClass: 'st-open', formatter: function () { return '<i class="fa-solid fa-circle-info"></i>'; },
       cellClick: function (event, cell) { openPanel(cell.getRow().getData().id); } },
-    { title: {{ L('Tên máy', 'PC name', 'PC名') | trim | tojson }}, field: 'pc_name', frozen: true, width: 130, ...text },
+    { title: {{ L('Mã thiết bị', 'Device code', '機器コード') | trim | tojson }}, field: 'device_code', frozen: true, width: 130, ...text, ...editable },
     { title: {{ L('Người giữ', 'Holder', '使用者') | trim | tojson }}, field: 'holder', frozen: true, width: 210, ...text },
-    { title: {{ L('Mã GA', 'GA code', 'GAコード') | trim | tojson }}, field: 'asset_code', width: 120, ...text, ...editable },
     { title: {{ L('Số serial', 'Serial', 'シリアル') | trim | tojson }}, field: 'serial', width: 130, ...text, ...editable },
     { title: {{ L('Trạng thái máy', 'Asset status', '機器状態') | trim | tojson }}, field: 'asset_status', width: 140, headerFilter: 'list',
       headerFilterParams: { values: Object.assign({ '': '' }, TEXT.assetStatus), clearable: true },
       formatter: statusLabel(TEXT.assetStatus), accessorDownload: labelFor(TEXT.assetStatus) },
     { title: {{ L('Mã nhân viên', 'Staff code', '社員番号') | trim | tojson }}, field: 'staff_code', width: 125, ...text },
+    { title: {{ L('Loại nhân sự', 'Staff type', '区分') | trim | tojson }}, field: 'person_type', width: 140, headerFilter: 'list',
+      headerFilterParams: { values: Object.assign({ '': '' }, TEXT.personType), clearable: true },
+      formatter: statusLabel(TEXT.personType), accessorDownload: labelFor(TEXT.personType) },
     { title: 'userId', field: 'user_id', width: 100, ...text, ...editable },
     { title: 'Email', field: 'email', width: 250, ...text, ...editable },
     { title: {{ L('Phòng ban', 'Department', '部署') | trim | tojson }}, field: 'department', width: 160, ...text, editor: 'list', editable: canEdit,
@@ -375,14 +393,14 @@
       const top = document.createElement('div');
       top.className = 'st-card-top';
       const name = document.createElement('span');
-      name.textContent = row.pc_name || row.holder || '';
+      name.textContent = row.device_code || row.holder || '';
       const status = document.createElement('span');
       status.className = 'st-card-status';
       status.textContent = row.asset_status ? TEXT.assetStatus[row.asset_status] : (TEXT.personStatus[row.person_status] || '');
       top.appendChild(name);
       top.appendChild(status);
       card.appendChild(top);
-      if (row.pc_name && row.holder) {
+      if (row.device_code && row.holder) {
         const holder = document.createElement('div');
         holder.className = 'st-card-holder';
         holder.textContent = row.holder;
@@ -541,30 +559,8 @@
       remove.type = 'button';
       remove.className = 'btn btn-outline-danger btn-sm';
       remove.textContent = TEXT.remove;
-      remove.addEventListener('click', async function () {
-        // Máy đang mang màu này: hỏi lại ngay trong hộp, không dùng window.confirm.
-        if (mark.count > 0 && !line.querySelector('.st-mark-confirm')) {
-          const confirmBox = document.createElement('div');
-          confirmBox.className = 'st-mark-confirm d-flex align-items-center gap-2';
-          const message = document.createElement('span');
-          message.textContent = mark.count + ' ' + TEXT.confirmRemove;
-          const yes = document.createElement('button');
-          yes.type = 'button';
-          yes.className = 'btn btn-danger btn-sm';
-          yes.textContent = TEXT.remove;
-          yes.addEventListener('click', function () { deleteMark(mark.id); });
-          const no = document.createElement('button');
-          no.type = 'button';
-          no.className = 'btn btn-light btn-sm';
-          no.textContent = TEXT.cancel;
-          no.addEventListener('click', function () { confirmBox.remove(); });
-          confirmBox.appendChild(message);
-          confirmBox.appendChild(yes);
-          confirmBox.appendChild(no);
-          line.appendChild(confirmBox);
-          return;
-        }
-        if (mark.count === 0) deleteMark(mark.id);
+      remove.addEventListener('click', function () {
+        confirmInline(line, mark.count, TEXT.confirmRemove, function () { deleteMark(mark.id); });
       });
       line.appendChild(swatch(mark.color));
       line.appendChild(name);
@@ -572,6 +568,92 @@
       line.appendChild(save);
       line.appendChild(remove);
       list.appendChild(line);
+    });
+  }
+
+  // Mục đang gắn trên máy: hỏi lại ngay trong hộp (không dùng window.confirm).
+  function confirmInline(line, count, text, onYes) {
+    if (!count) { onYes(); return; }
+    if (line.querySelector('.st-mark-confirm')) return;
+    const confirmBox = document.createElement('div');
+    confirmBox.className = 'st-mark-confirm d-flex align-items-center gap-2';
+    const message = document.createElement('span');
+    message.textContent = count + ' ' + text;
+    const yes = document.createElement('button');
+    yes.type = 'button';
+    yes.className = 'btn btn-danger btn-sm';
+    yes.textContent = TEXT.remove;
+    yes.addEventListener('click', onYes);
+    const no = document.createElement('button');
+    no.type = 'button';
+    no.className = 'btn btn-light btn-sm';
+    no.textContent = TEXT.cancel;
+    no.addEventListener('click', function () { confirmBox.remove(); });
+    confirmBox.appendChild(message);
+    confirmBox.appendChild(yes);
+    confirmBox.appendChild(no);
+    line.appendChild(confirmBox);
+  }
+
+  async function afterSoftwareChange(result) {
+    SOFTWARE_CATALOG = result.software;
+    SOFTWARE = result.software.map(function (s) { return { code: s.code, name: s.name }; });
+    renderSoftwareManager();
+    await table.replaceData();
+    if (panelRowId) openPanel(panelRowId);
+  }
+
+  function renderSoftwareManager() {
+    const list = document.getElementById('stSoftwareList');
+    if (!list) return;
+    list.textContent = '';
+    SOFTWARE_CATALOG.forEach(function (item) {
+      const line = document.createElement('div');
+      line.className = 'st-mark-row';
+      const name = document.createElement('input');
+      name.type = 'text';
+      name.className = 'form-control form-control-sm';
+      name.maxLength = 100;
+      name.value = item.name;
+      const count = document.createElement('small');
+      count.className = 'text-muted';
+      count.textContent = '(' + item.count + ')';
+      const save = document.createElement('button');
+      save.type = 'button';
+      save.className = 'btn btn-outline-primary btn-sm';
+      save.textContent = TEXT.save;
+      save.addEventListener('click', async function () {
+        try {
+          await afterSoftwareChange(await send('/admin/api/so-tong/software-catalog/' + item.id, 'PATCH', { name: name.value }));
+        } catch (error) { toast(error.message); }
+      });
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'btn btn-outline-danger btn-sm';
+      remove.textContent = TEXT.remove;
+      remove.addEventListener('click', function () {
+        confirmInline(line, item.count, TEXT.confirmRemoveSoftware, async function () {
+          try {
+            await afterSoftwareChange(await send('/admin/api/so-tong/software-catalog/' + item.id, 'DELETE'));
+          } catch (error) { toast(error.message); }
+        });
+      });
+      line.appendChild(name);
+      line.appendChild(count);
+      line.appendChild(save);
+      line.appendChild(remove);
+      list.appendChild(line);
+    });
+  }
+
+  const softwareAdd = document.getElementById('stSoftwareAdd');
+  if (softwareAdd) {
+    softwareAdd.addEventListener('click', async function () {
+      const name = document.getElementById('stSoftwareNewName');
+      try {
+        await afterSoftwareChange(await send('/admin/api/so-tong/software-catalog', 'POST', { name: name.value }));
+        name.value = '';
+      } catch (error) { toast(error.message); }
     });
   }
 
@@ -594,6 +676,7 @@
   }
   renderLegend();
   renderManager();
+  renderSoftwareManager();
 
   function infoLine(parent, label, value) {
     if (!value) return;
@@ -642,11 +725,11 @@
   function openPanel(rowId) {
     const row = table.getRow(rowId).getData();
     panelRowId = rowId;
-    document.getElementById('stPanelTitle').textContent = row.pc_name || row.holder || '';
+    document.getElementById('stPanelTitle').textContent = row.device_code || row.holder || '';
     const info = document.getElementById('stPanelInfo');
     info.textContent = '';
     columns.forEach(function (column) {
-      if (['open_panel', 'pc_name', 'secret_kind', 'software', 'mark'].includes(column.field)) return;
+      if (['open_panel', 'device_code', 'secret_kind', 'software', 'mark'].includes(column.field)) return;
       const value = row[column.field];
       const map = column.field === 'asset_status' ? TEXT.assetStatus : (column.field === 'person_status' ? TEXT.personStatus : null);
       infoLine(info, column.title, map ? map[value] : value);
@@ -654,7 +737,7 @@
 
     const actions = document.getElementById('stPanelActions');
     actions.textContent = '';
-    const code = row.pc_name || row.serial || '';
+    const code = row.device_code || row.serial || '';
     if (CAN_LOAN && row.asset_status === 'IN_STOCK') {
       actionButton(actions, TEXT.assign, 'btn-primary', function () { openAssignModal(row.asset_id, code, ''); });
     }
