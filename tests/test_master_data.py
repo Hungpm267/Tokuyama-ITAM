@@ -26,3 +26,35 @@ def test_asset_detail_page_opens(admin_client, db, seed):  # noqa: F811
     assert res.status_code == 200
     assert "TKY-PC0001" in res.text
     assert "Mã GA" not in res.text
+
+
+def test_no_view_shows_an_id_column():
+    from app.main import app
+
+    admin = app.state.admin
+    offenders = []
+    for view in admin._views:
+        if not hasattr(view, "get_list_columns"):
+            continue
+        for name in list(view.get_list_columns()) + list(view.get_details_columns()):
+            if name == "id":
+                offenders.append(view.identity)
+    assert offenders == []
+
+
+def test_sidebar_has_no_asset_tag_link(admin_client, db, seed):  # noqa: F811
+    assert "/admin/asset-tag/list" not in admin_client.get("/admin/so-tong").text
+
+
+def test_audit_trail_shows_device_code_instead_of_number(admin_client, db, seed):  # noqa: F811
+    from app.enums import AuditAction
+    from app.models import AuditLog
+
+    db.add(AuditLog(table_name="assets", record_id=seed["asset"].id, action=AuditAction.UPDATE,
+                    user_id=seed["user"].id, before_after={"before": {"note": "a"}, "after": {"note": "b"}}))
+    db.add(AuditLog(table_name="persons", record_id=seed["person"].id, action=AuditAction.UPDATE,
+                    user_id=seed["user"].id, before_after={"before": {"note": "a"}, "after": {"note": "b"}}))
+    db.flush()
+    html = admin_client.get("/admin/audit-log/list").text
+    assert "TKY-PC0001" in html
+    assert "TVC00001" in html

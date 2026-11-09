@@ -1183,9 +1183,8 @@ class UserAdmin(BaseAdminView, model=User):
     name_plural = "Tài khoản Đăng nhập"
     icon = "fa-solid fa-users-gear"
     category = "Hệ thống & Phân quyền"
-    column_list = [User.id, User.username, User.display_name, User.role, User.preferred_lang, User.is_active, User.last_login_at]
+    column_list = [User.username, User.display_name, User.role, User.preferred_lang, User.is_active, User.last_login_at]
     column_details_list = [
-        User.id,
         User.username,
         User.display_name,
         User.role,
@@ -1267,8 +1266,8 @@ class RoleAdmin(BaseAdminView, model=Role):
     name_plural = "Vai trò Hệ thống"
     icon = "fa-solid fa-user-shield"
     category = "Hệ thống & Phân quyền"
-    column_list = [Role.id, Role.code, Role.name_en, Role.name_ja]
-    column_details_list = [Role.id, Role.code, Role.name_en, Role.name_ja] + COMMON_EXCLUDED_COLUMNS
+    column_list = [Role.code, Role.name_en, Role.name_ja]
+    column_details_list = [Role.code, Role.name_en, Role.name_ja] + COMMON_EXCLUDED_COLUMNS
     column_labels = {
         "code": "Mã vai trò",
         "name_en": "Tên vai trò (Tiếng Anh/Việt)",
@@ -1303,8 +1302,8 @@ class DepartmentAdmin(BaseAdminView, model=Department):
     name_plural = "Danh mục Phòng ban"
     icon = "fa-solid fa-sitemap"
     category = "Danh mục Dùng chung"
-    column_list = [Department.id, Department.name_en, Department.name_ja]
-    column_details_list = [Department.id, Department.name_en, Department.name_ja] + COMMON_EXCLUDED_COLUMNS
+    column_list = [Department.name_en, Department.name_ja]
+    column_details_list = [Department.name_en, Department.name_ja] + COMMON_EXCLUDED_COLUMNS
     column_labels = {
         "name_en": "Tên phòng ban (Tiếng Anh/Việt)",
         "name_ja": "Tên phòng ban (Tiếng Nhật)",
@@ -1335,8 +1334,8 @@ class AssetCategoryAdmin(BaseAdminView, model=AssetCategory):
     name_plural = "Danh mục Loại tài sản"
     icon = "fa-solid fa-tags"
     category = "Danh mục Dùng chung"
-    column_list = [AssetCategory.id, AssetCategory.name_en, AssetCategory.name_ja]
-    column_details_list = [AssetCategory.id, AssetCategory.name_en, AssetCategory.name_ja] + COMMON_EXCLUDED_COLUMNS
+    column_list = [AssetCategory.name_en, AssetCategory.name_ja]
+    column_details_list = [AssetCategory.name_en, AssetCategory.name_ja] + COMMON_EXCLUDED_COLUMNS
     column_labels = {
         "name_en": "Tên loại tài sản (Tiếng Anh/Việt)",
         "name_ja": "Tên loại tài sản (Tiếng Nhật)",
@@ -1344,14 +1343,18 @@ class AssetCategoryAdmin(BaseAdminView, model=AssetCategory):
 
 
 class AssetTagAdmin(BaseAdminView, model=AssetTag):
+    # Không hiện trên thanh bên: phần mềm và màu đánh dấu quản lý ngay trên Sổ tổng.
+    def is_visible(self, request: Request) -> bool:
+        return False
+
     unique_text_fields = ("code",)
     module = Module.ASSETS
     name = "Nhãn tài sản"
     name_plural = "Danh mục Nhãn (Tags)"
     icon = "fa-solid fa-tag"
     category = "Danh mục Dùng chung"
-    column_list = [AssetTag.id, AssetTag.code, AssetTag.name_en, AssetTag.color]
-    column_details_list = [AssetTag.id, AssetTag.code, AssetTag.name_en, AssetTag.name_ja, AssetTag.color] + COMMON_EXCLUDED_COLUMNS
+    column_list = [AssetTag.code, AssetTag.name_en, AssetTag.color]
+    column_details_list = [AssetTag.code, AssetTag.name_en, AssetTag.name_ja, AssetTag.color] + COMMON_EXCLUDED_COLUMNS
     column_labels = {
         "code": "Mã nhãn",
         "name_en": "Tên nhãn (Tiếng Anh/Việt)",
@@ -1395,9 +1398,8 @@ class PersonAdmin(BaseAdminView, model=Person):
     name_plural = "Hồ sơ Nhân sự"
     icon = "fa-solid fa-id-card-clip"
     category = "Nhân sự"
-    column_list = [Person.id, Person.staff_code, Person.full_name, Person.person_type, Person.department, Person.status, Person.email, Person.start_working_date]
+    column_list = [Person.staff_code, Person.full_name, Person.person_type, Person.department, Person.status, Person.email, Person.start_working_date]
     column_details_list = [
-        Person.id,
         Person.staff_code,
         Person.full_name,
         Person.person_type,
@@ -1553,7 +1555,6 @@ class AssetAdmin(BaseAdminView, model=Asset):
     icon = "fa-solid fa-laptop"
     category = "Tài sản"
     column_list = [
-        Asset.id,
         Asset.device_code,
         Asset.serial,
         Asset.category,
@@ -1563,7 +1564,6 @@ class AssetAdmin(BaseAdminView, model=Asset):
         "actions_quick",
     ]
     column_details_list = [
-        Asset.id,
         Asset.device_code,
         Asset.serial,
         Asset.category,
@@ -1722,7 +1722,6 @@ class AssignmentAdmin(BaseAdminView, model=Assignment):
     category = "Tài sản"
     can_delete = False
     column_list = [
-        Assignment.id,
         Assignment.asset,
         Assignment.person,
         "status_badge",
@@ -1731,7 +1730,6 @@ class AssignmentAdmin(BaseAdminView, model=Assignment):
         "actions_quick",
     ]
     column_details_list = [
-        Assignment.id,
         Assignment.asset,
         Assignment.person,
         "status_badge",
@@ -1983,6 +1981,43 @@ def _valid_audit_action(raw: str | None) -> str | None:
     return raw if raw in {a.value for a in AuditAction} else None
 
 
+def _audit_record_label(table: str | None, record_id: int | None) -> str:
+    """Tên dễ đọc của bản ghi trong nhật ký (mã thiết bị, mã nhân viên, tên danh mục) thay cho số ID."""
+    if record_id is None:
+        return "-"
+    try:
+        with SessionLocal() as db:
+            if table == "assets":
+                label = db.scalar(select(Asset.device_code).where(Asset.id == record_id))
+            elif table in ("persons", "person_secrets"):
+                row = db.execute(select(Person.staff_code, Person.full_name).where(Person.id == record_id)).first()
+                label = f"{row[0]} · {row[1]}" if row else None
+            elif table == "assignments":
+                row = db.execute(
+                    select(Asset.device_code, Person.staff_code)
+                    .join(Assignment, Assignment.asset_id == Asset.id)
+                    .join(Person, Person.id == Assignment.person_id)
+                    .where(Assignment.id == record_id)
+                ).first()
+                label = f"{row[0]} → {row[1]}" if row else None
+            elif table == "departments":
+                label = db.scalar(select(Department.name_en).where(Department.id == record_id))
+            elif table == "asset_categories":
+                label = db.scalar(select(AssetCategory.name_en).where(AssetCategory.id == record_id))
+            elif table == "asset_tags":
+                label = db.scalar(select(AssetTag.name_en).where(AssetTag.id == record_id))
+            elif table == "users":
+                label = db.scalar(select(User.username).where(User.id == record_id))
+            elif table == "roles":
+                label = db.scalar(select(Role.code).where(Role.id == record_id))
+            else:
+                label = None
+    except Exception:  # nhật ký vẫn phải mở được dù tra tên lỗi
+        logger.exception("Không tra được tên bản ghi %s #%s", table, record_id)
+        label = None
+    return label or f"#{record_id}"
+
+
 class AuditLogAdmin(BaseAdminView, model=AuditLog):
     module = Module.AUDIT
     name = "Nhật ký kiểm toán"
@@ -1993,7 +2028,6 @@ class AuditLogAdmin(BaseAdminView, model=AuditLog):
     can_edit = False
     can_delete = False
     column_list = [
-        AuditLog.id,
         AuditLog.created_at,
         AuditLog.user,
         AuditLog.action,
@@ -2003,7 +2037,6 @@ class AuditLogAdmin(BaseAdminView, model=AuditLog):
         AuditLog.ip_address,
     ]
     column_details_list = [
-        AuditLog.id,
         AuditLog.created_at,
         AuditLog.user,
         AuditLog.action,
@@ -2019,7 +2052,7 @@ class AuditLogAdmin(BaseAdminView, model=AuditLog):
         "user": "Người thực hiện",
         "action": "Hành động",
         "table_name": "Bảng",
-        "record_id": "Mã bản ghi",
+        "record_id": "Bản ghi",
         "summary": "Chi tiết / Lý do",
         "ip_address": "Địa chỉ IP",
         "before_after": "Dữ liệu trước & sau",
@@ -2039,9 +2072,11 @@ class AuditLogAdmin(BaseAdminView, model=AuditLog):
         AuditLog.ip_address,
     ]
     column_formatters = {
+        "record_id": lambda m, a: _audit_record_label(m.table_name, m.record_id),
         "summary": lambda m, a: m.summary or "-",
     }
     column_formatters_detail = {
+        "record_id": lambda m, a: _audit_record_label(m.table_name, m.record_id),
         "summary": lambda m, a: m.summary or "-",
     }
 
