@@ -19,6 +19,7 @@ from app.enums import AuditAction
 from app.models import Asset, AssetTag, AssetTagLink
 
 MARK_TAG_PREFIX = "MARK-"
+SOFTWARE_TAG_PREFIX = "SW-"
 _COLOR = re.compile(r"#[0-9a-fA-F]{6}")
 _CODE_MAX = 30
 _NAME_MAX = 100
@@ -32,30 +33,42 @@ def _audit(db: Session, action: AuditAction, table: str, record_id: int, user_id
     )
 
 
-def _alive_marks(db: Session) -> list[AssetTag]:
+_KIND = {MARK_TAG_PREFIX: "kiểu đánh dấu", SOFTWARE_TAG_PREFIX: "phần mềm"}
+
+
+def _alive_tags(db: Session, prefix: str) -> list[AssetTag]:
     return db.scalars(
         select(AssetTag)
-        .where(AssetTag.code.startswith(MARK_TAG_PREFIX), AssetTag.is_deleted.is_(False))
+        .where(AssetTag.code.startswith(prefix), AssetTag.is_deleted.is_(False))
         .order_by(func.lower(AssetTag.name_en), AssetTag.id)
     ).all()
 
 
-def _alive_mark(db: Session, tag_id: int) -> AssetTag:
+def _alive_tag(db: Session, tag_id: int, prefix: str) -> AssetTag:
     tag = db.get(AssetTag, tag_id)
-    if tag is None or tag.is_deleted or not tag.code.startswith(MARK_TAG_PREFIX):
-        raise ValueError("Không có kiểu đánh dấu này.")
+    if tag is None or tag.is_deleted or not tag.code.startswith(prefix):
+        raise ValueError(f"Không có {_KIND[prefix]} này.")
     return tag
 
 
-def _clean_name(db: Session, name: Any, own_id: int | None = None) -> str:
+def _alive_marks(db: Session) -> list[AssetTag]:
+    return _alive_tags(db, MARK_TAG_PREFIX)
+
+
+def _alive_mark(db: Session, tag_id: int) -> AssetTag:
+    return _alive_tag(db, tag_id, MARK_TAG_PREFIX)
+
+
+def _clean_name(db: Session, name: Any, own_id: int | None = None, prefix: str = MARK_TAG_PREFIX) -> str:
+    kind = _KIND[prefix]
     clean = name.strip() if isinstance(name, str) else ""
     if not clean:
-        raise ValueError("Tên kiểu đánh dấu không được để trống.")
+        raise ValueError(f"Tên {kind} không được để trống.")
     if len(clean) > _NAME_MAX:
-        raise ValueError(f"Tên kiểu đánh dấu quá dài (tối đa {_NAME_MAX} ký tự).")
-    for tag in _alive_marks(db):
+        raise ValueError(f"Tên {kind} quá dài (tối đa {_NAME_MAX} ký tự).")
+    for tag in _alive_tags(db, prefix):
         if tag.id != own_id and tag.name_en.lower() == clean.lower():
-            raise ValueError(f"Đã có kiểu đánh dấu '{tag.name_en}'.")
+            raise ValueError(f"Đã có {kind} '{tag.name_en}'.")
     return clean
 
 
@@ -65,12 +78,12 @@ def _clean_color(color: Any) -> str:
     return color.strip().lower()
 
 
-def _new_code(db: Session, name: str) -> str:
+def _new_code(db: Session, name: str, prefix: str = MARK_TAG_PREFIX) -> str:
     """Mã sinh từ tên: bỏ dấu, in hoa; tên không có chữ Latin thì dùng số thứ tự."""
     ascii_name = unicodedata.normalize("NFKD", name.replace("đ", "d").replace("Đ", "D"))
     ascii_name = ascii_name.encode("ascii", "ignore").decode()
     slug = re.sub(r"[^A-Z0-9]+", "-", ascii_name.upper()).strip("-")
-    base = (MARK_TAG_PREFIX + slug)[:_CODE_MAX - 3].rstrip("-") if slug else MARK_TAG_PREFIX.rstrip("-")
+    base = (prefix + slug)[:_CODE_MAX - 3].rstrip("-") if slug else prefix.rstrip("-")
     taken = set(db.scalars(select(AssetTag.code).where(AssetTag.is_deleted.is_(False))).all())
     if slug and base not in taken:
         return base
@@ -176,3 +189,65 @@ def marks_by_asset(db: Session) -> dict[int, dict[str, Any]]:
         .where(AssetTag.code.startswith(MARK_TAG_PREFIX), AssetTag.is_deleted.is_(False))
     ).all()
     return {asset_id: {"id": tag.id, "name": tag.name_en, "color": tag.color} for asset_id, tag in rows}
+
+
+# --- Danh mục phần mềm (SW-) ----------------------------------------------------------
+
+
+def list_software(db: Session) -> list[dict[str, Any]]:
+    counts = dict(
+        db.execute(
+            select(AssetTagLink.tag_id, func.count())
+            .join(Asset, Asset.id == AssetTagLink.asset_id)
+            .where(Asset.is_deleted.is_(False))
+            .group_by(AssetTagLink.tag_id)
+        ).all()
+    )
+    return [
+        {"id": t.id, "code": t.code, "name": t.name_en, "count": counts.get(t.id, 0)}
+        for t in _alive_tags(db, SOFTWARE_TAG_PREFIX)
+    ]
+
+
+def create_software(db: Session, name: Any, user_id: int | None, ip_address: str | None) -> AssetTag:
+    clean_name = _clean_name(db, name, prefix=SOFTWARE_TAG_PREFIX)
+    tag = AssetTag(
+        code=_new_code(db, clean_name, SOFTWARE_TAG_PREFIX), name_en=clean_name,
+        created_by=user_id, updated_by=user_id,
+    )
+    db.add(tag)
+    db.flush()
+    _audit(db, AuditAction.CREATE, "asset_tags", tag.id, user_id, ip_address,
+           after={"code": tag.code, "name_en": tag.name_en})
+    return tag
+
+
+def update_software(db: Session, tag_id: int, name: Any, user_id: int | None, ip_address: str | None) -> AssetTag:
+    tag = _alive_tag(db, tag_id, SOFTWARE_TAG_PREFIX)
+    clean_name = _clean_name(db, name, own_id=tag.id, prefix=SOFTWARE_TAG_PREFIX)
+    if clean_name == tag.name_en:
+        return tag
+    before = tag.name_en
+    tag.name_en, tag.updated_by = clean_name, user_id
+    db.flush()
+    _audit(db, AuditAction.UPDATE, "asset_tags", tag.id, user_id, ip_address,
+           before={"name_en": before}, after={"name_en": clean_name})
+    return tag
+
+
+def delete_software(db: Session, tag_id: int, user_id: int | None, ip_address: str | None) -> int:
+    """Gỡ phần mềm khỏi mọi máy rồi xóa mềm. Trả số máy bị gỡ."""
+    tag = _alive_tag(db, tag_id, SOFTWARE_TAG_PREFIX)
+    links = db.scalars(select(AssetTagLink).where(AssetTagLink.tag_id == tag.id)).all()
+    for link in links:
+        _audit(db, AuditAction.UPDATE, "assets", link.asset_id, user_id, ip_address,
+               before={"software": tag.name_en}, after={"software": None})
+        db.delete(link)
+    tag.is_deleted = True
+    tag.deleted_at = dt.datetime.now(dt.timezone.utc)
+    tag.deleted_by = user_id
+    tag.delete_reason = "Xóa phần mềm khỏi danh mục trên Sổ tổng"
+    db.flush()
+    _audit(db, AuditAction.DELETE, "asset_tags", tag.id, user_id, ip_address,
+           before={"code": tag.code, "name_en": tag.name_en})
+    return len(links)

@@ -73,6 +73,7 @@ async def so_tong_page(request: Request, db: Session = Depends(get_db)) -> Respo
         },
         "departments": ledger_service.list_department_names(db),
         "software_tags": ledger_service.list_software_tags(db),
+        "software_catalog": mark_service.list_software(db),
         "marks": mark_service.list_marks(db),
     }
     return await admin.templates.TemplateResponse(request, "sqladmin/so_tong.html", context)
@@ -202,3 +203,39 @@ async def so_tong_set_mark(request: Request, db: Session = Depends(get_db)) -> J
         "marks": mark_service.list_marks(db),
         "rows": _rows_touching(db, user, f"asset-{asset_id}"),
     })
+
+
+def _software_response(db: Session, run: Any) -> JSONResponse:
+    try:
+        run()
+        db.commit()
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc))
+    return JSONResponse(content={"success": True, "software": mark_service.list_software(db)})
+
+
+@router.post("/api/so-tong/software-catalog")
+async def so_tong_create_software(request: Request, db: Session = Depends(get_db)) -> JSONResponse:
+    user = _require_mark_change(request, db)
+    body = await read_json_object(request)
+    return _software_response(db, lambda: mark_service.create_software(
+        db, body.get("name"), user_id=user.id, ip_address=_client_ip(request)
+    ))
+
+
+@router.patch("/api/so-tong/software-catalog/{tag_id}")
+async def so_tong_update_software(tag_id: int, request: Request, db: Session = Depends(get_db)) -> JSONResponse:
+    user = _require_mark_change(request, db)
+    body = await read_json_object(request)
+    return _software_response(db, lambda: mark_service.update_software(
+        db, tag_id, body.get("name"), user_id=user.id, ip_address=_client_ip(request)
+    ))
+
+
+@router.delete("/api/so-tong/software-catalog/{tag_id}")
+def so_tong_delete_software(tag_id: int, request: Request, db: Session = Depends(get_db)) -> JSONResponse:
+    user = _require_mark_change(request, db)
+    return _software_response(db, lambda: mark_service.delete_software(
+        db, tag_id, user_id=user.id, ip_address=_client_ip(request)
+    ))

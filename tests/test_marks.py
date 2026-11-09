@@ -210,3 +210,77 @@ def test_list_editors_render_labels_as_text_not_html(admin_client, db, seed):  #
     """Tabulator đặt nhãn của editor 'list' bằng innerHTML; tên màu / phòng ban phải đi qua itemFormatter."""
     html = admin_client.get("/admin/so-tong").text
     assert html.count("itemFormatter: plainItem") == 2
+
+
+# --- Danh mục phần mềm (SW-) quản lý trên Sổ tổng ---------------------------------
+
+
+def test_create_software_generates_sw_code(db, seed):
+    tag = mark_service.create_software(db, "Office LTSC 2024", user_id=seed["user"].id, ip_address=None)
+    assert tag.code.startswith("SW-") and tag.color is None
+    assert [s["name"] for s in mark_service.list_software(db)] == ["Office LTSC 2024"]
+
+
+def test_software_name_must_be_unique(db, seed):
+    mark_service.create_software(db, "Visio", user_id=None, ip_address=None)
+    with pytest.raises(ValueError):
+        mark_service.create_software(db, "visio", user_id=None, ip_address=None)
+
+
+def test_delete_software_unlinks_it_but_keeps_the_colour_mark(db, seed):
+    from app.services.ledger_service import set_asset_software
+
+    sw = mark_service.create_software(db, "Visio", user_id=None, ip_address=None)
+    mark = _mark(db, seed=seed)
+    set_asset_software(db, seed["asset"].id, [sw.code])
+    mark_service.set_asset_mark(db, seed["asset"].id, mark.id, user_id=None, ip_address=None)
+    assert mark_service.delete_software(db, sw.id, user_id=None, ip_address=None) == 1
+    assert sw.is_deleted
+    assert _links(db, seed["asset"].id) == [mark.id]
+
+
+def test_software_api_create_rename_delete(admin_client, db, seed):  # noqa: F811
+    res = admin_client.post("/admin/api/so-tong/software-catalog", json={"name": "PDF"})
+    assert res.status_code == 200
+    item = next(s for s in res.json()["software"] if s["name"] == "PDF")
+    res = admin_client.patch(f"/admin/api/so-tong/software-catalog/{item['id']}", json={"name": "PDF Pro"})
+    assert res.status_code == 200 and any(s["name"] == "PDF Pro" for s in res.json()["software"])
+    res = admin_client.delete(f"/admin/api/so-tong/software-catalog/{item['id']}")
+    assert res.status_code == 200 and res.json()["software"] == []
+
+
+def test_software_api_refuses_duplicate(admin_client, db, seed):  # noqa: F811
+    mark_service.create_software(db, "Visio", user_id=None, ip_address=None)
+    assert admin_client.post("/admin/api/so-tong/software-catalog", json={"name": "VISIO"}).status_code == 400
+
+
+def test_software_api_cannot_touch_a_colour_mark(admin_client, db, seed):  # noqa: F811
+    mark = _mark(db, seed=seed)
+    assert admin_client.delete(f"/admin/api/so-tong/software-catalog/{mark.id}").status_code == 400
+
+
+@pytest.mark.parametrize("call", ["post", "patch", "delete"])
+def test_view_only_user_cannot_change_software(client, db, seed, call):  # noqa: F811
+    sw = mark_service.create_software(db, "Visio", user_id=None, ip_address=None)
+    _login(client, _viewer(db, f"sw_viewer_{call}"), RoleCode.EXECUTIVE.value)
+    url = f"/admin/api/so-tong/software-catalog/{sw.id}"
+    res = {
+        "post": lambda: client.post("/admin/api/so-tong/software-catalog", json={"name": "X"}),
+        "patch": lambda: client.patch(url, json={"name": "X"}),
+        "delete": lambda: client.delete(url),
+    }[call]()
+    assert res.status_code == 403
+    assert not sw.is_deleted and sw.name_en == "Visio"
+
+
+def test_set_asset_software_refuses_a_colour_mark(db, seed):
+    from app.services.ledger_service import set_asset_software
+
+    mark = _mark(db, seed=seed)
+    with pytest.raises(ValueError):
+        set_asset_software(db, seed["asset"].id, [mark.code])
+
+
+def test_page_has_software_section_in_manager(admin_client, db, seed):  # noqa: F811
+    html = admin_client.get("/admin/so-tong").text
+    assert 'id="stSoftwareList"' in html and 'id="stSoftwareAdd"' in html
