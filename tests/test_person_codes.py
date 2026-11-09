@@ -104,3 +104,18 @@ def test_person_list_shows_type_label(admin_client, db, seed):  # noqa: F811
     _person(db, "VND-001")
     html = admin_client.get("/admin/person/list").text
     assert "Vendor" in html and "Nhân viên chính thức" in html
+
+
+def test_person_create_form_assigns_vendor_code_when_code_left_blank(admin_client, db, seed):  # noqa: F811
+    res = admin_client.post("/admin/person/create", data={
+        "full_name": "Vendor Qua Form", "person_type": "VENDOR", "staff_code": "", "status": "ACTIVE",
+    }, follow_redirects=False)
+    assert res.status_code in (302, 303), res.text[:300]
+    person = db.query(Person).filter_by(full_name="Vendor Qua Form").one()
+    assert person.staff_code == "VND-001"
+
+
+def test_person_form_shows_readable_type_choices(admin_client, db, seed):  # noqa: F811
+    html = admin_client.get("/admin/person/create").text
+    assert "Công tác Nhật" in html
+    assert ">BUSINESS_TRIP<" not in html

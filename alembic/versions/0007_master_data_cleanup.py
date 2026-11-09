@@ -44,7 +44,8 @@ person_type = postgresql.ENUM("EMPLOYEE", "VENDOR", "BUSINESS_TRIP", name="perso
 
 def _assign_codes(bind) -> None:
     rows = bind.execute(sa.text(
-        "SELECT id, full_name, lower(coalesce(email, '')) FROM persons WHERE staff_code IS NULL ORDER BY full_name, id"
+        "SELECT id, full_name, lower(coalesce(email, '')) FROM persons "
+        "WHERE staff_code IS NULL ORDER BY is_deleted, full_name, id"
     )).all()
     used = {
         kind: [
@@ -69,6 +70,10 @@ def _assign_codes(bind) -> None:
 
 def upgrade() -> None:
     bind = op.get_bind()
+    # Ô chỉ có khoảng trắng coi như trống, để không lọt qua các bước kiểm tra phía dưới.
+    bind.execute(sa.text("UPDATE persons SET staff_code = NULL WHERE btrim(staff_code) = ''"))
+    bind.execute(sa.text("UPDATE assets SET pc_name = NULL WHERE btrim(pc_name) = ''"))
+    bind.execute(sa.text("UPDATE assets SET asset_code = NULL WHERE btrim(asset_code) = ''"))
     bad = bind.execute(sa.text(
         "SELECT count(*) FROM assets WHERE asset_code IS NOT NULL OR (pc_name IS NULL AND NOT is_deleted)"
     )).scalar()

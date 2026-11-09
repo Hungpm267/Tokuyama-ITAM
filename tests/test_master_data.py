@@ -94,3 +94,9 @@ def test_vault_viewer_without_change_right_gets_no_edit_buttons(client, db, seed
     html = client.get("/admin/person-secret/list").text
     assert 'data-action="edit"' not in html
     assert 'data-action="reveal"' in html
+
+
+def test_global_search_has_no_ga_wording(admin_client, db, seed):  # noqa: F811
+    html = admin_client.get("/admin/global-search?q=TKY").text
+    assert "Mã GA" not in html and "Mã Vendor" not in html
+    assert html.count("TKY-PC0001") == 1

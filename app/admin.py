@@ -51,7 +51,8 @@ from app.core.security import (
     verify_password,
     verify_session_token,
 )
-from wtforms import Form, PasswordField, SelectField
+from wtforms import Form, PasswordField, SelectField, StringField
+from wtforms.validators import Length, Optional
 from wtforms.widgets import PasswordInput
 from app.db import SessionLocal
 from app.enums import (
@@ -614,8 +615,6 @@ def humanize_error_str(msg: str, lang: str = "vi") -> str:
         return _tr("Ngày thu hồi bản quyền không được trước ngày cấp phát.", "Removal date cannot be before assignment date.", "ライセンス回収日を割当日より前にすることはできません。")
     if "expected_after_borrowed" in m:
         return _tr("Ngày dự kiến trả không được trước ngày mượn.", "Expected return date cannot be before borrow date.", "返却予定日を貸出日より前にすることはできません。")
-    if "has_some_identifier" in m:
-        return _tr("Tài sản phải có ít nhất một mã định danh (Mã GA, PC Name hoặc Số Serial).", "Asset must have at least one identifier (GA code, PC Name or Serial).", "資産には少なくとも1つの識別子（GAコード、PC名、またはシリアル）が必要です。")
     if "staff_code_format" in m:
         return _tr("Mã nhân viên không đúng định dạng chuẩn TVC (Ví dụ: TVC00001).", "Staff code does not match standard TVC format (e.g. TVC00001).", "社員番号の形式が正しくありません（例：TVC00001）。")
     if "smallint out of range" in m or "numericvalueoutofrange" in m.lower():
@@ -1448,10 +1447,30 @@ class PersonAdmin(BaseAdminView, model=Person):
     }
     form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["secret", "assignments"]
 
+    async def scaffold_form(self, rules: list[str] | None = None) -> type[Form]:
+        base_form = await super().scaffold_form(rules)
+        lang = get_admin_lang()
+
+        class PersonForm(base_form):
+            # Không bắt buộc trên form: vendor / công tác Nhật để trống thì app tự cấp mã.
+            staff_code = StringField(
+                translate("Mã nhân viên", lang),
+                validators=[Optional(), Length(max=50)],
+                description=translate("Để trống với Vendor / Công tác Nhật để app tự cấp mã.", lang),
+                render_kw={"class": "form-control"},
+            )
+            person_type = SelectField(
+                translate("Loại nhân sự", lang),
+                choices=[(t.value, translate(label, lang)) for t, label in _PERSON_TYPE_LABEL.items()],
+                default=PersonType.EMPLOYEE.value,
+                render_kw={"class": "form-control form-select"},
+            )
+
+        return PersonForm
+
     async def on_model_change(
         self, data: dict, model: Any, is_created: bool, request: Request
     ) -> None:
-        await super().on_model_change(data, model, is_created, request)
         if is_created or "staff_code" in data or "person_type" in data:
             # Mã phải khớp loại nhân sự; vendor / công tác Nhật để trống mã thì app tự cấp.
             person_type = (
@@ -1460,6 +1479,7 @@ class PersonAdmin(BaseAdminView, model=Person):
             code = data["staff_code"] if "staff_code" in data else getattr(model, "staff_code", None)
             with _get_admin_db(request) as db:
                 data["staff_code"] = person_code_service.resolve_code(db, person_type, code)
+        await super().on_model_change(data, model, is_created, request)
         new_status = _enum_of(PersonStatus, data.get("status")) if "status" in data else None
         person_id = None if is_created else getattr(model, "id", None)
         # Chỉ chặn lúc CHUYỂN sang "đã nghỉ"; người đã nghỉ từ trước (dữ liệu cũ) vẫn sửa hồ sơ được.
