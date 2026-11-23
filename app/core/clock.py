@@ -23,3 +23,9 @@ def today_local(now: dt.datetime | None = None) -> dt.date:
     """Ngày hiện tại theo giờ Việt Nam (UTC+7)."""
     moment = now if now is not None else _now_utc()
     return moment.astimezone(BUSINESS_TZ).date()
+
+
+def export_stamp(now: dt.datetime | None = None) -> str:
+    """Dấu thời gian cho tên file xuất, vd 2026-11-24_0930 (giờ Việt Nam; xếp đúng thứ tự theo tên)."""
+    moment = now if now is not None else _now_utc()
+    return moment.astimezone(BUSINESS_TZ).strftime("%Y-%m-%d_%H%M")

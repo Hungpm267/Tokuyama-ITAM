@@ -824,7 +824,10 @@
     });
   });
   document.getElementById('stExport').addEventListener('click', function () {
-    table.download('csv', 'so-tong.csv', { bom: true }, 'active');
+    // TVC_IT-Ledger_2026-11-24_0930.csv, giờ Việt Nam dù máy người dùng đặt múi giờ nào.
+    const vn = new Date(Date.now() + 7 * 3600 * 1000).toISOString();
+    const stamp = vn.slice(0, 10) + '_' + vn.slice(11, 13) + vn.slice(14, 16);
+    table.download('csv', 'TVC_IT-Ledger_' + stamp + '.csv', { bom: true }, 'active');
   });
 })();
 </script>
