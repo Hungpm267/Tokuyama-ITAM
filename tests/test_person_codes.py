@@ -6,6 +6,7 @@ import asyncio
 import datetime as dt
 
 import pytest
+from sqlalchemy import select
 
 from app.admin import PersonAdmin
 from app.enums import PersonStatus, PersonType
@@ -119,3 +120,19 @@ def test_person_form_shows_readable_type_choices(admin_client, db, seed):  # noq
     html = admin_client.get("/admin/person/create").text
     assert "Công tác Nhật" in html
     assert ">BUSINESS_TRIP<" not in html
+
+
+def test_form_sua_hien_dung_loai_nhan_su_da_luu(db, seed):
+    """Mở form sửa của người công tác Nhật phải chọn sẵn 'Công tác Nhật', không phải nhân viên chính thức."""
+    import asyncio
+
+    from app.admin import PersonAdmin
+    from app.enums import PersonType
+    from app.models import Person
+
+    person = db.scalars(select(Person)).first()
+    person.person_type = PersonType.BUSINESS_TRIP
+    form_cls = asyncio.run(PersonAdmin().scaffold_form())
+    form = form_cls(obj=person)
+    selected = [value for value, _label, checked, *_ in form.person_type.iter_choices() if checked]
+    assert selected == [PersonType.BUSINESS_TRIP.value]
