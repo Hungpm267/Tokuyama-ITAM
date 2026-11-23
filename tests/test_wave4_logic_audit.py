@@ -479,35 +479,41 @@ def test_idle_session_still_expires_after_30_minutes(client, db, seed, monkeypat
 # ---------------------------------------------------------------------------
 
 
-def test_http_assignment_form_cannot_put_a_disposed_asset_back_in_use(admin_client, db, seed):
+def test_assign_endpoint_cannot_put_a_disposed_asset_back_in_use(admin_client, db, seed):
+    """Bàn giao chỉ còn đi qua hộp bàn giao: luật "máy đã thanh lý không bàn giao được" phải giữ ở đó."""
     asset = seed["asset"]
     asset.status = AssetStatus.DISPOSED
     db.flush()
-    res = admin_client.post("/admin/assignment/create", data={
-        "asset": str(asset.id),
-        "person": str(seed["person"].id),
-        "borrowed_at": PAST.isoformat(),
-    })
+    res = admin_client.post(f"/admin/assets/{asset.id}/assign", json={"person_id": seed["person"].id})
+    # Lỗi 400 hoàn tác cả savepoint của test (mất dữ liệu mẫu), nên chỉ kiểm phản hồi.
     assert res.status_code == 400
-    assert db.scalar(select(Assignment).where(Assignment.asset_id == asset.id)) is None
-    db.refresh(asset)
-    assert asset.status == AssetStatus.DISPOSED
+    assert "DISPOSED" in res.json()["detail"]
 
 
-def test_http_assignment_form_happy_path_still_works(admin_client, db, seed):
+def test_assign_endpoint_happy_path_writes_audit(admin_client, db, seed):
     asset = seed["asset"]
-    res = admin_client.post("/admin/assignment/create", data={
-        "asset": str(asset.id),
-        "person": str(seed["person"].id),
-        "borrowed_at": PAST.isoformat(),
-    }, follow_redirects=True)
+    res = admin_client.post(f"/admin/assets/{asset.id}/assign", json={"person_id": seed["person"].id})
     assert res.status_code == 200
     db.refresh(asset)
     assert asset.status == AssetStatus.IN_USE
-    audit = db.scalar(
-        select(AuditLog).where(AuditLog.table_name == "assets", AuditLog.record_id == asset.id)
-    )
-    assert audit is not None
+    assert db.scalar(select(AuditLog).where(AuditLog.table_name == "assignments")) is not None
+
+
+def test_assignment_history_is_read_only(admin_client, db, seed):
+    """Lịch sử bàn giao chỉ để xem: không tạo / sửa lượt bàn giao bằng form (một lối duy nhất)."""
+    asset = seed["asset"]
+    asgn = Assignment(asset_id=asset.id, person_id=seed["person"].id, borrowed_at=PAST, returned_at=PAST)
+    db.add(asgn)
+    db.flush()
+    assert admin_client.get("/admin/assignment/create").status_code == 403
+    assert admin_client.post("/admin/assignment/create", data={
+        "asset": str(asset.id), "person": str(seed["person"].id), "borrowed_at": PAST.isoformat(),
+    }).status_code == 403
+    assert admin_client.get(f"/admin/assignment/edit/{asgn.id}").status_code == 403
+    assert admin_client.post(f"/admin/assignment/edit/{asgn.id}", data={"note": "x"}).status_code == 403
+    db.refresh(asgn)
+    assert asgn.note is None
+    assert admin_client.get("/admin/assignment/list").status_code == 200
 
 
 def test_http_asset_form_cannot_mark_a_loaned_asset_in_stock(admin_client, db, seed):
@@ -573,42 +579,17 @@ def test_editing_a_row_keeps_its_soft_deleted_category(admin_client, db, seed):
     assert asset.category_id == old_cat.id != first_cat.id
 
 
-def test_editing_closed_history_keeps_its_soft_deleted_person(admin_client, db, seed):
-    asset = seed["asset"]
-    leaver = Person(staff_code="TVC07777", full_name="Nguoi Cu Da Xoa", status=PersonStatus.ACTIVE)
-    db.add(leaver)
-    db.flush()
-    asgn = Assignment(asset_id=asset.id, person_id=leaver.id, borrowed_at=PAST, returned_at=PAST)
-    db.add(asgn)
-    db.flush()
-    _soft_delete(leaver)
-    db.flush()
-
-    page = admin_client.get(f"/admin/assignment/edit/{asgn.id}")
-    assert page.status_code == 200
-    assert "Nguoi Cu Da Xoa" in page.text
-
-    res = admin_client.post(f"/admin/assignment/edit/{asgn.id}", data={
-        "asset": str(asset.id),
-        "person": str(leaver.id),
-        "borrowed_at": PAST.isoformat(),
-        "returned_at": PAST.isoformat(),
-        "note": "sửa ghi chú",
-    }, follow_redirects=True)
-    assert res.status_code == 200
-    db.refresh(asgn)
-    assert asgn.person_id == leaver.id
-    assert asgn.note == "sửa ghi chú"
-
-
-def test_create_form_still_hides_deleted_rows_referenced_by_other_records(admin_client, db, seed):
+def test_person_search_for_hand_over_hides_deleted_people(admin_client, db, seed):
+    """Ô chọn người trong hộp bàn giao không được liệt kê người đã xóa mềm."""
     leaver = Person(staff_code="TVC07778", full_name="Khong Duoc Hien", status=PersonStatus.ACTIVE)
     db.add(leaver)
     db.flush()
-    db.add(Assignment(asset_id=seed["asset"].id, person_id=leaver.id, borrowed_at=PAST, returned_at=PAST))
     _soft_delete(leaver)
     db.flush()
-    assert "Khong Duoc Hien" not in admin_client.get("/admin/assignment/create").text
+    res = admin_client.get("/admin/api/persons/search")
+    assert res.status_code == 200
+    assert "Khong Duoc Hien" not in res.text
+    assert seed["person"].full_name in res.text
 
 
 def test_whitespace_delete_reason_does_not_crash(db, seed):
@@ -627,8 +608,9 @@ def test_form_dropdowns_hide_soft_deleted_rows(admin_client, db, seed):
     db.add_all([dead_asset, live_asset, dead_person])
     db.flush()
 
-    res = admin_client.get("/admin/assignment/create")
+    # Lịch sử bàn giao không còn form tạo; ô chọn thiết bị của form khác vẫn phải ẩn bản ghi đã xóa.
+    res = admin_client.get("/admin/asset/list")
     assert res.status_code == 200
     assert "LIVE-ASSET-SN" in res.text
     assert "DEAD-ASSET-SN" not in res.text
-    assert "Nguoi Da Xoa" not in res.text
+    assert "Nguoi Da Xoa" not in admin_client.get("/admin/api/persons/search").text

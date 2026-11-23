@@ -152,6 +152,12 @@ Thiết kế: `docs/superpowers/specs/2026-11-09-don-master-data-va-kho-mat-khau
 - **Phòng ban ẩn khỏi màn hình, giữ trong database**: chỉ 4 / 60 người có phòng ban. Bỏ khỏi Sổ tổng, form và danh sách nhân sự, Kho mật khẩu, tìm kiếm chung, lịch sử bàn giao, hộp bàn giao; menu "Phòng ban" ẩn (`DepartmentAdmin.is_visible`). `ledger_service` vẫn sửa được phòng ban nếu bật lại cột.
 - **Tốc độ**: quyền theo vai trò cache 60 giây (`app/core/permissions.py`, xóa khi ghi `role_permissions`); trang nhật ký tra tên cả trang một lần; Sổ tổng nhúng sẵn dữ liệu bảng vào trang (`<script id="ledgerRows">`), không gọi `/api/so-tong` lúc mở.
 
+### 3j. Một lối bàn giao, menu phẳng (24/11/2026)
+
+- **Lịch sử bàn giao chỉ để xem** (`AssignmentAdmin.can_create/can_edit = False`): bàn giao / thu hồi chỉ qua hộp bàn giao (`/admin/assets/{id}/assign|return` -> `assignment_service`), ngày bàn giao sửa trên Sổ tổng. Hook `on_model_change` / `after_model_change` của `AssignmentAdmin` không còn đường HTTP nào gọi tới; dọn cùng đợt gom luật form / Sổ tổng.
+- **Menu phẳng**: Sổ tổng, Nhân sự, Thiết bị, Lịch sử bàn giao, Kho mật khẩu, Nhật ký thay đổi, nhóm "Cài đặt" (tài khoản, vai trò, loại thiết bị), rồi Tìm kiếm, Thùng rác. Thứ tự menu = thứ tự `admin.add_view` trong `setup_admin`.
+- **Còn lại từ bản rà soát kiến trúc** (chờ người dùng chọn): gom luật sửa nhân sự / máy giữa form và `ledger_service` về một chỗ; gọn ba ô tìm kiếm; nút "Xuất Excel" đang xuất CSV; ẩn trang Vai trò.
+
 ## 4. CẤU TRÚC CODEBASE & NGUỒN SỰ THẬT
 
 ```

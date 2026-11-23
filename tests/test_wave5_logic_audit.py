@@ -280,14 +280,19 @@ def test_custom_roles_cannot_be_created_because_they_cannot_log_in():
 
 
 def test_validation_messages_follow_the_language_switcher(admin_client, db, seed):
+    # Form lịch sử bàn giao đã thành chỉ xem; kiểm cùng luật dịch thông báo trên form thiết bị.
+    from app.services.assignment_service import assign_asset
+
     admin_client.cookies.set("itam_lang", "en")
-    seed["asset"].status = AssetStatus.DISPOSED
+    asset = seed["asset"]
+    assign_asset(db, asset.id, seed["person"].id, PAST)
     db.flush()
-    res = admin_client.post("/admin/assignment/create", data={
-        "asset": str(seed["asset"].id), "person": str(seed["person"].id), "borrowed_at": PAST.isoformat(),
+    res = admin_client.post(f"/admin/asset/edit/{asset.id}", data={
+        "device_code": asset.device_code, "serial": asset.serial or "",
+        "category": str(asset.category_id), "status": "IN_STOCK",
     })
     assert res.status_code == 400
-    assert "cannot be assigned" in res.text
+    assert "currently on loan" in res.text
 
 
 # ---------------------------------------------------------------------------
