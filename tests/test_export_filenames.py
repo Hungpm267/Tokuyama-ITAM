@@ -24,3 +24,14 @@ def test_so_tong_xuat_ten_ledger(admin_client, db, seed):  # noqa: F811
     html = admin_client.get("/admin/so-tong").text
     assert "'TVC_IT-Ledger_'" in html
     assert "'so-tong.csv'" not in html
+
+
+def test_so_tong_xuat_xlsx_that(admin_client, db, seed):  # noqa: F811
+    html = admin_client.get("/admin/so-tong").text
+    assert "table.download('xlsx'" in html
+    assert "table.download('csv'" not in html
+    assert "'.xlsx'" in html
+    # Thư viện SheetJS chỉ nạp khi bấm xuất, không làm trang chậm đi.
+    assert '<script src="/static/vendor/sheetjs/xlsx.full.min.js"' not in html
+    assert "/static/vendor/sheetjs/xlsx.full.min.js" in html
+    assert admin_client.get("/static/vendor/sheetjs/xlsx.full.min.js").status_code == 200
