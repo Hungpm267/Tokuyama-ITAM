@@ -71,11 +71,10 @@ async def so_tong_page(request: Request, db: Session = Depends(get_db)) -> Respo
             "assignments": has_permission(db, user, Module.ASSIGNMENTS, PermissionAction.CHANGE),
             "secrets": has_permission(db, user, Module.SECRETS, PermissionAction.VIEW),
         },
-        "departments": ledger_service.list_department_names(db),
-        "software_tags": ledger_service.list_software_tags(db),
-        "software_catalog": mark_service.list_software(db),
-        "marks": mark_service.list_marks(db),
+        # Dữ liệu bảng đi kèm trang: không phải gọi thêm /api/so-tong sau khi trang tải xong.
+        "rows": _rows(db, user),
     }
+    context["marks"], context["software_catalog"] = mark_service.list_marks_and_software(db)
     return await admin.templates.TemplateResponse(request, "sqladmin/so_tong.html", context)
 
 

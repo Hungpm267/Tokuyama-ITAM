@@ -155,15 +155,17 @@
 {% include 'sqladmin/asset_actions_modal.html' %}
 {% endif %}
 
+<script id="ledgerRows" type="application/json">{{ rows | tojson }}</script>
 <script src="/static/vendor/tabulator/tabulator.min.js"></script>
 <script>
 (function () {
   const PERMS = {{ perms | tojson }};
   const CAN_LOAN = {{ can_loan(request) | tojson }};
+  const LEDGER_URL = '/admin/api/so-tong';
+  const SOFTWARE_CATALOG_INITIAL = {{ software_catalog | tojson }};
   let MARKS = {{ marks | tojson }};
-  const DEPARTMENTS = {{ departments | tojson }};
-  let SOFTWARE = {{ software_tags | tojson }};
-  let SOFTWARE_CATALOG = {{ software_catalog | tojson }};
+  let SOFTWARE = SOFTWARE_CATALOG_INITIAL.map(function (s) { return { code: s.code, name: s.name }; });
+  let SOFTWARE_CATALOG = SOFTWARE_CATALOG_INITIAL;
   const TEXT = {
     saveError: {{ L('Không lưu được.', 'Could not save.', '保存できませんでした。') | trim | tojson }},
     assign: {{ L('Bàn giao', 'Assign', '貸出') | trim | tojson }},
@@ -299,8 +301,6 @@
       formatter: statusLabel(TEXT.personType), accessorDownload: labelFor(TEXT.personType) },
     { title: 'userId', field: 'user_id', width: 100, ...text, ...editable },
     { title: 'Email', field: 'email', width: 250, ...text, ...editable },
-    { title: {{ L('Phòng ban', 'Department', '部署') | trim | tojson }}, field: 'department', width: 160, ...text, editor: 'list', editable: canEdit,
-      editorParams: { values: [''].concat(DEPARTMENTS), autocomplete: true, listOnEmpty: true, itemFormatter: plainItem } },
     { title: {{ L('Tình trạng NV', 'Staff status', '社員状態') | trim | tojson }}, field: 'person_status', width: 140, headerFilter: 'list',
       headerFilterParams: { values: Object.assign({ '': '' }, TEXT.personStatus), clearable: true },
       formatter: statusLabel(TEXT.personStatus), accessorDownload: labelFor(TEXT.personStatus) },
@@ -341,7 +341,8 @@
   function rowFilter(row) { return matchesQuick(row) && matchesSearch(row); }
 
   const table = new Tabulator('#soTongGrid', {
-    ajaxURL: '/admin/api/so-tong',
+    // Dữ liệu đi kèm trang; tải lại thì gọi LEDGER_URL.
+    data: JSON.parse(document.getElementById('ledgerRows').textContent),
     ajaxConfig: { credentials: 'same-origin' },
     layout: 'fitData',
     height: 'calc(100vh - 170px)',
@@ -528,7 +529,7 @@
     MARKS = result.marks;
     renderLegend();
     renderManager();
-    await table.replaceData();
+    await table.replaceData(LEDGER_URL);
   }
 
   function renderManager() {
@@ -599,7 +600,7 @@
     SOFTWARE_CATALOG = result.software;
     SOFTWARE = result.software.map(function (s) { return { code: s.code, name: s.name }; });
     renderSoftwareManager();
-    await table.replaceData();
+    await table.replaceData(LEDGER_URL);
     if (panelRowId) openPanel(panelRowId);
   }
 

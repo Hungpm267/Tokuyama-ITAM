@@ -25,7 +25,7 @@
 
   <div class="d-flex flex-wrap align-items-center gap-2 mt-3 pt-2 border-top text-muted small">
     <span class="fw-bold text-dark"><i class="fa-regular fa-lightbulb me-1"></i>{{ '検索キーワードのヒント:' if current_lang == 'ja' else ('Suggestions:' if current_lang == 'en' else 'Gợi ý từ khóa:') }}</span>
-    <a href="/admin/global-search?q=TKY-" class="badge bg-secondary text-decoration-none">TKY-</a>
+    <a href="/admin/global-search?q=TVC-" class="badge bg-secondary text-decoration-none">TVC-</a>
     <a href="/admin/global-search?q=Dell" class="badge bg-secondary text-decoration-none">Dell</a>
     <a href="/admin/global-search?q=KHCM" class="badge bg-secondary text-decoration-none">KHCM-</a>
     <a href="/admin/global-search?q=Office" class="badge bg-secondary text-decoration-none">Office</a>
@@ -148,7 +148,6 @@
               <th>{{ t('Họ và tên', current_lang) }}</th>
               <th style="width: 130px;">User ID</th>
               <th>Email</th>
-              <th style="width: 160px;">{{ t('Phòng ban', current_lang) }}</th>
               <th style="width: 120px;">{{ t('Trạng thái', current_lang) }}</th>
               <th style="width: 80px;" class="text-end">{{ t('Thao tác', current_lang) }}</th>
             </tr>
@@ -164,11 +163,6 @@
               </td>
               <td class="font-monospace text-secondary" style="font-size: 12px;">{{ item.user_id or '—' }}</td>
               <td class="text-muted" style="font-size: 12.5px;">{{ item.email or '—' }}</td>
-              <td>
-                {% if item.department %}
-                <span class="badge bg-secondary">{{ item.department.name_ja if (current_lang == 'ja' and item.department.name_ja) else item.department.name_en }}</span>
-                {% else %}—{% endif %}
-              </td>
               <td>
                 {% set pst = item.status.value if item.status and item.status.value is defined else item.status %}
                 {% if pst == 'ACTIVE' %}

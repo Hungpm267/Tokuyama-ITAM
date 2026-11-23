@@ -465,7 +465,6 @@
               <th style="font-size: 12px; font-weight: 700; color: #475569;">#</th>
               <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ 'ステータス' if current_lang == 'ja' else ('STATUS' if current_lang == 'en' else 'TRẠNG THÁI') }}</th>
               <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ '使用者' if current_lang == 'ja' else ('STAFF MEMBER' if current_lang == 'en' else 'NHÂN VIÊN SỬ DỤNG') }}</th>
-              <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ '部署' if current_lang == 'ja' else ('DEPARTMENT' if current_lang == 'en' else 'PHÒNG BAN') }}</th>
               <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ '貸出日' if current_lang == 'ja' else ('BORROW DATE' if current_lang == 'en' else 'NGÀY NHẬN MÁY') }}</th>
               <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ '回収日' if current_lang == 'ja' else ('RETURN DATE' if current_lang == 'en' else 'NGÀY THU HỒI') }}</th>
               <th style="font-size: 12px; font-weight: 700; color: #475569;">{{ '備考' if current_lang == 'ja' else ('NOTES' if current_lang == 'en' else 'GHI CHÚ') }}</th>
@@ -495,9 +494,6 @@
                 {% else %}
                 <span class="text-muted">-</span>
                 {% endif %}
-              </td>
-              <td class="text-secondary small">
-                {{ asgn.person.department.name_en if asgn.person and asgn.person.department else '-' }}
               </td>
               <td class="fw-medium text-dark">
                 {{ asgn.borrowed_at.strftime('%d/%m/%Y') if asgn.borrowed_at else '-' }}

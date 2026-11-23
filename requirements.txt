@@ -6,12 +6,14 @@ alembic==1.14.*
 psycopg[binary]==3.2.*
 pydantic==2.*
 pydantic-settings==2.*
+python-dotenv==1.*         # đọc file .env (app/config.py)
 
 # Giao diện
 jinja2==3.1.*
 python-multipart==0.0.*
 itsdangerous==2.2.*          # session cookie đã ký
 sqladmin==0.20.*             # màn hình CRUD, thay cho Django admin
+wtforms==3.1.*               # form của sqladmin; app/admin.py import trực tiếp
 
 # Bảo mật
 argon2-cffi==23.*            # băm mật khẩu đăng nhập

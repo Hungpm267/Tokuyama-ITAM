@@ -11,7 +11,7 @@ import re
 import unicodedata
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.audit import record_audit
@@ -192,6 +192,35 @@ def marks_by_asset(db: Session) -> dict[int, dict[str, Any]]:
 
 
 # --- Danh mục phần mềm (SW-) ----------------------------------------------------------
+
+
+def list_marks_and_software(db: Session) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Màu đánh dấu và danh mục phần mềm cho trang Sổ tổng, trong hai câu truy vấn thay vì bốn."""
+    counts = dict(
+        db.execute(
+            select(AssetTagLink.tag_id, func.count())
+            .join(Asset, Asset.id == AssetTagLink.asset_id)
+            .where(Asset.is_deleted.is_(False))
+            .group_by(AssetTagLink.tag_id)
+        ).all()
+    )
+    tags = db.scalars(
+        select(AssetTag)
+        .where(
+            or_(AssetTag.code.startswith(MARK_TAG_PREFIX), AssetTag.code.startswith(SOFTWARE_TAG_PREFIX)),
+            AssetTag.is_deleted.is_(False),
+        )
+        .order_by(func.lower(AssetTag.name_en), AssetTag.id)
+    ).all()
+    marks = [
+        {"id": t.id, "code": t.code, "name": t.name_en, "color": t.color, "count": counts.get(t.id, 0)}
+        for t in tags if t.code.startswith(MARK_TAG_PREFIX)
+    ]
+    software = [
+        {"id": t.id, "code": t.code, "name": t.name_en, "count": counts.get(t.id, 0)}
+        for t in tags if t.code.startswith(SOFTWARE_TAG_PREFIX)
+    ]
+    return marks, software
 
 
 def list_software(db: Session) -> list[dict[str, Any]]:

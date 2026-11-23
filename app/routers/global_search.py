@@ -83,7 +83,7 @@ async def global_search_view(
     total_count = 0
 
     if clean_query:
-        # 1. Assets (Mã GA, PC Name, Model, Serial, HWID, MAC LAN/Wi-Fi)
+        # 1. Assets (Mã thiết bị, Model, Serial, HWID, MAC LAN/Wi-Fi)
         if has_permission(db, user, Module.ASSETS, PermissionAction.VIEW):
             assets = db.scalars(
                 select(Asset)

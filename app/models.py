@@ -309,7 +309,7 @@ class PersonSecret(Base):
 class Asset(BizBase):
     """Một thiết bị vật lý. Bảng trung tâm thứ hai.
 
-    device_code là mã IT đặt cho mọi thiết bị (vd TKY-PC0001), bắt buộc và duy nhất.
+    device_code là mã IT đặt cho mọi thiết bị (vd TVC-EC0001), bắt buộc và duy nhất.
     """
 
     __tablename__ = "assets"
