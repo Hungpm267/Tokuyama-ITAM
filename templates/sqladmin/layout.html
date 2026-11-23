@@ -140,7 +140,7 @@
           <span class="input-group-text bg-transparent border-0 text-muted ps-2.5 pe-1 py-0" style="font-size: 12px;">
             <i class="fa-solid fa-magnifying-glass"></i>
           </span>
-          <input type="search" name="q" id="topbarSearchInput" class="form-control bg-transparent border-0 shadow-none py-0 text-dark" placeholder="{{ 'Tìm nhanh (GA, Serial, MAC, Nhân sự...)' if current_lang == 'vi' else ('Quick search (GA, Serial, MAC, Person...)' if current_lang == 'en' else 'クイック検索 (GA, シリアル, 社員...)') }}" value="{{ request.query_params.get('q', '') }}" style="font-size: 12px; height: 32px;" autocomplete="off" />
+          <input type="search" name="q" id="topbarSearchInput" class="form-control bg-transparent border-0 shadow-none py-0 text-dark" placeholder="{{ 'Tìm nhanh (Mã thiết bị, Serial, MAC, Nhân sự...)' if current_lang == 'vi' else ('Quick search (Device code, Serial, MAC, Person...)' if current_lang == 'en' else 'クイック検索 (機器コード, シリアル, 社員...)') }}" value="{{ request.query_params.get('q', '') }}" style="font-size: 12px; height: 32px;" autocomplete="off" />
           <span class="input-group-text bg-transparent border-0 pe-2 py-0">
             <kbd class="border fw-semibold" style="font-size: 9.5px; padding: 2px 5px; border-radius: 4px; background: #ffffff; color: #64748b; font-family: var(--toku-font-mono); border-color: #cbd5e1 !important;">Ctrl K</kbd>
           </span>

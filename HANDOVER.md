@@ -146,6 +146,12 @@ Thiết kế: `docs/superpowers/specs/2026-11-09-don-master-data-va-kho-mat-khau
 - **Kho mật khẩu** (`templates/sqladmin/person_secrets.html`): một bảng 3 cột Nhân sự / PC / Email, nhãn "Đã lưu" / "Chưa có", nút mắt xem qua cổng xác thực như cũ, bấm dòng để sửa, chip Tất cả / Thiếu PC / Thiếu Email, thanh tiến độ số người đã lưu.
 - **Thứ tự lên production**: sao lưu Aiven -> người dùng chạy `alembic upgrade head` (0007) -> merge `main` vào `master`, chờ Render "Deploy live" đúng commit (khoảng một phút các trang tài sản báo lỗi giữa hai bước) -> kiểm tra.
 
+### 3i. Mã TVC-EC, ẩn phòng ban, tăng tốc (24/11/2026)
+
+- **Migration `0008`**: đổi mọi mã thiết bị `TKY-PC####` sang `TVC-EC####`, giữ số, kể cả máy đã xóa mềm (theo yêu cầu của sếp). Nhật ký truy vết cũ vẫn ghi mã TKY-PC (audit bất biến). Không đổi schema.
+- **Phòng ban ẩn khỏi màn hình, giữ trong database**: chỉ 4 / 60 người có phòng ban. Bỏ khỏi Sổ tổng, form và danh sách nhân sự, Kho mật khẩu, tìm kiếm chung, lịch sử bàn giao, hộp bàn giao; menu "Phòng ban" ẩn (`DepartmentAdmin.is_visible`). `ledger_service` vẫn sửa được phòng ban nếu bật lại cột.
+- **Tốc độ**: quyền theo vai trò cache 60 giây (`app/core/permissions.py`, xóa khi ghi `role_permissions`); trang nhật ký tra tên cả trang một lần; Sổ tổng nhúng sẵn dữ liệu bảng vào trang (`<script id="ledgerRows">`), không gọi `/api/so-tong` lúc mở.
+
 ## 4. CẤU TRÚC CODEBASE & NGUỒN SỰ THẬT
 
 ```

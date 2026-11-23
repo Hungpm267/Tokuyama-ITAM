@@ -164,7 +164,6 @@
   const LEDGER_URL = '/admin/api/so-tong';
   const SOFTWARE_CATALOG_INITIAL = {{ software_catalog | tojson }};
   let MARKS = {{ marks | tojson }};
-  const DEPARTMENTS = {{ departments | tojson }};
   let SOFTWARE = SOFTWARE_CATALOG_INITIAL.map(function (s) { return { code: s.code, name: s.name }; });
   let SOFTWARE_CATALOG = SOFTWARE_CATALOG_INITIAL;
   const TEXT = {
@@ -302,8 +301,6 @@
       formatter: statusLabel(TEXT.personType), accessorDownload: labelFor(TEXT.personType) },
     { title: 'userId', field: 'user_id', width: 100, ...text, ...editable },
     { title: 'Email', field: 'email', width: 250, ...text, ...editable },
-    { title: {{ L('Phòng ban', 'Department', '部署') | trim | tojson }}, field: 'department', width: 160, ...text, editor: 'list', editable: canEdit,
-      editorParams: { values: [''].concat(DEPARTMENTS), autocomplete: true, listOnEmpty: true, itemFormatter: plainItem } },
     { title: {{ L('Tình trạng NV', 'Staff status', '社員状態') | trim | tojson }}, field: 'person_status', width: 140, headerFilter: 'list',
       headerFilterParams: { values: Object.assign({ '': '' }, TEXT.personStatus), clearable: true },
       formatter: statusLabel(TEXT.personStatus), accessorDownload: labelFor(TEXT.personStatus) },

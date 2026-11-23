@@ -1299,6 +1299,12 @@ class DepartmentAdmin(BaseAdminView, model=Department):
     module = Module.PERSONS
     name = "Phòng ban"
     name_plural = "Danh mục Phòng ban"
+
+    # Ẩn khỏi thanh bên: phòng ban gần như không được điền và không còn hiện ở màn hình nào.
+    # Dữ liệu vẫn giữ trong database; bật lại bằng cách bỏ hàm này.
+    def is_visible(self, request: Request) -> bool:
+        return False
+
     icon = "fa-solid fa-sitemap"
     category = "Danh mục Dùng chung"
     column_list = [Department.name_en, Department.name_ja]
@@ -1397,12 +1403,11 @@ class PersonAdmin(BaseAdminView, model=Person):
     name_plural = "Hồ sơ Nhân sự"
     icon = "fa-solid fa-id-card-clip"
     category = "Nhân sự"
-    column_list = [Person.staff_code, Person.full_name, Person.person_type, Person.department, Person.status, Person.email, Person.start_working_date]
+    column_list = [Person.staff_code, Person.full_name, Person.person_type, Person.status, Person.email, Person.start_working_date]
     column_details_list = [
         Person.staff_code,
         Person.full_name,
         Person.person_type,
-        Person.department,
         Person.email,
         Person.user_id,
         Person.status,
@@ -1445,7 +1450,8 @@ class PersonAdmin(BaseAdminView, model=Person):
             )
         ),
     }
-    form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["secret", "assignments"]
+    # Phòng ban ẩn khỏi màn hình (giữ trong database).
+    form_excluded_columns = COMMON_EXCLUDED_COLUMNS + ["secret", "assignments", "department"]
 
     async def scaffold_form(self, rules: list[str] | None = None) -> type[Form]:
         base_form = await super().scaffold_form(rules)
@@ -1504,7 +1510,6 @@ class PersonAdmin(BaseAdminView, model=Person):
     async def get_object_for_details(self, value: Any) -> Any:
         stmt = self._stmt_by_identifier(value)
         stmt = stmt.options(
-            selectinload(Person.department),
             selectinload(Person.assignments)
             .selectinload(Assignment.asset)
             .selectinload(Asset.category),
@@ -1543,7 +1548,7 @@ class PersonSecretAdmin(BaseAdminView, model=PersonSecret):
         with SessionLocal() as db:
             persons = db.scalars(
                 select(Person)
-                .options(selectinload(Person.department), selectinload(Person.secret))
+                .options(selectinload(Person.secret))
                 .where(Person.is_deleted.is_(False))
                 .order_by(Person.staff_code)
             ).all()
@@ -1556,8 +1561,6 @@ class PersonSecretAdmin(BaseAdminView, model=PersonSecret):
                         "id": p.id,
                         "staff_code": p.staff_code,
                         "full_name": p.full_name,
-                        "department": p.department.name_en if p.department else "-",
-                        "department_ja": p.department.name_ja if p.department else "-",
                         "email": p.email or "-",
                         "status": p.status.value if hasattr(p.status, "value") else str(p.status),
                         "has_pc_password": bool(sec and sec.pc_password_enc is not None),
