@@ -59,15 +59,6 @@ def _row_kind(person: Person | None) -> str:
     return ""
 
 
-def list_software_tags(db: Session) -> list[dict[str, str]]:
-    tags = db.scalars(
-        select(AssetTag)
-        .where(AssetTag.code.startswith(SOFTWARE_TAG_PREFIX), AssetTag.is_deleted.is_(False))
-        .order_by(AssetTag.name_en)
-    ).all()
-    return [{"code": t.code, "name": t.name_en} for t in tags]
-
-
 def list_department_names(db: Session) -> list[str]:
     return list(
         db.scalars(
@@ -107,18 +98,18 @@ def build_ledger_rows(db: Session, include_secret_flag: bool = False) -> list[di
     assets = db.scalars(
         select(Asset).where(Asset.is_deleted.is_(False)).order_by(Asset.device_code, Asset.id)
     ).all()
-    open_assignments = db.scalars(
-        select(Assignment)
-        .options(selectinload(Assignment.person).selectinload(Person.department))
-        .where(Assignment.returned_at.is_(None), Assignment.is_deleted.is_(False))
-    ).all()
-    by_asset = {a.asset_id: a for a in open_assignments}
     persons = db.scalars(
         select(Person)
         .options(selectinload(Person.department))
         .where(Person.is_deleted.is_(False))
         .order_by(Person.staff_code)
     ).all()
+    # Nhân sự sống đã nằm trong session (identity map), nên assignment.person không truy vấn lại;
+    # chỉ người đã xóa mềm mà còn giữ máy mới phải tải riêng.
+    open_assignments = db.scalars(
+        select(Assignment).where(Assignment.returned_at.is_(None), Assignment.is_deleted.is_(False))
+    ).all()
+    by_asset = {a.asset_id: a for a in open_assignments}
     software = _software_by_asset(db)
     marks = marks_by_asset(db)
     secret_kinds = _secret_kinds(db) if include_secret_flag else None

@@ -248,3 +248,31 @@ def test_menu_link_is_well_formed_and_comes_before_the_categories(admin_client, 
     assert link is not None
     assert link.start() < html.index("<!-- Category List -->")
     assert 'href="/admin/so-tong">' not in html[html.index("<!-- Category List -->"):]
+
+
+def test_page_nhung_san_du_lieu_bang_khong_can_goi_them(admin_client, db, seed):
+    """Trang Sổ tổng mang sẵn dữ liệu bảng: bỏ một lượt gọi mạng (và một lượt tới Aiven)."""
+    import json
+    import re
+
+    from sqlalchemy import event
+
+    counter = {"n": 0}
+
+    def _inc(*_a, **_k):
+        counter["n"] += 1
+
+    admin_client.get("/admin/so-tong")  # nạp cache người dùng / quyền
+    event.listen(db.get_bind(), "before_cursor_execute", _inc)
+    try:
+        res = admin_client.get("/admin/so-tong")
+    finally:
+        event.remove(db.get_bind(), "before_cursor_execute", _inc)
+    assert res.status_code == 200
+    match = re.search(r'<script id="ledgerRows" type="application/json">(.*?)</script>', res.text, re.S)
+    assert match, "trang phải nhúng dữ liệu bảng"
+    rows = json.loads(match.group(1))
+    api_rows = admin_client.get("/admin/api/so-tong").json()
+    assert rows == api_rows
+    assert "ajaxURL" not in res.text
+    assert counter["n"] <= 12
