@@ -34,7 +34,7 @@ from markupsafe import Markup, escape
 
 
 from app.core.audit import audit_login, record_audit
-from app.core.clock import today_local
+from app.core.clock import export_stamp, today_local
 from app.core.i18n import (
     DEFAULT_ADMIN_COLUMN_LABELS,
     format_datetime_clean,
@@ -199,6 +199,20 @@ def user_can_loan(request: Request | None) -> bool:
     )
 
 
+
+
+#: Tên tiếng Anh trong tên file xuất (TVC_<tên>_<ngày>_<giờ>.csv): bên Nhật cũng đọc được.
+_EXPORT_LABELS = {
+    "asset": "Assets",
+    "person": "Personnel",
+    "assignment": "Assignments",
+    "audit-log": "Audit-Log",
+    "department": "Departments",
+    "asset-category": "Asset-Categories",
+    "asset-tag": "Asset-Tags",
+    "user": "Users",
+    "role": "Roles",
+}
 
 
 def _csv_safe(value: Any) -> str:
@@ -793,7 +807,8 @@ class BaseAdminView(ModelView):
 
         # BOM để Excel nhận đúng UTF-8 (tiếng Việt / tiếng Nhật không bị lỗi font).
         payload = ("\ufeff" + buffer.getvalue()).encode("utf-8")
-        filename = f"{self.identity}_{today_local().isoformat()}.csv"
+        label = _EXPORT_LABELS.get(self.identity, self.identity.replace("_", "-").title())
+        filename = f"TVC_{label}_{export_stamp()}.csv"
         return StreamingResponse(
             iter([payload]),
             media_type="text/csv; charset=utf-8",
