@@ -168,6 +168,7 @@
   let SOFTWARE_CATALOG = SOFTWARE_CATALOG_INITIAL;
   const TEXT = {
     saveError: {{ L('Không lưu được.', 'Could not save.', '保存できませんでした。') | trim | tojson }},
+    exportError: {{ L('Không xuất được file Excel. Thử lại sau.', 'Could not export the Excel file. Try again.', 'Excelファイルを出力できませんでした。もう一度お試しください。') | trim | tojson }},
     assign: {{ L('Bàn giao', 'Assign', '貸出') | trim | tojson }},
     returnAsset: {{ L('Thu hồi', 'Return', '返却') | trim | tojson }},
     vault: {{ L('Mở kho mật khẩu', 'Open password vault', 'パスワード保管庫を開く') | trim | tojson }},
@@ -823,11 +824,35 @@
       applyFilters();
     });
   });
-  document.getElementById('stExport').addEventListener('click', function () {
-    // TVC_IT-Ledger_2026-11-24_0930.csv, giờ Việt Nam dù máy người dùng đặt múi giờ nào.
-    const vn = new Date(Date.now() + 7 * 3600 * 1000).toISOString();
-    const stamp = vn.slice(0, 10) + '_' + vn.slice(11, 13) + vn.slice(14, 16);
-    table.download('csv', 'TVC_IT-Ledger_' + stamp + '.csv', { bom: true }, 'active');
+  // SheetJS (~950 KB) chỉ nạp lần đầu bấm xuất, để Sổ tổng mở nhanh như cũ.
+  let sheetjsReady = null;
+  function loadSheetJs() {
+    if (window.XLSX) return Promise.resolve();
+    if (!sheetjsReady) {
+      sheetjsReady = new Promise(function (resolve, reject) {
+        const script = document.createElement('script');
+        script.src = '/static/vendor/sheetjs/xlsx.full.min.js';
+        script.onload = resolve;
+        script.onerror = function () { sheetjsReady = null; reject(new Error('sheetjs')); };
+        document.head.appendChild(script);
+      });
+    }
+    return sheetjsReady;
+  }
+  document.getElementById('stExport').addEventListener('click', async function () {
+    const button = this;
+    button.disabled = true;
+    try {
+      await loadSheetJs();
+      // TVC_IT-Ledger_2026-11-24_0930.xlsx, giờ Việt Nam dù máy người dùng đặt múi giờ nào.
+      const vn = new Date(Date.now() + 7 * 3600 * 1000).toISOString();
+      const stamp = vn.slice(0, 10) + '_' + vn.slice(11, 13) + vn.slice(14, 16);
+      table.download('xlsx', 'TVC_IT-Ledger_' + stamp + '.xlsx', { sheetName: 'IT Ledger' }, 'active');
+    } catch (err) {
+      toast(TEXT.exportError);
+    } finally {
+      button.disabled = false;
+    }
   });
 })();
 </script>
