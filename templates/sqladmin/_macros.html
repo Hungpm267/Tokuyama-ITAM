@@ -11,7 +11,6 @@
 {% endfor %}
 
 {% set category_icons = {
-  'Cài đặt': 'fa-solid fa-gear',
   'Hệ thống & Phân quyền': 'fa-solid fa-shield-halved',
   'Danh mục Dùng chung': 'fa-solid fa-shapes',
   'Nhân sự': 'fa-solid fa-users',
@@ -105,7 +104,7 @@
       <span class="nav-link-icon me-2 flex-shrink-0" style="width: 20px; text-align: center; font-size: 13px; color: {% if request.url.path == '/admin/global-search' %}#4D5CB0{% else %}#64748b{% endif %};">
         <i class="fa-solid fa-magnifying-glass"></i>
       </span>
-      <span class="nav-link-title flex-grow-1 text-truncate" style="font-size: 13px; font-weight: 600;">{{ t('Tìm kiếm', current_lang) }}</span>
+      <span class="nav-link-title flex-grow-1 text-truncate" style="font-size: 13px; font-weight: 600;">{{ t('Tìm kiếm toàn cục', current_lang) }}</span>
     </a>
   </li>
 
@@ -116,7 +115,7 @@
       <span class="nav-link-icon me-2 flex-shrink-0" style="width: 20px; text-align: center; font-size: 13px; color: {% if request.url.path == '/admin/trash' %}#4D5CB0{% else %}#64748b{% endif %};">
         <i class="fa-solid fa-trash-can"></i>
       </span>
-      <span class="nav-link-title flex-grow-1 text-truncate" style="font-size: 13px; font-weight: 600;">{{ t('Thùng rác', current_lang) }}</span>
+      <span class="nav-link-title flex-grow-1 text-truncate" style="font-size: 13px; font-weight: 600;">{{ t('Thùng rác & Khôi phục', current_lang) }}</span>
     </a>
   </li>
   {% endif %}

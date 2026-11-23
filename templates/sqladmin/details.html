@@ -543,6 +543,9 @@
         </h4>
       </div>
       <div class="d-flex align-items-center gap-2">
+        <a href="/admin/assignment/create" class="btn btn-outline-primary btn-sm" style="font-size: 12.5px;">
+          <i class="fa-solid fa-plus me-1"></i> {{ '機器割当' if current_lang == 'ja' else ('Assign Asset' if current_lang == 'en' else 'Bàn giao thiết bị') }}
+        </a>
         {% if can(request, 'secrets', 'view') %}
         <a href="/admin/person-secret/list" class="btn btn-outline-success btn-sm" style="font-size: 12.5px;">
           <i class="fa-solid fa-user-lock me-1"></i> {{ '人事パスワード保管庫' if current_lang == 'ja' else ('Password Vault' if current_lang == 'en' else 'Kho Mật khẩu Nhân sự') }}

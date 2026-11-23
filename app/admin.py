@@ -1194,9 +1194,9 @@ class UserAdmin(BaseAdminView, model=User):
     unique_text_fields = ("username",)
     module = Module.USERS
     name = "Người dùng"
-    name_plural = "Tài khoản đăng nhập"
+    name_plural = "Tài khoản Đăng nhập"
     icon = "fa-solid fa-users-gear"
-    category = "Cài đặt"
+    category = "Hệ thống & Phân quyền"
     column_list = [User.username, User.display_name, User.role, User.preferred_lang, User.is_active, User.last_login_at]
     column_details_list = [
         User.username,
@@ -1277,9 +1277,9 @@ class RoleAdmin(BaseAdminView, model=Role):
     unique_text_fields = ("code",)
     module = Module.USERS
     name = "Vai trò"
-    name_plural = "Vai trò"
+    name_plural = "Vai trò Hệ thống"
     icon = "fa-solid fa-user-shield"
-    category = "Cài đặt"
+    category = "Hệ thống & Phân quyền"
     column_list = [Role.code, Role.name_en, Role.name_ja]
     column_details_list = [Role.code, Role.name_en, Role.name_ja] + COMMON_EXCLUDED_COLUMNS
     column_labels = {
@@ -1321,7 +1321,7 @@ class DepartmentAdmin(BaseAdminView, model=Department):
         return False
 
     icon = "fa-solid fa-sitemap"
-    category = "Cài đặt"
+    category = "Danh mục Dùng chung"
     column_list = [Department.name_en, Department.name_ja]
     column_details_list = [Department.name_en, Department.name_ja] + COMMON_EXCLUDED_COLUMNS
     column_labels = {
@@ -1351,9 +1351,9 @@ class AssetCategoryAdmin(BaseAdminView, model=AssetCategory):
                 ))
     module = Module.ASSETS
     name = "Loại tài sản"
-    name_plural = "Loại thiết bị"
+    name_plural = "Danh mục Loại tài sản"
     icon = "fa-solid fa-tags"
-    category = "Cài đặt"
+    category = "Danh mục Dùng chung"
     column_list = [AssetCategory.name_en, AssetCategory.name_ja]
     column_details_list = [AssetCategory.name_en, AssetCategory.name_ja] + COMMON_EXCLUDED_COLUMNS
     column_labels = {
@@ -1372,7 +1372,7 @@ class AssetTagAdmin(BaseAdminView, model=AssetTag):
     name = "Nhãn tài sản"
     name_plural = "Danh mục Nhãn (Tags)"
     icon = "fa-solid fa-tag"
-    category = "Cài đặt"
+    category = "Danh mục Dùng chung"
     column_list = [AssetTag.code, AssetTag.name_en, AssetTag.color]
     column_details_list = [AssetTag.code, AssetTag.name_en, AssetTag.name_ja, AssetTag.color] + COMMON_EXCLUDED_COLUMNS
     column_labels = {
@@ -1415,9 +1415,9 @@ class PersonAdmin(BaseAdminView, model=Person):
     unique_text_fields = ("staff_code", "email", "user_id")
     module = Module.PERSONS
     name = "Nhân sự"
-    name_plural = "Nhân sự"
+    name_plural = "Hồ sơ Nhân sự"
     icon = "fa-solid fa-id-card-clip"
-    category = None
+    category = "Nhân sự"
     column_list = [Person.staff_code, Person.full_name, Person.person_type, Person.status, Person.email, Person.start_working_date]
     column_details_list = [
         Person.staff_code,
@@ -1538,9 +1538,9 @@ class PersonAdmin(BaseAdminView, model=Person):
 class PersonSecretAdmin(BaseAdminView, model=PersonSecret):
     module = Module.SECRETS
     name = "Mật khẩu nhân viên"
-    name_plural = "Kho mật khẩu"
+    name_plural = "Kho Mật khẩu Nhân sự"
     icon = "fa-solid fa-user-lock"
-    category = None
+    category = "Nhân sự"
     list_template = "sqladmin/person_secrets.html"
     can_create = False
     can_edit = False
@@ -1596,9 +1596,9 @@ class AssetAdmin(BaseAdminView, model=Asset):
     unique_text_fields = ("device_code", "serial")
     module = Module.ASSETS
     name = "Tài sản IT"
-    name_plural = "Thiết bị"
+    name_plural = "Danh sách Thiết bị"
     icon = "fa-solid fa-laptop"
-    category = None
+    category = "Tài sản"
     column_list = [
         Asset.device_code,
         Asset.serial,
@@ -1762,13 +1762,9 @@ class AssetAdmin(BaseAdminView, model=Asset):
 class AssignmentAdmin(BaseAdminView, model=Assignment):
     module = Module.ASSIGNMENTS
     name = "Bàn giao thiết bị"
-    name_plural = "Lịch sử bàn giao"
+    name_plural = "Lịch sử Cấp phát Tài sản"
     icon = "fa-solid fa-handshake"
-    category = None
-    # Chỉ để xem: bàn giao / thu hồi đi qua hộp bàn giao (assignment_service), ngày sửa trên Sổ tổng.
-    # Một lối duy nhất thì luật nghiệp vụ chỉ nằm một chỗ.
-    can_create = False
-    can_edit = False
+    category = "Tài sản"
     can_delete = False
     column_list = [
         Assignment.asset,
@@ -2094,9 +2090,9 @@ def _audit_record_label(table: str | None, record_id: int | None) -> str:
 class AuditLogAdmin(BaseAdminView, model=AuditLog):
     module = Module.AUDIT
     name = "Nhật ký kiểm toán"
-    name_plural = "Nhật ký thay đổi"
+    name_plural = "Audit Trail (Bất biến)"
     icon = "fa-solid fa-shield-halved"
-    category = None
+    category = "Truy vết"
     can_create = False
     can_edit = False
     can_delete = False
@@ -2325,17 +2321,25 @@ def setup_admin(app, engine):
     admin.templates.env.globals["format_datetime_clean"] = format_datetime_clean
     admin.templates.env.filters["format_datetime_clean"] = format_datetime_clean
 
-    # Thứ tự menu: việc hằng ngày trước, nhóm "Cài đặt" cuối.
-    admin.add_view(PersonAdmin)
-    admin.add_view(AssetAdmin)
-    admin.add_view(AssignmentAdmin)
-    admin.add_view(PersonSecretAdmin)
-    admin.add_view(AuditLogAdmin)
+    # 1. Hệ thống & phân quyền
     admin.add_view(UserAdmin)
     admin.add_view(RoleAdmin)
-    admin.add_view(AssetCategoryAdmin)
+
+    # 2. Danh mục dùng chung
     admin.add_view(DepartmentAdmin)
+    admin.add_view(AssetCategoryAdmin)
     admin.add_view(AssetTagAdmin)
+
+    # 3. Nhân sự
+    admin.add_view(PersonAdmin)
+    admin.add_view(PersonSecretAdmin)
+
+    # 4. Tài sản
+    admin.add_view(AssetAdmin)
+    admin.add_view(AssignmentAdmin)
+
+    # 9. Truy vết
+    admin.add_view(AuditLogAdmin)
 
     global _admin_instance
     _admin_instance = admin
