@@ -1463,6 +1463,9 @@ class PersonAdmin(BaseAdminView, model=Person):
                 translate("Loại nhân sự", lang),
                 choices=[(t.value, translate(label, lang)) for t, label in _PERSON_TYPE_LABEL.items()],
                 default=PersonType.EMPLOYEE.value,
+                # Bản ghi mang enum; str(PersonType.X) là "PersonType.X", không khớp lựa chọn nào
+                # nên form sửa luôn hiện mục đầu (nhân viên chính thức).
+                coerce=lambda v: v.value if isinstance(v, PersonType) else v,
                 render_kw={"class": "form-control form-select"},
             )
 
