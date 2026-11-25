@@ -20,6 +20,7 @@ from typing import Any
 import anyio
 from sqladmin import Admin, ModelView
 from sqladmin.authentication import AuthenticationBackend, login_required
+from sqladmin.formatters import BASE_FORMATTERS
 from sqladmin.forms import ModelConverter
 from sqladmin.helpers import get_object_identifier
 from starlette.datastructures import FormData, URL
@@ -742,6 +743,8 @@ class AliveOnlyModelConverter(ModelConverter):
 class BaseAdminView(ModelView):
     module: Module | None = None
     form_converter = AliveOnlyModelConverter
+    # DB lưu giờ UTC; danh sách và trang chi tiết hiện theo giờ Việt Nam, không kèm "+00:00".
+    column_type_formatters = {**BASE_FORMATTERS, dt.datetime: format_datetime_clean}
     #: Chỉ CSV: bản JSON của SQLAdmin không qua bước làm sạch dưới đây.
     export_types = ["csv"]
     #: Các ô văn bản phải là duy nhất KHÔNG phân biệt chữ hoa-thường ("abc123" trùng "ABC123").
@@ -2103,7 +2106,6 @@ class AuditLogAdmin(BaseAdminView, model=AuditLog):
         AuditLog.table_name,
         AuditLog.record_id,
         "summary",
-        AuditLog.ip_address,
     ]
     column_details_list = [
         AuditLog.created_at,
@@ -2112,7 +2114,6 @@ class AuditLogAdmin(BaseAdminView, model=AuditLog):
         AuditLog.table_name,
         AuditLog.record_id,
         "summary",
-        AuditLog.ip_address,
         AuditLog.before_after,
     ]
     column_labels = {
@@ -2138,7 +2139,6 @@ class AuditLogAdmin(BaseAdminView, model=AuditLog):
     column_searchable_list = [
         AuditLog.table_name,
         AuditLog.action,
-        AuditLog.ip_address,
     ]
     column_formatters = {
         "record_id": lambda m, a: _audit_record_label(m.table_name, m.record_id),
