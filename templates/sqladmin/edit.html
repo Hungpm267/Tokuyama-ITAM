@@ -9,7 +9,7 @@
         {{ 'Edit' if current_lang == 'en' else ('編集' if current_lang == 'ja' else 'Chỉnh sửa') }} {{ t(model_view.name, current_lang) }}: {{ obj }}
       </h3>
       <a href="{{ url_for('admin:list', identity=model_view.identity) }}" class="btn btn-outline-secondary btn-sm" style="font-size: 13px;">
-        <i class="fa-solid fa-arrow-left me-1"></i> {{ 'Quay lại' if current_lang != 'en' else 'Back to list' }}
+        <i class="fa-solid fa-arrow-left me-1"></i> {{ 'Back to list' if current_lang == 'en' else ('一覧に戻る' if current_lang == 'ja' else 'Quay lại') }}
       </a>
     </div>
     <div class="card-body p-4 bg-white">
@@ -21,19 +21,19 @@
         </div>
         {% endif %}
         <fieldset class="form-fieldset border-0 p-0 mb-4">
-          {{ render_form_fields(form, form_opts=form_opts) }}
+          {{ render_form_fields(form, form_opts=form_opts, model_view=model_view, lang=current_lang) }}
         </fieldset>
         <div class="d-flex align-items-center justify-content-between pt-3 border-top" style="border-color: var(--toku-border) !important;">
           <a href="{{ url_for('admin:list', identity=model_view.identity) }}" class="btn btn-outline-secondary btn-sm px-3" style="font-size: 13px; font-weight: 600;">
-            {{ 'Hủy' if current_lang != 'en' else 'Cancel' }}
+            {{ 'Cancel' if current_lang == 'en' else ('キャンセル' if current_lang == 'ja' else 'Hủy') }}
           </a>
           <div class="btn-group gap-2">
             <button type="submit" name="save" value="Save" class="btn btn-primary btn-sm px-3" style="font-size: 13px; font-weight: 600;">
-              <i class="fa-solid fa-check me-1"></i> {{ 'Lưu thay đổi' if current_lang != 'en' else 'Save changes' }}
+              <i class="fa-solid fa-check me-1"></i> {{ 'Save changes' if current_lang == 'en' else ('変更を保存' if current_lang == 'ja' else 'Lưu thay đổi') }}
             </button>
             {% if model_view.can_create %}
             <button type="submit" name="save" value="Save and add another" class="btn btn-outline-secondary btn-sm px-3" style="font-size: 13px; font-weight: 600;">
-              <i class="fa-solid fa-plus me-1"></i> {{ 'Lưu và thêm mới' if current_lang != 'en' else 'Save and add another' }}
+              <i class="fa-solid fa-plus me-1"></i> {{ 'Save and add another' if current_lang == 'en' else ('保存して続けて追加' if current_lang == 'ja' else 'Lưu và thêm mới') }}
             </button>
             {% endif %}
           </div>

@@ -122,9 +122,14 @@
 </ul>
 {% endmacro %}
 
-{% macro render_field(field, kwargs={}) %}
+{% macro render_field(field, kwargs={}, model_view=None, lang=None) %}
 <div class="mb-3 form-group row">
+  {# Nhãn dựng sẵn bằng tiếng Việt lúc tạo form; dịch theo ngôn ngữ đang chọn bằng tên cột. #}
+  {% if model_view is not none and lang %}
+  {{ field.label(text=get_property_label(model_view, field.name, lang), class_="form-label col-sm-2 col-form-label") }}
+  {% else %}
   {{ field.label(class_="form-label col-sm-2 col-form-label") }}
+  {% endif %}
   <div class="col-sm-10">
     {% if field.errors %}
     {{ field(class_="form-control is-invalid") }}
@@ -135,13 +140,13 @@
     <div class="invalid-feedback">{{ error }}</div>
     {% endfor %}
     {% if field.description %}
-    <small class="text-muted">{{ field.description }}</small>
+    <small class="text-muted">{{ t(field.description, lang) if lang else field.description }}</small>
     {% endif %}
   </div>
 </div>
 {% endmacro %}
 
-{% macro render_form_fields(form, form_opts=None) %}
+{% macro render_form_fields(form, form_opts=None, model_view=None, lang=None) %}
 {% if form.hidden_tag is defined %}
 {{ form.hidden_tag() }}
 {% else %}
@@ -151,6 +156,6 @@
 {% endif %}
 
 {% for f in form if f.widget.input_type != 'hidden' %}
-{{ render_field(f, kwargs) }}
+{{ render_field(f, kwargs, model_view, lang) }}
 {% endfor %}
 {% endmacro %}
